@@ -1,0 +1,22 @@
+{
+  "name": "corpsol",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Call-center workforce control & gamification platform",
+  "workspaces": [
+    "packages/*",
+    "apps/api",
+    "apps/web"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build:shared": "npm run build -w @corpsol/shared",
+    "dev:api": "npm run start:dev -w @corpsol/api",
+    "dev:web": "npm run dev -w @corpsol/web",
+    "db:migrate": "npm run prisma:migrate -w @corpsol/api",
+    "db:seed": "npm run prisma:seed -w @corpsol/api",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  }
+}
