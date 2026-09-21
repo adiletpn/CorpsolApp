@@ -1,0 +1,579 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ────────────────────────────── Организация ──────────────────────────────
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  timezone  String   @default("Asia/Almaty")
+  createdAt DateTime @default(now())
+
+  offices     Office[]
+  departments Department[]
+  users       User[]
+  integrations Integration[]
+}
+
+model Office {
+  id             String  @id @default(uuid())
+  organizationId String
+  name           String
+  address        String?
+
+  // Геозона офиса
+  lat          Float
+  lng          Float
+  radiusMeters Int    @default(120)
+
+  /// Погрешность хуже этой считаем недостоверной и отметку не засчитываем.
+  maxAccuracyMeters Int @default(100)
+
+  /// BSSID точек доступа офисного Wi-Fi — второй фактор поверх GPS.
+  /// Пустой список означает, что проверка по Wi-Fi для офиса отключена.
+  wifiBssids String[] @default([])
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  terminals    Terminal[]
+  users        User[]
+  attendances  Attendance[]
+
+  @@index([organizationId])
+}
+
+/// Экран в офисе, показывающий ротирующийся QR-код.
+model Terminal {
+  id       String  @id @default(uuid())
+  officeId String
+  name     String
+  /// Секрет для HMAC. Хранится только на сервере, в QR не попадает.
+  secret   String
+  isActive Boolean @default(true)
+
+  createdAt    DateTime @default(now())
+  rotatedAt    DateTime @default(now())
+
+  office      Office       @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  attendances Attendance[]
+
+  @@index([officeId])
+}
+
+model Department {
+  id             String  @id @default(uuid())
+  organizationId String
+  name           String
+  headId         String? @unique
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// РОП отдела.
+  head         User?        @relation("DepartmentHead", fields: [headId], references: [id], onDelete: SetNull)
+  members      User[]       @relation("DepartmentMembers")
+  plans        Plan[]
+  schedules    WorkSchedule[]
+
+  @@index([organizationId])
+}
+
+// ────────────────────────────── Люди и доступ ──────────────────────────────
+
+enum Role {
+  MOP
+  ROP
+  HR
+  DIRECTOR
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  TERMINATED
+}
+
+model User {
+  id             String     @id @default(uuid())
+  organizationId String
+  email          String     @unique
+  phone          String?
+  passwordHash   String
+  fullName       String
+  role           Role       @default(MOP)
+  status         UserStatus @default(ACTIVE)
+
+  departmentId String?
+  officeId     String?
+
+  hiredAt      DateTime  @default(now())
+  terminatedAt DateTime?
+
+  /// Оклад за расчётный период, в тиынах — целые числа, без потерь на округлении.
+  baseSalaryMinor Int    @default(0)
+  currency        String @default("KZT")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  department   Department?  @relation("DepartmentMembers", fields: [departmentId], references: [id], onDelete: SetNull)
+  headedDepartment Department? @relation("DepartmentHead")
+  office       Office?      @relation(fields: [officeId], references: [id], onDelete: SetNull)
+
+  devices        Device[]
+  deviceRequests DeviceBindingRequest[] @relation("RequestedBy")
+  sessions       Session[]
+  attendances    Attendance[]
+  calls          CallRecord[]
+  offers         Offer[]
+  plans          Plan[]
+  payrolls       Payroll[]
+  points         PointsEntry[]
+  achievements   UserAchievement[]
+  schedules      WorkSchedule[]
+  auditEvents    AuditEvent[]           @relation("ActorEvents")
+
+  @@index([organizationId, role])
+  @@index([departmentId])
+}
+
+/// Привязка аккаунта к устройству. Активная запись всегда ровно одна:
+/// вход со второго телефона отклоняется, пока HR не открепит первый.
+model Device {
+  id       String @id @default(uuid())
+  userId   String
+  /// Стабильный идентификатор устройства из защищённого хранилища клиента.
+  deviceId String
+
+  platform    String
+  model       String?
+  osVersion   String?
+  appVersion  String?
+
+  isActive   Boolean   @default(true)
+  boundAt    DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  revokedAt  DateTime?
+  revokedBy  String?
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions Session[]
+
+  /// Один и тот же физический телефон нельзя привязать к двум аккаунтам.
+  @@unique([deviceId])
+  @@index([userId, isActive])
+}
+
+enum DeviceRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// Заявка на перепривязку: сотрудник сменил телефон — нужен явный аппрув HR.
+model DeviceBindingRequest {
+  id       String @id @default(uuid())
+  userId   String
+  deviceId String
+
+  platform String
+  model    String?
+  reason   String?
+
+  status      DeviceRequestStatus @default(PENDING)
+  createdAt   DateTime            @default(now())
+  resolvedAt  DateTime?
+  resolvedBy  String?
+  resolveNote String?
+
+  user User @relation("RequestedBy", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([userId])
+}
+
+model Session {
+  id               String   @id @default(uuid())
+  userId           String
+  deviceId         String?
+  refreshTokenHash String   @unique
+  userAgent        String?
+  ip               String?
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdAt        DateTime @default(now())
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device Device? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+}
+
+// ────────────────────────────── Посещаемость ──────────────────────────────
+
+enum AttendanceStatus {
+  ON_TIME
+  LATE
+  ABSENT
+  DAY_OFF
+  EXCUSED
+}
+
+enum CheckMethod {
+  QR
+  MANUAL_ADJUSTMENT
+}
+
+model WorkSchedule {
+  id           String  @id @default(uuid())
+  departmentId String?
+  userId       String?
+
+  /// Локальное время начала и конца смены в формате HH:mm.
+  startTime String
+  endTime   String
+  /// Допуск на опоздание в минутах — внутри него приход считается вовремя.
+  graceMinutes Int @default(5)
+  /// Дни недели, 1 = понедельник … 7 = воскресенье.
+  workdays  Int[] @default([1, 2, 3, 4, 5])
+
+  effectiveFrom DateTime @default(now())
+  effectiveTo   DateTime?
+
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  user       User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([departmentId])
+  @@index([userId])
+}
+
+model Attendance {
+  id         String   @id @default(uuid())
+  userId     String
+  officeId   String?
+  terminalId String?
+
+  /// Локальная календарная дата смены — по ней строится табель.
+  workDate   DateTime @db.Date
+  checkInAt  DateTime?
+  checkOutAt DateTime?
+
+  status      AttendanceStatus @default(ABSENT)
+  lateMinutes Int              @default(0)
+  method      CheckMethod      @default(QR)
+
+  // Что именно сообщило устройство в момент отметки — доказательная база.
+  lat            Float?
+  lng            Float?
+  accuracyMeters Float?
+  distanceMeters Float?
+  wifiBssid      String?
+  isMocked       Boolean @default(false)
+
+  adjustedBy   String?
+  adjustNote   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  office   Office?   @relation(fields: [officeId], references: [id], onDelete: SetNull)
+  terminal Terminal? @relation(fields: [terminalId], references: [id], onDelete: SetNull)
+
+  /// Одна отметка на сотрудника в день — защита от повторного скана.
+  @@unique([userId, workDate])
+  @@index([workDate])
+  @@index([officeId, workDate])
+}
+
+// ────────────────────────────── Звонки ──────────────────────────────
+
+enum CallSource {
+  BITRIX
+  KCELL
+  MANUAL
+}
+
+enum CallDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum CallStatus {
+  ANSWERED
+  NO_ANSWER
+  BUSY
+  FAILED
+}
+
+model CallRecord {
+  id     String @id @default(uuid())
+  userId String
+
+  source     CallSource
+  /// Идентификатор звонка в системе-источнике — ключ идемпотентности импорта.
+  externalId String
+
+  direction  CallDirection
+  status     CallStatus
+  clientPhone String
+
+  startedAt       DateTime
+  /// Общая длительность соединения, включая гудки.
+  durationSeconds Int @default(0)
+  /// Чистое время разговора — по нему считается план, а не по количеству гудков.
+  talkSeconds     Int @default(0)
+
+  recordingUrl String?
+  rawPayload   Json?
+  importedAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Повторный импорт той же выгрузки не создаёт дублей.
+  @@unique([source, externalId])
+  @@index([userId, startedAt])
+  @@index([startedAt])
+}
+
+enum IntegrationProvider {
+  BITRIX
+  KCELL
+}
+
+model Integration {
+  id             String              @id @default(uuid())
+  organizationId String
+  provider       IntegrationProvider
+  isActive       Boolean             @default(true)
+
+  /// Вебхук-URL Bitrix24 или учётные данные кабинета Kcell. Шифруется на уровне приложения.
+  credentials Json
+  settings    Json?
+
+  lastSyncAt     DateTime?
+  lastSyncStatus String?
+  lastSyncError  String?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, provider])
+}
+
+/// Сопоставление сотрудника с его идентификаторами на стороне источников.
+model ExternalIdentity {
+  id       String              @id @default(uuid())
+  userId   String
+  provider IntegrationProvider
+  /// ID пользователя в Bitrix24 либо рабочий номер в выгрузке Kcell.
+  externalKey String
+
+  @@unique([provider, externalKey])
+  @@index([userId])
+}
+
+// ────────────────────────────── Планы и офферы ──────────────────────────────
+
+enum PlanMetric {
+  CALLS
+  TALK_MINUTES
+  OFFERS
+  REVENUE
+}
+
+enum PlanScope {
+  DEPARTMENT
+  USER
+}
+
+model Plan {
+  id           String     @id @default(uuid())
+  scope        PlanScope
+  departmentId String?
+  userId       String?
+
+  metric PlanMetric
+  /// Для REVENUE — сумма в тиынах, для остальных метрик — штуки или минуты.
+  target Int
+
+  periodStart DateTime @db.Date
+  periodEnd   DateTime @db.Date
+
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  user       User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([departmentId, periodStart])
+  @@index([userId, periodStart])
+}
+
+enum OfferStatus {
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+/// Оффер, отправленный клиенту. Источник метрики OFFERS и REVENUE.
+model Offer {
+  id     String @id @default(uuid())
+  userId String
+
+  clientName  String
+  clientPhone String?
+  /// Сумма оффера в тиынах.
+  amountMinor Int         @default(0)
+  status      OfferStatus @default(SENT)
+
+  externalId String?
+  source     CallSource @default(MANUAL)
+
+  sentAt     DateTime  @default(now())
+  resolvedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, sentAt])
+}
+
+// ────────────────────────────── Деньги ──────────────────────────────
+
+enum PayrollStatus {
+  DRAFT
+  APPROVED
+  PAID
+}
+
+model Payroll {
+  id     String @id @default(uuid())
+  userId String
+
+  periodStart DateTime @db.Date
+  periodEnd   DateTime @db.Date
+
+  baseSalaryMinor Int @default(0)
+  bonusMinor      Int @default(0)
+  penaltyMinor    Int @default(0)
+  totalMinor      Int @default(0)
+
+  /// Развёрнутый расчёт: какое правило сработало и на какую сумму.
+  breakdown Json?
+
+  status      PayrollStatus @default(DRAFT)
+  calculatedAt DateTime     @default(now())
+  approvedBy  String?
+  approvedAt  DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, periodStart])
+  @@index([periodStart])
+}
+
+enum BonusRuleKind {
+  PLAN_COMPLETION
+  PER_UNIT
+  ATTENDANCE
+  LATE_PENALTY
+  ABSENCE_PENALTY
+}
+
+model BonusRule {
+  id           String        @id @default(uuid())
+  departmentId String?
+  kind         BonusRuleKind
+  metric       PlanMetric?
+
+  /// Порог срабатывания: процент выполнения плана либо количество единиц.
+  threshold Int @default(0)
+  /// Фиксированная сумма в тиынах.
+  amountMinor Int @default(0)
+  /// Либо процент — от оклада или от суммы офферов, в базисных пунктах.
+  percentBps  Int @default(0)
+
+  isActive  Boolean  @default(true)
+  priority  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([departmentId, isActive])
+}
+
+// ────────────────────────────── Геймификация ──────────────────────────────
+
+enum PointsReason {
+  CHECK_IN_ON_TIME
+  CALL_QUOTA
+  OFFER_ACCEPTED
+  PLAN_COMPLETED
+  STREAK_BONUS
+  MANUAL_ADJUSTMENT
+  LATE_PENALTY
+}
+
+model PointsEntry {
+  id     String       @id @default(uuid())
+  userId String
+  reason PointsReason
+  points Int
+
+  /// Ссылка на объект, за который начислено — чтобы не начислить дважды.
+  refType String?
+  refId   String?
+
+  comment   String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, reason, refType, refId])
+  @@index([userId, createdAt])
+}
+
+model Achievement {
+  id          String  @id @default(uuid())
+  code        String  @unique
+  title       String
+  description String
+  icon        String?
+  points      Int     @default(0)
+
+  users UserAchievement[]
+}
+
+model UserAchievement {
+  id            String   @id @default(uuid())
+  userId        String
+  achievementId String
+  unlockedAt    DateTime @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+}
+
+// ────────────────────────────── Аудит ──────────────────────────────
+
+model AuditEvent {
+  id      String  @id @default(uuid())
+  actorId String?
+
+  action     String
+  targetType String?
+  targetId   String?
+  metadata   Json?
+  ip         String?
+
+  createdAt DateTime @default(now())
+
+  actor User? @relation("ActorEvents", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([actorId, createdAt])
+}
