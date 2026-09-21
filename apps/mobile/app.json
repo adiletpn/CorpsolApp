@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "CorpSol",
+    "slug": "corpsol",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "corpsol",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0F172A"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "kz.corpsol.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Камера нужна для сканирования QR-кода на терминале в офисе.",
+        "NSLocationWhenInUseUsageDescription": "Геолокация подтверждает, что вы отмечаетесь, находясь в офисе."
+      }
+    },
+    "android": {
+      "package": "kz.corpsol.app",
+      "permissions": [
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        { "cameraPermission": "Камера нужна для сканирования QR-кода на терминале в офисе." }
+      ],
+      [
+        "expo-location",
+        { "locationWhenInUsePermission": "Геолокация подтверждает, что вы отмечаетесь, находясь в офисе." }
+      ]
+    ]
+  }
+}
