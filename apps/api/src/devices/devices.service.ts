@@ -1,7 +1,10 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { Device, DeviceRequestStatus, Prisma, Role, User } from '@prisma/client';
+import { Timestamp } from 'firebase-admin/firestore';
+import type { Role } from '@corpsol/shared';
 
-import { PrismaService } from '../prisma/prisma.service';
+import { FirebaseService } from '../firebase/firebase.service';
+import { COLLECTIONS, deviceDocId } from '../firestore/collections';
+import type { DeviceDoc, DeviceRequestDoc, UserDoc } from '../firestore/types';
 import { AUTH_ERRORS } from '../auth/auth.errors';
 import type { DeviceDescriptorDto } from '../auth/dto';
 
@@ -9,21 +12,36 @@ import type { DeviceDescriptorDto } from '../auth/dto';
  * Роли, работающие «в поле»: для них аккаунт жёстко привязан к одному телефону.
  * Руководители заходят в веб-панель с любого браузера.
  */
-const DEVICE_BOUND_ROLES: Role[] = [Role.MOP, Role.ROP];
+const DEVICE_BOUND_ROLES: Role[] = ['MOP', 'ROP'];
 
 export function requiresBoundDevice(role: Role): boolean {
   return DEVICE_BOUND_ROLES.includes(role);
 }
 
+export interface BoundDevice extends DeviceDoc {
+  /** Идентификатор телефона, он же ID документа. */
+  deviceId: string;
+}
+
 @Injectable()
 export class DevicesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly firebase: FirebaseService) {}
+
+  private get db() {
+    return this.firebase.firestore;
+  }
 
   /**
    * Сопоставляет предъявленное устройство с привязкой аккаунта.
-   * Возвращает активную привязку либо бросает ошибку с кодом причины.
+   * Вызывается не только при входе, но и на каждом защищённом запросе:
+   * Firebase Auth по своей природе разрешает вход с любого числа устройств,
+   * поэтому запрет держится исключительно на этой проверке.
    */
-  async resolveForLogin(user: User, descriptor?: DeviceDescriptorDto): Promise<Device | null> {
+  async resolveForRequest(
+    userId: string,
+    user: UserDoc,
+    descriptor?: DeviceDescriptorDto,
+  ): Promise<BoundDevice | null> {
     if (!descriptor) {
       if (requiresBoundDevice(user.role)) {
         throw new ForbiddenException({ code: AUTH_ERRORS.DEVICE_REQUIRED });
@@ -31,153 +49,240 @@ export class DevicesService {
       return null;
     }
 
-    const existing = await this.prisma.device.findUnique({
-      where: { deviceId: descriptor.deviceId },
-    });
+    const docId = deviceDocId(descriptor.deviceId);
+    const ref = this.db.collection(COLLECTIONS.devices).doc(docId);
+    const snapshot = await ref.get();
 
-    // Телефон уже закреплён за другим сотрудником — это и есть попытка «прикрыть» коллегу.
-    if (existing && existing.userId !== user.id && existing.isActive) {
-      throw new ConflictException({ code: AUTH_ERRORS.DEVICE_TAKEN });
-    }
+    if (snapshot.exists) {
+      const existing = snapshot.data() as DeviceDoc;
 
-    if (existing && existing.userId === user.id && existing.isActive) {
-      return this.prisma.device.update({
-        where: { id: existing.id },
-        data: {
-          lastSeenAt: new Date(),
+      // Телефон закреплён за другим сотрудником — это и есть попытка
+      // отметиться за коллегу с его устройства.
+      if (existing.isActive && existing.userId !== userId) {
+        throw new ConflictException({ code: AUTH_ERRORS.DEVICE_TAKEN });
+      }
+
+      if (existing.isActive && existing.userId === userId) {
+        await ref.update({
+          lastSeenAt: Timestamp.now(),
           model: descriptor.model ?? existing.model,
           osVersion: descriptor.osVersion ?? existing.osVersion,
           appVersion: descriptor.appVersion ?? existing.appVersion,
-        },
-      });
+        });
+        return { ...existing, deviceId: descriptor.deviceId };
+      }
     }
 
-    const activeBinding = await this.prisma.device.findFirst({
-      where: { userId: user.id, isActive: true },
-    });
+    const activeBinding = await this.findActiveBinding(userId);
 
     // Аккаунт уже занят другим телефоном — нужен явный аппрув HR.
     if (activeBinding) {
-      await this.requestRebind(user.id, descriptor);
+      await this.requestRebind(userId, descriptor);
       throw new ForbiddenException({ code: AUTH_ERRORS.DEVICE_MISMATCH });
     }
 
-    return this.bind(user.id, descriptor);
+    return this.bind(userId, descriptor);
   }
 
-  /** Первичная привязка: аккаунт свободен, телефон ни за кем не закреплён. */
-  async bind(userId: string, descriptor: DeviceDescriptorDto): Promise<Device> {
-    const data: Prisma.DeviceUncheckedCreateInput = {
+  /**
+   * Первичная привязка. Выполняется в транзакции: между проверкой занятости
+   * и записью не должно быть окна, в которое влезет параллельный вход.
+   */
+  async bind(userId: string, descriptor: DeviceDescriptorDto): Promise<BoundDevice> {
+    const ref = this.db.collection(COLLECTIONS.devices).doc(deviceDocId(descriptor.deviceId));
+
+    const doc = await this.db.runTransaction(async (tx) => {
+      const snapshot = await tx.get(ref);
+
+      if (snapshot.exists) {
+        const existing = snapshot.data() as DeviceDoc;
+        if (existing.isActive && existing.userId !== userId) {
+          throw new ConflictException({ code: AUTH_ERRORS.DEVICE_TAKEN });
+        }
+      }
+
+      const now = Timestamp.now();
+      const data: DeviceDoc = {
+        userId,
+        platform: descriptor.platform,
+        model: descriptor.model,
+        osVersion: descriptor.osVersion,
+        appVersion: descriptor.appVersion,
+        isActive: true,
+        boundAt: now,
+        lastSeenAt: now,
+        revokedAt: null,
+        revokedBy: null,
+      };
+
+      // Документ мог остаться от прошлого владельца после открепления —
+      // перезаписываем его целиком, чтобы не тащить старые поля.
+      tx.set(ref, data);
+      return data;
+    });
+
+    return { ...doc, deviceId: descriptor.deviceId };
+  }
+
+  async findActiveBinding(userId: string): Promise<BoundDevice | null> {
+    const found = await this.db
+      .collection(COLLECTIONS.devices)
+      .where('userId', '==', userId)
+      .where('isActive', '==', true)
+      .limit(1)
+      .get();
+
+    if (found.empty) return null;
+    const doc = found.docs[0];
+    return { ...(doc.data() as DeviceDoc), deviceId: doc.id };
+  }
+
+  private async requestRebind(userId: string, descriptor: DeviceDescriptorDto): Promise<void> {
+    const pending = await this.db
+      .collection(COLLECTIONS.deviceRequests)
+      .where('userId', '==', userId)
+      .where('deviceId', '==', descriptor.deviceId)
+      .where('status', '==', 'PENDING')
+      .limit(1)
+      .get();
+
+    if (!pending.empty) return;
+
+    const request: DeviceRequestDoc = {
       userId,
       deviceId: descriptor.deviceId,
       platform: descriptor.platform,
       model: descriptor.model,
-      osVersion: descriptor.osVersion,
-      appVersion: descriptor.appVersion,
-      isActive: true,
+      status: 'PENDING',
+      createdAt: Timestamp.now(),
+      resolvedAt: null,
+      resolvedBy: null,
+      resolveNote: null,
     };
 
-    return this.prisma.device.upsert({
-      where: { deviceId: descriptor.deviceId },
-      create: data,
-      // Запись могла остаться от прошлого владельца после открепления — переиспользуем её.
-      update: { ...data, boundAt: new Date(), revokedAt: null, revokedBy: null },
-    });
-  }
-
-  private async requestRebind(userId: string, descriptor: DeviceDescriptorDto): Promise<void> {
-    const pending = await this.prisma.deviceBindingRequest.findFirst({
-      where: { userId, deviceId: descriptor.deviceId, status: DeviceRequestStatus.PENDING },
-    });
-    if (pending) return;
-
-    await this.prisma.deviceBindingRequest.create({
-      data: {
-        userId,
-        deviceId: descriptor.deviceId,
-        platform: descriptor.platform,
-        model: descriptor.model,
-      },
-    });
+    await this.db.collection(COLLECTIONS.deviceRequests).add(request);
   }
 
   /** Открепление активного устройства — доступно HR и супер-админу. */
   async unbind(userId: string, actorId: string): Promise<void> {
-    const active = await this.prisma.device.findFirst({
-      where: { userId, isActive: true },
-    });
+    const active = await this.findActiveBinding(userId);
     if (!active) throw new NotFoundException('У сотрудника нет привязанного устройства');
 
-    await this.prisma.$transaction([
-      this.prisma.device.update({
-        where: { id: active.id },
-        data: { isActive: false, revokedAt: new Date(), revokedBy: actorId },
-      }),
-      // Сессии этого устройства должны умереть вместе с привязкой.
-      this.prisma.session.updateMany({
-        where: { deviceId: active.id, revokedAt: null },
-        data: { revokedAt: new Date() },
-      }),
-      this.prisma.auditEvent.create({
-        data: {
-          actorId,
-          action: 'device.unbind',
-          targetType: 'User',
-          targetId: userId,
-          metadata: { deviceId: active.deviceId },
-        },
-      }),
-    ]);
+    const batch = this.db.batch();
+
+    batch.update(this.db.collection(COLLECTIONS.devices).doc(deviceDocId(active.deviceId)), {
+      isActive: false,
+      revokedAt: Timestamp.now(),
+      revokedBy: actorId,
+    });
+
+    batch.set(this.db.collection(COLLECTIONS.auditEvents).doc(), {
+      actorId,
+      action: 'device.unbind',
+      targetType: 'User',
+      targetId: userId,
+      metadata: { deviceId: active.deviceId },
+      ip: null,
+      createdAt: Timestamp.now(),
+    });
+
+    await batch.commit();
+
+    // Токены Firebase живут до часа, поэтому открепление должно погасить
+    // и их — иначе сотрудник продолжит работать со старым токеном.
+    await this.firebase.auth.revokeRefreshTokens(userId);
   }
 
-  /** Одобрение заявки на перепривязку: старое устройство снимается, новое встаёт. */
-  async approveRequest(requestId: string, actorId: string, note?: string): Promise<Device> {
-    const request = await this.prisma.deviceBindingRequest.findUnique({ where: { id: requestId } });
-    if (!request || request.status !== DeviceRequestStatus.PENDING) {
-      throw new NotFoundException('Заявка не найдена или уже обработана');
+  /** Одобрение заявки: старое устройство снимается, новое встаёт на его место. */
+  async approveRequest(requestId: string, actorId: string, note?: string): Promise<BoundDevice> {
+    const ref = this.db.collection(COLLECTIONS.deviceRequests).doc(requestId);
+    const snapshot = await ref.get();
+
+    if (!snapshot.exists) throw new NotFoundException('Заявка не найдена');
+    const request = snapshot.data() as DeviceRequestDoc;
+    if (request.status !== 'PENDING') {
+      throw new ConflictException('Заявка уже обработана');
     }
 
-    const active = await this.prisma.device.findFirst({
-      where: { userId: request.userId, isActive: true },
-    });
+    const active = await this.findActiveBinding(request.userId);
     if (active) await this.unbind(request.userId, actorId);
 
     const device = await this.bind(request.userId, {
       deviceId: request.deviceId,
       platform: request.platform,
-      model: request.model ?? undefined,
+      model: request.model,
     });
 
-    await this.prisma.deviceBindingRequest.update({
-      where: { id: requestId },
-      data: {
-        status: DeviceRequestStatus.APPROVED,
-        resolvedAt: new Date(),
-        resolvedBy: actorId,
-        resolveNote: note,
-      },
+    await ref.update({
+      status: 'APPROVED',
+      resolvedAt: Timestamp.now(),
+      resolvedBy: actorId,
+      resolveNote: note ?? null,
     });
 
     return device;
   }
 
   async rejectRequest(requestId: string, actorId: string, note?: string): Promise<void> {
-    await this.prisma.deviceBindingRequest.update({
-      where: { id: requestId },
-      data: {
-        status: DeviceRequestStatus.REJECTED,
-        resolvedAt: new Date(),
-        resolvedBy: actorId,
-        resolveNote: note,
-      },
+    await this.db.collection(COLLECTIONS.deviceRequests).doc(requestId).update({
+      status: 'REJECTED',
+      resolvedAt: Timestamp.now(),
+      resolvedBy: actorId,
+      resolveNote: note ?? null,
     });
   }
 
-  listPendingRequests(organizationId: string) {
-    return this.prisma.deviceBindingRequest.findMany({
-      where: { status: DeviceRequestStatus.PENDING, user: { organizationId } },
-      include: { user: { select: { id: true, fullName: true, email: true, role: true } } },
-      orderBy: { createdAt: 'asc' },
-    });
+  /** Очередь заявок — рабочий экран HR. */
+  async listPendingRequests(organizationId: string) {
+    const snapshot = await this.db
+      .collection(COLLECTIONS.deviceRequests)
+      .where('status', '==', 'PENDING')
+      .orderBy('createdAt', 'asc')
+      .get();
+
+    const requests = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...(doc.data() as DeviceRequestDoc),
+    }));
+
+    if (requests.length === 0) return [];
+
+    // Firestore не умеет join, поэтому сотрудников добираем отдельно
+    // и отсеиваем чужие организации уже на сервере.
+    const users = await this.db.getAll(
+      ...requests.map((request) => this.db.collection(COLLECTIONS.users).doc(request.userId)),
+    );
+
+    const byId = new Map(
+      users
+        .filter((doc) => doc.exists)
+        .map((doc) => [doc.id, doc.data() as UserDoc]),
+    );
+
+    return requests
+      .filter((request) => byId.get(request.userId)?.organizationId === organizationId)
+      .map((request) => {
+        const user = byId.get(request.userId)!;
+        return {
+          ...request,
+          user: {
+            id: request.userId,
+            fullName: user.fullName,
+            email: user.email,
+            role: user.role,
+          },
+        };
+      });
+  }
+
+  /** Счётчик необработанных заявок для значка в панели HR. */
+  async countPendingRequests(): Promise<number> {
+    const snapshot = await this.db
+      .collection(COLLECTIONS.deviceRequests)
+      .where('status', '==', 'PENDING')
+      .count()
+      .get();
+
+    return snapshot.data().count;
   }
 }
