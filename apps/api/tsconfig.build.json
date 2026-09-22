@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Основной конфиг держит rootDir на корне пакета, чтобы редактор и
+    // typecheck видели ещё scripts и test. Для сборки корень сужается до src,
+    // иначе вывод лёг бы в dist/src/main.js, а запуск ожидает dist/main.js.
+    "rootDir": "src"
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "test",
+    "scripts",
+    "**/*.spec.ts"
+  ]
+}
