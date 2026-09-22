@@ -3,7 +3,10 @@
     "target": "ES2022",
     "lib": ["ES2022"],
     "module": "commonjs",
-    "moduleResolution": "node",
+    // "node" — прежнее имя этого же режима. Оно объявлено устаревшим в
+    // TypeScript 5 и убрано в шестой версии, поэтому редакторы с новым
+    // компилятором подсвечивают его ошибкой. Поведение у "node10" то же.
+    "moduleResolution": "node10",
     "declaration": true,
     "strict": true,
     "strictNullChecks": true,
