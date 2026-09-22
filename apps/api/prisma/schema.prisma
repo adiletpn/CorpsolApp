@@ -15,9 +15,9 @@ model Organization {
   timezone  String   @default("Asia/Almaty")
   createdAt DateTime @default(now())
 
-  offices     Office[]
-  departments Department[]
-  users       User[]
+  offices      Office[]
+  departments  Department[]
+  users        User[]
   integrations Integration[]
 }
 
@@ -30,7 +30,7 @@ model Office {
   // Геозона офиса
   lat          Float
   lng          Float
-  radiusMeters Int    @default(120)
+  radiusMeters Int   @default(120)
 
   /// Погрешность хуже этой считаем недостоверной и отметку не засчитываем.
   maxAccuracyMeters Int @default(100)
@@ -56,8 +56,15 @@ model Terminal {
   secret   String
   isActive Boolean @default(true)
 
-  createdAt    DateTime @default(now())
-  rotatedAt    DateTime @default(now())
+  /// Токен экрана терминала. Даёт ровно одно право — запрашивать QR этого
+  /// терминала, поэтому монитор в проходной зоне не нужно держать
+  /// залогиненным под учётной записью администратора.
+  /// В базе лежит только хеш: утечка дампа не даёт рабочего токена.
+  accessTokenHash String?
+  tokenIssuedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  rotatedAt DateTime @default(now())
 
   office      Office       @relation(fields: [officeId], references: [id], onDelete: Cascade)
   attendances Attendance[]
@@ -71,10 +78,10 @@ model Department {
   name           String
   headId         String? @unique
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   /// РОП отдела.
-  head         User?        @relation("DepartmentHead", fields: [headId], references: [id], onDelete: SetNull)
-  members      User[]       @relation("DepartmentMembers")
+  head         User?          @relation("DepartmentHead", fields: [headId], references: [id], onDelete: SetNull)
+  members      User[]         @relation("DepartmentMembers")
   plans        Plan[]
   schedules    WorkSchedule[]
 
@@ -120,10 +127,10 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  department   Department?  @relation("DepartmentMembers", fields: [departmentId], references: [id], onDelete: SetNull)
-  headedDepartment Department? @relation("DepartmentHead")
-  office       Office?      @relation(fields: [officeId], references: [id], onDelete: SetNull)
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  department       Department?  @relation("DepartmentMembers", fields: [departmentId], references: [id], onDelete: SetNull)
+  headedDepartment Department?  @relation("DepartmentHead")
+  office           Office?      @relation(fields: [officeId], references: [id], onDelete: SetNull)
 
   devices        Device[]
   deviceRequests DeviceBindingRequest[] @relation("RequestedBy")
@@ -150,10 +157,10 @@ model Device {
   /// Стабильный идентификатор устройства из защищённого хранилища клиента.
   deviceId String
 
-  platform    String
-  model       String?
-  osVersion   String?
-  appVersion  String?
+  platform   String
+  model      String?
+  osVersion  String?
+  appVersion String?
 
   isActive   Boolean   @default(true)
   boundAt    DateTime  @default(now())
@@ -198,15 +205,15 @@ model DeviceBindingRequest {
 }
 
 model Session {
-  id               String   @id @default(uuid())
+  id               String    @id @default(uuid())
   userId           String
   deviceId         String?
-  refreshTokenHash String   @unique
+  refreshTokenHash String    @unique
   userAgent        String?
   ip               String?
   expiresAt        DateTime
   revokedAt        DateTime?
-  createdAt        DateTime @default(now())
+  createdAt        DateTime  @default(now())
 
   user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   device Device? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
@@ -235,14 +242,14 @@ model WorkSchedule {
   userId       String?
 
   /// Локальное время начала и конца смены в формате HH:mm.
-  startTime String
-  endTime   String
+  startTime    String
+  endTime      String
   /// Допуск на опоздание в минутах — внутри него приход считается вовремя.
-  graceMinutes Int @default(5)
+  graceMinutes Int    @default(5)
   /// Дни недели, 1 = понедельник … 7 = воскресенье.
-  workdays  Int[] @default([1, 2, 3, 4, 5])
+  workdays     Int[]  @default([1, 2, 3, 4, 5])
 
-  effectiveFrom DateTime @default(now())
+  effectiveFrom DateTime  @default(now())
   effectiveTo   DateTime?
 
   department Department? @relation(fields: [departmentId], references: [id], onDelete: Cascade)
@@ -253,13 +260,13 @@ model WorkSchedule {
 }
 
 model Attendance {
-  id         String   @id @default(uuid())
+  id         String  @id @default(uuid())
   userId     String
   officeId   String?
   terminalId String?
 
   /// Локальная календарная дата смены — по ней строится табель.
-  workDate   DateTime @db.Date
+  workDate   DateTime  @db.Date
   checkInAt  DateTime?
   checkOutAt DateTime?
 
@@ -275,10 +282,10 @@ model Attendance {
   wifiBssid      String?
   isMocked       Boolean @default(false)
 
-  adjustedBy   String?
-  adjustNote   String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  adjustedBy String?
+  adjustNote String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   office   Office?   @relation(fields: [officeId], references: [id], onDelete: SetNull)
@@ -318,15 +325,15 @@ model CallRecord {
   /// Идентификатор звонка в системе-источнике — ключ идемпотентности импорта.
   externalId String
 
-  direction  CallDirection
-  status     CallStatus
+  direction   CallDirection
+  status      CallStatus
   clientPhone String
 
   startedAt       DateTime
   /// Общая длительность соединения, включая гудки.
-  durationSeconds Int @default(0)
+  durationSeconds Int      @default(0)
   /// Чистое время разговора — по нему считается план, а не по количеству гудков.
-  talkSeconds     Int @default(0)
+  talkSeconds     Int      @default(0)
 
   recordingUrl String?
   rawPayload   Json?
@@ -366,9 +373,9 @@ model Integration {
 
 /// Сопоставление сотрудника с его идентификаторами на стороне источников.
 model ExternalIdentity {
-  id       String              @id @default(uuid())
-  userId   String
-  provider IntegrationProvider
+  id          String              @id @default(uuid())
+  userId      String
+  provider    IntegrationProvider
   /// ID пользователя в Bitrix24 либо рабочий номер в выгрузке Kcell.
   externalKey String
 
@@ -391,7 +398,7 @@ enum PlanScope {
 }
 
 model Plan {
-  id           String     @id @default(uuid())
+  id           String    @id @default(uuid())
   scope        PlanScope
   departmentId String?
   userId       String?
@@ -465,10 +472,10 @@ model Payroll {
   /// Развёрнутый расчёт: какое правило сработало и на какую сумму.
   breakdown Json?
 
-  status      PayrollStatus @default(DRAFT)
-  calculatedAt DateTime     @default(now())
-  approvedBy  String?
-  approvedAt  DateTime?
+  status       PayrollStatus @default(DRAFT)
+  calculatedAt DateTime      @default(now())
+  approvedBy   String?
+  approvedAt   DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -491,7 +498,7 @@ model BonusRule {
   metric       PlanMetric?
 
   /// Порог срабатывания: процент выполнения плана либо количество единиц.
-  threshold Int @default(0)
+  threshold   Int @default(0)
   /// Фиксированная сумма в тиынах.
   amountMinor Int @default(0)
   /// Либо процент — от оклада или от суммы офферов, в базисных пунктах.
