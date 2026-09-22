@@ -3,6 +3,14 @@
   "compilerOptions": {
     "strict": true,
     "jsx": "react-jsx",
+    // База Expo задаёт устаревшее "node", которое новые версии TypeScript
+    // считают ошибкой. Перекрываем на "bundler": это и актуальное имя,
+    // и режим, соответствующий тому, как Metro собирает приложение —
+    // с учётом поля "exports" в package.json.
+    "moduleResolution": "bundler",
+    // Metro подключает React-Native-сборку пакетов. Без этого условия
+    // TypeScript читал бы объявления веб-сборки — например, у firebase/auth.
+    "customConditions": ["react-native"],
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
