@@ -197,6 +197,28 @@ export class AttendanceService {
     return { id: ref.id, checkOutAt: capturedAt };
   }
 
+  /**
+   * Приводит документ к виду, пригодному для клиента: Timestamp иначе уезжает
+   * в JSON как {_seconds, _nanoseconds}, и разбирать это пришлось бы каждому
+   * клиенту отдельно.
+   */
+  private toResponse(id: string, doc: AttendanceDoc) {
+    return {
+      id,
+      userId: doc.userId,
+      departmentId: doc.departmentId,
+      officeId: doc.officeId,
+      workDate: doc.workDate,
+      checkInAt: doc.checkInAt?.toDate().toISOString() ?? null,
+      checkOutAt: doc.checkOutAt?.toDate().toISOString() ?? null,
+      status: doc.status,
+      lateMinutes: doc.lateMinutes,
+      method: doc.method,
+      distanceMeters: doc.distanceMeters,
+      isMocked: doc.isMocked,
+    };
+  }
+
   /** Личный табель сотрудника за период. */
   async listForUser(userId: string, from: string, to: string) {
     const snapshot = await this.db
@@ -207,7 +229,7 @@ export class AttendanceService {
       .orderBy('workDate', 'desc')
       .get();
 
-    return snapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as AttendanceDoc) }));
+    return snapshot.docs.map((doc) => this.toResponse(doc.id, doc.data() as AttendanceDoc));
   }
 
   /**
@@ -231,7 +253,7 @@ export class AttendanceService {
     }
 
     const snapshot = await query.orderBy('workDate', 'desc').get();
-    return snapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as AttendanceDoc) }));
+    return snapshot.docs.map((doc) => this.toResponse(doc.id, doc.data() as AttendanceDoc));
   }
 
   private async timezoneOf(organizationId: string): Promise<string> {
