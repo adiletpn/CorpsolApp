@@ -1,6 +1,16 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  Query,
+  UnauthorizedException,
+} from '@nestjs/common';
 
 import { CurrentUser, type AuthenticatedUser } from '../common/decorators/current-user.decorator';
+import { Public } from '../common/decorators/public.decorator';
 import { RequirePermissions } from '../common/decorators/require-permissions.decorator';
 import { AttendanceService } from './attendance.service';
 import { TerminalService } from './terminal.service';
@@ -49,13 +59,30 @@ export class AttendanceController {
   }
 
   /**
-   * Экран терминала опрашивает этот эндпоинт каждые 30 секунд.
-   * Страницу терминала открывает админ под своей учёткой и оставляет
-   * на мониторе — секрет терминала при этом на клиент не уходит.
+   * Экран терминала опрашивает этот эндпоинт каждые 30 секунд, предъявляя
+   * собственный токен. Токен не открывает ничего, кроме QR-кода своего
+   * терминала, поэтому монитор у входа безопасно оставить без присмотра.
    */
+  @Public()
   @Get('terminal/:terminalId/code')
+  async issueCode(
+    @Param('terminalId') terminalId: string,
+    @Query('token') token: string,
+  ) {
+    if (!token) throw new UnauthorizedException('Не передан токен терминала');
+
+    const verifiedId = await this.terminals.resolveByAccessToken(terminalId, token);
+    return this.terminals.issueCode(verifiedId);
+  }
+
+  /**
+   * Выпуск токена для экрана. Открытое значение возвращается один раз —
+   * его вставляют в адрес страницы терминала на мониторе.
+   */
+  @Post('terminal/:terminalId/access-token')
+  @HttpCode(200)
   @RequirePermissions('settings.manage')
-  issueCode(@Param('terminalId') terminalId: string) {
-    return this.terminals.issueCode(terminalId);
+  issueAccessToken(@Param('terminalId') terminalId: string) {
+    return this.terminals.issueAccessToken(terminalId);
   }
 }
