@@ -29,11 +29,17 @@ const STATUS_COLORS: Record<AttendanceRecord['status'], string> = {
   EXCUSED: theme.colors.accent,
 };
 
+/** API работает с календарными датами «ГГГГ-ММ-ДД», а не с моментами времени. */
+function dateKey(date: Date): string {
+  const pad = (value: number): string => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
 function monthRange(): { from: string; to: string } {
   const now = new Date();
   const from = new Date(now.getFullYear(), now.getMonth(), 1);
   const to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  return { from: from.toISOString(), to: to.toISOString() };
+  return { from: dateKey(from), to: dateKey(to) };
 }
 
 export function HomeScreen({ onScan }: { onScan: () => void }) {
@@ -60,10 +66,9 @@ export function HomeScreen({ onScan }: { onScan: () => void }) {
     void load();
   }, [load]);
 
+  const today = dateKey(new Date());
   const checkedInToday = records.some(
-    (record) =>
-      record.checkInAt &&
-      new Date(record.workDate).toDateString() === new Date().toDateString(),
+    (record) => record.checkInAt && record.workDate === today,
   );
 
   const onTimeCount = records.filter((record) => record.status === 'ON_TIME').length;
