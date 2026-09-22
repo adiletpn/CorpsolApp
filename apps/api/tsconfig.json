@@ -3,7 +3,6 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": ".",
-    "baseUrl": ".",
     "sourceMap": true,
     "incremental": true,
     // Внутри dist, а не в корне пакета: иначе после «rm -rf dist» этот файл
