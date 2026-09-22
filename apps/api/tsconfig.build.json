@@ -4,7 +4,10 @@
     // Основной конфиг держит rootDir на корне пакета, чтобы редактор и
     // typecheck видели ещё scripts и test. Для сборки корень сужается до src,
     // иначе вывод лёг бы в dist/src/main.js, а запуск ожидает dist/main.js.
-    "rootDir": "src"
+    "rootDir": "src",
+    // Своё состояние у сборки, отдельно от проверки типов: конфиги
+    // охватывают разные наборы файлов и путались бы в общем файле.
+    "tsBuildInfoFile": "dist/.build.tsbuildinfo"
   },
   "exclude": [
     "node_modules",

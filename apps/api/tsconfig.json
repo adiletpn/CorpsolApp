@@ -5,7 +5,11 @@
     "rootDir": ".",
     "baseUrl": ".",
     "sourceMap": true,
-    "incremental": true
+    "incremental": true,
+    // Внутри dist, а не в корне пакета: иначе после «rm -rf dist» этот файл
+    // переживает удаление и убеждает компилятор, что собирать нечего —
+    // сборка молча завершается успехом, не создав ни одного файла.
+    "tsBuildInfoFile": "dist/.typecheck.tsbuildinfo"
   },
   "include": ["src/**/*", "scripts/**/*", "test/**/*"],
   "exclude": ["node_modules", "dist"]
