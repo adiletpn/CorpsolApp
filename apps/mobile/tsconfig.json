@@ -8,9 +8,6 @@
     // и режим, соответствующий тому, как Metro собирает приложение —
     // с учётом поля "exports" в package.json.
     "moduleResolution": "bundler",
-    // Metro подключает React-Native-сборку пакетов. Без этого условия
-    // TypeScript читал бы объявления веб-сборки — например, у firebase/auth.
-    "customConditions": ["react-native"],
     // Без baseUrl: опция удалена в TypeScript 7. Пути в paths теперь
     // задаются относительно самого конфига и требуют ведущего "./".
     "paths": {
