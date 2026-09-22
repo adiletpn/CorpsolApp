@@ -3,7 +3,7 @@
 Монорепозиторий: единый бэкенд, веб-панель для руководителей и мобильное приложение для менеджеров.
 
 ```
-apps/api       NestJS + Prisma + PostgreSQL — вся бизнес-логика и интеграции
+apps/api       NestJS + Firebase (Firestore, Auth) — вся бизнес-логика и интеграции
 apps/web       веб-панель: супер-админ, директор, HR, РОП
 apps/mobile    Expo React Native — приложение МОПа (скан QR, личные показатели)
 packages/shared общие роли, права, геометрия геозоны, формат QR
@@ -43,29 +43,33 @@ packages/shared общие роли, права, геометрия геозон
 
 ## Запуск
 
-Нужен PostgreSQL 14+. На машине сейчас установлен только клиент `psql`, сервера нет —
-поставь любой из вариантов:
-
-```bash
-brew install postgresql@16 && brew services start postgresql@16
-# либо облачный Postgres (Neon, Supabase) — тогда просто пропиши DATABASE_URL
-```
-
-Далее:
+Данные живут в Firebase: Firestore для документов, Firebase Auth для входа.
+Локально всё поднимается на эмуляторах — облачный проект для разработки не нужен.
 
 ```bash
 npm install
 npm run build:shared
 
-cp apps/api/.env.example apps/api/.env   # пропиши DATABASE_URL и секреты JWT
-createdb corpsol
-npm run db:migrate
-npm run db:seed
+npm install -g firebase-tools
+firebase emulators:start --only auth,firestore
+```
 
+В отдельном окне:
+
+```bash
+cp apps/api/.env.example apps/api/.env
+
+export FIRESTORE_EMULATOR_HOST=localhost:8080
+export FIREBASE_AUTH_EMULATOR_HOST=localhost:9099
+
+npm run seed -w @corpsol/api
 npm run dev:api
 ```
 
-Тесты бэкенда:
+Сид создаёт учётки с общеизвестным паролем, поэтому против боевого проекта
+он падает намеренно — обойти можно только явным `ALLOW_PRODUCTION_SEED=yes`.
+
+Тесты бэкенда идут без эмулятора: Firestore подменяется реализацией в памяти.
 
 ```bash
 npm test -w @corpsol/api
@@ -126,3 +130,30 @@ POST /api/attendance/terminal/<id>/access-token
 никаких других данных. Поэтому монитор в проходной зоне не нужно держать
 залогиненным под учётной записью администратора — иначе любой сотрудник
 получил бы доступ к админке через открытый браузер.
+
+## Как ограничения уникальности живут без SQL
+
+В Firestore нет уникальных индексов, поэтому каждое такое ограничение выражено
+через детерминированный ID документа: если ключ занят, запись просто не создаётся.
+Все правила собраны в [collections.ts](apps/api/src/firestore/collections.ts),
+чтобы их нельзя было случайно обойти, построив ключ иначе в другом месте.
+
+| Правило | Ключ документа |
+|---|---|
+| Один телефон — один сотрудник | `devices/{deviceId}` |
+| Одна отметка на сотрудника в день | `attendance/{userId}_{дата}` |
+| Повторный импорт не плодит звонки | `calls/{источник}_{externalId}` |
+| Очки не начисляются дважды | `points/{userId}_{причина}_{объект}` |
+
+## Почему устройство проверяется на каждом запросе
+
+Firebase Auth по своей природе разрешает вход с любого числа устройств — сам по
+себе он запрет «один аккаунт — один телефон» не обеспечивает. Поэтому привязка
+сверяется в [FirebaseAuthGuard](apps/api/src/auth/firebase-auth.guard.ts) на
+каждом защищённом запросе, а не только при входе. Мобильный клиент представляет
+телефон заголовками `x-device-id` и `x-device-platform`.
+
+Профиль сотрудника кешируется на минуту, чтобы не платить за чтение Firestore на
+каждом запросе. Кеш безопасен: увольнение и открепление устройства вызывают
+`revokeRefreshTokens`, а токен проверяется с `checkRevoked`, поэтому доступ
+закрывается сразу, не дожидаясь истечения кеша.
