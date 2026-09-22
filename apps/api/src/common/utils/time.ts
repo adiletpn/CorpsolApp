@@ -46,10 +46,21 @@ export function localParts(date: Date, timezone: string): LocalParts {
   };
 }
 
-/** Календарная дата смены как полночь UTC — так её хранит Prisma в поле @db.Date. */
+/** Календарная дата смены как полночь UTC. */
 export function localWorkDate(date: Date, timezone: string): Date {
   const { year, month, day } = localParts(date, timezone);
   return new Date(Date.UTC(year, month - 1, day));
+}
+
+/**
+ * Календарная дата смены строкой «ГГГГ-ММ-ДД». Такой формат входит в ключ
+ * документа посещаемости и корректно сортируется лексикографически,
+ * поэтому по нему работают запросы за период.
+ */
+export function localWorkDateKey(date: Date, timezone: string): string {
+  const { year, month, day } = localParts(date, timezone);
+  const pad = (value: number): string => String(value).padStart(2, '0');
+  return `${year}-${pad(month)}-${pad(day)}`;
 }
 
 /** Минуты от начала локальных суток. */
