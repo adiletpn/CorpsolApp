@@ -1,4 +1,5 @@
-import { clearTokens, loadTokens, saveTokens, type TokenPair } from '../lib/storage';
+import { auth, currentIdToken } from '../lib/firebase';
+import { getDeviceDescriptor } from '../lib/device';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3001/api';
 
@@ -20,8 +21,6 @@ interface RequestOptions {
   auth?: boolean;
 }
 
-let refreshInFlight: Promise<TokenPair | null> | null = null;
-
 async function parseError(response: Response): Promise<ApiError> {
   const payload = await response.json().catch(() => ({}));
   const body = (payload?.message ?? payload) as Record<string, unknown>;
@@ -33,55 +32,49 @@ async function parseError(response: Response): Promise<ApiError> {
   return new ApiError(response.status, code, message, body ?? {});
 }
 
-/** Обновление токенов выполняется один раз, даже если 401 прилетел из нескольких запросов сразу. */
-async function refreshTokens(): Promise<TokenPair | null> {
-  refreshInFlight ??= (async () => {
-    try {
-      const tokens = await loadTokens();
-      if (!tokens) return null;
+/**
+ * Заголовки устройства уходят с каждым запросом, а не только при входе:
+ * Firebase Auth разрешает вход с любого числа устройств, поэтому запрет
+ * «один аккаунт — один телефон» держится на серверной проверке этих значений.
+ */
+async function deviceHeaders(): Promise<Record<string, string>> {
+  const device = await getDeviceDescriptor();
 
-      const response = await fetch(`${BASE_URL}/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken: tokens.refreshToken }),
-      });
-      if (!response.ok) {
-        await clearTokens();
-        return null;
-      }
+  const headers: Record<string, string> = {
+    'x-device-id': device.deviceId,
+    'x-device-platform': device.platform,
+  };
+  if (device.model) headers['x-device-model'] = device.model;
+  if (device.osVersion) headers['x-device-os'] = device.osVersion;
+  if (device.appVersion) headers['x-app-version'] = device.appVersion;
 
-      const data = (await response.json()) as TokenPair;
-      await saveTokens(data);
-      return data;
-    } finally {
-      refreshInFlight = null;
-    }
-  })();
-
-  return refreshInFlight;
+  return headers;
 }
 
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, auth = true } = options;
+  const { method = 'GET', body, auth: needsAuth = true } = options;
 
-  const send = async (accessToken?: string): Promise<Response> =>
-    fetch(`${BASE_URL}${path}`, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 
-  let tokens = auth ? await loadTokens() : null;
-  let response = await send(tokens?.accessToken);
+  if (needsAuth) {
+    const token = await currentIdToken();
+    if (!token) throw new ApiError(401, 'no_session', 'Сессия не найдена, войдите заново');
 
-  // Access-токен живёт 15 минут — молча обновляем его и повторяем запрос один раз.
-  if (response.status === 401 && auth) {
-    tokens = await refreshTokens();
-    if (!tokens) throw await parseError(response);
-    response = await send(tokens.accessToken);
+    headers.Authorization = `Bearer ${token}`;
+    Object.assign(headers, await deviceHeaders());
+  }
+
+  const response = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+
+  // Firebase сам обновляет токен заранее, поэтому 401 означает отзыв доступа:
+  // сотрудника уволили либо устройство открепили. Повтор запроса не поможет.
+  if (response.status === 401 && needsAuth) {
+    await auth.signOut().catch(() => undefined);
+    throw await parseError(response);
   }
 
   if (!response.ok) throw await parseError(response);

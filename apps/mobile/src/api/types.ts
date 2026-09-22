@@ -5,12 +5,8 @@ export interface AuthUser {
   role: 'MOP' | 'ROP' | 'HR' | 'DIRECTOR' | 'SUPER_ADMIN';
   departmentId: string | null;
   officeId: string | null;
-}
-
-export interface LoginResponse {
-  accessToken: string;
-  refreshToken: string;
-  user: AuthUser;
+  /** Телефон, за которым закреплён аккаунт. */
+  boundDeviceId: string | null;
 }
 
 export interface CheckInResponse {
@@ -24,6 +20,7 @@ export interface CheckInResponse {
 
 export interface AttendanceRecord {
   id: string;
+  /** Календарная дата смены «ГГГГ-ММ-ДД». */
   workDate: string;
   checkInAt: string | null;
   checkOutAt: string | null;
