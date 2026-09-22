@@ -2,11 +2,11 @@
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2022"],
+    // moduleResolution намеренно не задан: прежние имена "node" и "node10"
+    // удалены в TypeScript 7, а подходящего явного значения для commonjs
+    // там нет. Без опции компилятор сам выбирает режим по "module",
+    // и это тот же самый разбор путей, что был раньше.
     "module": "commonjs",
-    // "node" — прежнее имя этого же режима. Оно объявлено устаревшим в
-    // TypeScript 5 и убрано в шестой версии, поэтому редакторы с новым
-    // компилятором подсвечивают его ошибкой. Поведение у "node10" то же.
-    "moduleResolution": "node10",
     "declaration": true,
     "strict": true,
     "strictNullChecks": true,
