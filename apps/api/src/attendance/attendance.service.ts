@@ -1,12 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
-import {
-  AttendanceStatus,
-  CheckMethod,
-  PointsReason,
-  Prisma,
-  UserStatus,
-  type WorkSchedule,
-} from '@prisma/client';
+import { Timestamp } from 'firebase-admin/firestore';
 import {
   CHECK_IN_REJECTION_MESSAGES,
   checkGeofence,
@@ -14,11 +7,26 @@ import {
   type CheckInRejection,
 } from '@corpsol/shared';
 
-import { PrismaService } from '../prisma/prisma.service';
+import { FirebaseService } from '../firebase/firebase.service';
+import {
+  COLLECTIONS,
+  attendanceDocId,
+  pointsDocId,
+} from '../firestore/collections';
+import type {
+  AttendanceDoc,
+  AttendanceStatus,
+  OfficeDoc,
+  OrganizationDoc,
+  PointsDoc,
+  TerminalDoc,
+  UserDoc,
+  WorkScheduleDoc,
+} from '../firestore/types';
 import {
   localIsoWeekday,
   localMinutesOfDay,
-  localWorkDate,
+  localWorkDateKey,
   parseHhMm,
 } from '../common/utils/time';
 import type { AuthenticatedUser } from '../common/decorators/current-user.decorator';
@@ -31,6 +39,9 @@ const EARLY_CHECK_IN_WINDOW_MINUTES = 120;
 const POINTS_ON_TIME = 10;
 const POINTS_LATE = -5;
 
+/** Код Firestore для попытки создать уже существующий документ. */
+const ALREADY_EXISTS = 6;
+
 class CheckInRejected extends BadRequestException {
   constructor(code: CheckInRejection, details?: Record<string, unknown>) {
     super({ code, message: CHECK_IN_REJECTION_MESSAGES[code], ...details });
@@ -40,9 +51,13 @@ class CheckInRejected extends BadRequestException {
 @Injectable()
 export class AttendanceService {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly firebase: FirebaseService,
     private readonly terminals: TerminalService,
   ) {}
+
+  private get db() {
+    return this.firebase.firestore;
+  }
 
   /**
    * Отметка прихода. Засчитывается только при одновременном совпадении
@@ -50,16 +65,15 @@ export class AttendanceService {
    * координаты внутри геозоны и (если настроено) офисный Wi-Fi.
    */
   async checkIn(actor: AuthenticatedUser, dto: CheckInDto) {
-    // Фактор 1 — устройство. Токен несёт id привязки; для МОПа он обязателен.
+    // Фактор 1 — устройство. Гвард уже сверил привязку, здесь проверяется,
+    // что телефон вообще был предъявлен.
     if (!actor.deviceId) {
       throw new CheckInRejected('device_not_bound');
     }
 
-    const user = await this.prisma.user.findUnique({
-      where: { id: actor.id },
-      include: { organization: true },
-    });
-    if (!user || user.status !== UserStatus.ACTIVE) {
+    const userSnapshot = await this.db.collection(COLLECTIONS.users).doc(actor.id).get();
+    const user = userSnapshot.data() as UserDoc | undefined;
+    if (!user || user.status !== 'ACTIVE') {
       throw new CheckInRejected('employee_inactive');
     }
 
@@ -71,11 +85,17 @@ export class AttendanceService {
     if (verdict.expired) throw new CheckInRejected('qr_expired');
     if (!verdict.valid) throw new CheckInRejected('qr_invalid');
 
-    const terminal = await this.prisma.terminal.findUniqueOrThrow({
-      where: { id: verdict.terminalId },
-      include: { office: true },
-    });
-    const office = terminal.office;
+    const terminalSnapshot = await this.db
+      .collection(COLLECTIONS.terminals)
+      .doc(verdict.terminalId)
+      .get();
+    const terminal = terminalSnapshot.data() as TerminalDoc;
+
+    const officeSnapshot = await this.db
+      .collection(COLLECTIONS.offices)
+      .doc(terminal.officeId)
+      .get();
+    const office = officeSnapshot.data() as OfficeDoc;
 
     // Фактор 3 — геозона. Погрешность трактуется не в пользу сотрудника.
     const geo = checkGeofence(
@@ -95,115 +115,132 @@ export class AttendanceService {
       });
     }
 
-    // Фактор 4 — офисный Wi-Fi. Включается только если для офиса заданы BSSID.
+    // Фактор 4 — офисный Wi-Fi. Включается, только если для офиса заданы BSSID.
     if (office.wifiBssids.length > 0) {
       const bssid = dto.wifiBssid?.toLowerCase();
-      if (!bssid || !office.wifiBssids.map((item) => item.toLowerCase()).includes(bssid)) {
+      const known = office.wifiBssids.map((item) => item.toLowerCase());
+      if (!bssid || !known.includes(bssid)) {
         throw new CheckInRejected('outside_fence', { reasonDetail: 'wifi_mismatch' });
       }
     }
 
-    const timezone = user.organization.timezone;
+    const timezone = await this.timezoneOf(user.organizationId);
     const now = new Date();
-    const workDate = localWorkDate(now, timezone);
+    const workDate = localWorkDateKey(now, timezone);
 
-    const existing = await this.prisma.attendance.findUnique({
-      where: { userId_workDate: { userId: user.id, workDate } },
-    });
-    if (existing?.checkInAt) {
-      throw new CheckInRejected('already_checked_in');
-    }
-
-    const schedule = await this.resolveSchedule(user.id, user.departmentId, now);
+    const schedule = await this.resolveSchedule(actor.id, user.departmentId, now);
     const { status, lateMinutes } = this.evaluateArrival(now, timezone, schedule);
 
-    const data: Prisma.AttendanceUncheckedCreateInput = {
-      userId: user.id,
-      officeId: office.id,
-      terminalId: terminal.id,
+    const record: AttendanceDoc = {
+      userId: actor.id,
+      organizationId: user.organizationId,
+      departmentId: user.departmentId,
+      officeId: terminal.officeId,
+      terminalId: verdict.terminalId,
       workDate,
-      checkInAt: now,
+      checkInAt: Timestamp.fromDate(now),
+      checkOutAt: null,
       status,
       lateMinutes,
-      method: CheckMethod.QR,
+      method: 'QR',
       lat: dto.lat,
       lng: dto.lng,
       accuracyMeters: dto.accuracyMeters,
       distanceMeters: geo.distanceMeters,
-      wifiBssid: dto.wifiBssid,
+      wifiBssid: dto.wifiBssid ?? null,
       isMocked: Boolean(dto.isMocked),
+      adjustedBy: null,
+      adjustNote: null,
+      createdAt: Timestamp.fromDate(now),
     };
 
-    const attendance = await this.prisma.attendance.upsert({
-      where: { userId_workDate: { userId: user.id, workDate } },
-      create: data,
-      update: data,
-    });
+    const docId = attendanceDocId(actor.id, workDate);
 
-    await this.awardCheckInPoints(user.id, attendance.id, status);
+    try {
+      // create вместо set: ключ документа содержит дату смены, поэтому
+      // повторный скан за тот же день отвергает сама база.
+      await this.db.collection(COLLECTIONS.attendance).doc(docId).create(record);
+    } catch (cause) {
+      if ((cause as { code?: number }).code === ALREADY_EXISTS) {
+        throw new CheckInRejected('already_checked_in');
+      }
+      throw cause;
+    }
+
+    await this.awardCheckInPoints(actor.id, docId, status);
 
     return {
-      id: attendance.id,
-      status: attendance.status,
-      lateMinutes: attendance.lateMinutes,
-      checkInAt: attendance.checkInAt,
-      office: { id: office.id, name: office.name },
+      id: docId,
+      status,
+      lateMinutes,
+      checkInAt: now.toISOString(),
+      office: { id: terminal.officeId, name: office.name },
       distanceMeters: Math.round(geo.distanceMeters),
     };
   }
 
   async checkOut(actor: AuthenticatedUser, capturedAt: string) {
-    const user = await this.prisma.user.findUniqueOrThrow({
-      where: { id: actor.id },
-      include: { organization: true },
-    });
-    const workDate = localWorkDate(new Date(), user.organization.timezone);
+    const user = (
+      await this.db.collection(COLLECTIONS.users).doc(actor.id).get()
+    ).data() as UserDoc;
 
-    const attendance = await this.prisma.attendance.findUnique({
-      where: { userId_workDate: { userId: user.id, workDate } },
-    });
-    if (!attendance?.checkInAt) {
+    const timezone = await this.timezoneOf(user.organizationId);
+    const workDate = localWorkDateKey(new Date(), timezone);
+    const ref = this.db.collection(COLLECTIONS.attendance).doc(attendanceDocId(actor.id, workDate));
+
+    const snapshot = await ref.get();
+    if (!snapshot.exists || !(snapshot.data() as AttendanceDoc).checkInAt) {
       throw new BadRequestException('Приход на сегодня не отмечен');
     }
 
-    return this.prisma.attendance.update({
-      where: { id: attendance.id },
-      data: { checkOutAt: new Date(capturedAt) },
-    });
+    await ref.update({ checkOutAt: Timestamp.fromDate(new Date(capturedAt)) });
+    return { id: ref.id, checkOutAt: capturedAt };
   }
 
   /** Личный табель сотрудника за период. */
-  async listForUser(userId: string, from: Date, to: Date) {
-    return this.prisma.attendance.findMany({
-      where: { userId, workDate: { gte: from, lte: to } },
-      orderBy: { workDate: 'desc' },
-    });
+  async listForUser(userId: string, from: string, to: string) {
+    const snapshot = await this.db
+      .collection(COLLECTIONS.attendance)
+      .where('userId', '==', userId)
+      .where('workDate', '>=', from)
+      .where('workDate', '<=', to)
+      .orderBy('workDate', 'desc')
+      .get();
+
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as AttendanceDoc) }));
   }
 
   /**
    * Табель с учётом области видимости роли: РОП видит свой отдел,
    * директор и HR — всю компанию, МОП — только себя.
    */
-  async listScoped(actor: AuthenticatedUser, from: Date, to: Date, departmentId?: string) {
-    const where: Prisma.AttendanceWhereInput = { workDate: { gte: from, lte: to } };
+  async listScoped(actor: AuthenticatedUser, from: string, to: string, departmentId?: string) {
+    let query = this.db
+      .collection(COLLECTIONS.attendance)
+      .where('workDate', '>=', from)
+      .where('workDate', '<=', to);
 
     if (actor.role === 'MOP') {
-      where.userId = actor.id;
+      query = query.where('userId', '==', actor.id);
     } else if (actor.role === 'ROP') {
       if (!actor.departmentId) throw new ForbiddenException('РОП не привязан к отделу');
-      where.user = { departmentId: actor.departmentId };
+      query = query.where('departmentId', '==', actor.departmentId);
     } else {
-      where.user = { organizationId: actor.organizationId, ...(departmentId ? { departmentId } : {}) };
+      query = query.where('organizationId', '==', actor.organizationId);
+      if (departmentId) query = query.where('departmentId', '==', departmentId);
     }
 
-    return this.prisma.attendance.findMany({
-      where,
-      include: {
-        user: { select: { id: true, fullName: true, departmentId: true } },
-        office: { select: { id: true, name: true } },
-      },
-      orderBy: [{ workDate: 'desc' }, { checkInAt: 'asc' }],
-    });
+    const snapshot = await query.orderBy('workDate', 'desc').get();
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as AttendanceDoc) }));
+  }
+
+  private async timezoneOf(organizationId: string): Promise<string> {
+    const snapshot = await this.db
+      .collection(COLLECTIONS.organizations)
+      .doc(organizationId)
+      .get();
+
+    return (snapshot.data() as OrganizationDoc | undefined)?.timezone ?? 'Asia/Almaty';
   }
 
   /** Личный график имеет приоритет над отдельским. */
@@ -211,36 +248,49 @@ export class AttendanceService {
     userId: string,
     departmentId: string | null,
     at: Date,
-  ): Promise<WorkSchedule | null> {
-    const effective: Prisma.WorkScheduleWhereInput = {
-      effectiveFrom: { lte: at },
-      OR: [{ effectiveTo: null }, { effectiveTo: { gte: at } }],
-    };
+  ): Promise<WorkScheduleDoc | null> {
+    const personal = await this.db
+      .collection(COLLECTIONS.workSchedules)
+      .where('userId', '==', userId)
+      .where('effectiveFrom', '<=', Timestamp.fromDate(at))
+      .orderBy('effectiveFrom', 'desc')
+      .limit(1)
+      .get();
 
-    const personal = await this.prisma.workSchedule.findFirst({
-      where: { userId, ...effective },
-      orderBy: { effectiveFrom: 'desc' },
-    });
-    if (personal) return personal;
+    const active = (doc: WorkScheduleDoc): boolean =>
+      doc.effectiveTo === null || doc.effectiveTo.toDate() >= at;
+
+    if (!personal.empty) {
+      const doc = personal.docs[0].data() as WorkScheduleDoc;
+      if (active(doc)) return doc;
+    }
 
     if (!departmentId) return null;
-    return this.prisma.workSchedule.findFirst({
-      where: { departmentId, ...effective },
-      orderBy: { effectiveFrom: 'desc' },
-    });
+
+    const departmental = await this.db
+      .collection(COLLECTIONS.workSchedules)
+      .where('departmentId', '==', departmentId)
+      .where('effectiveFrom', '<=', Timestamp.fromDate(at))
+      .orderBy('effectiveFrom', 'desc')
+      .limit(1)
+      .get();
+
+    if (departmental.empty) return null;
+    const doc = departmental.docs[0].data() as WorkScheduleDoc;
+    return active(doc) ? doc : null;
   }
 
   private evaluateArrival(
     now: Date,
     timezone: string,
-    schedule: WorkSchedule | null,
+    schedule: WorkScheduleDoc | null,
   ): { status: AttendanceStatus; lateMinutes: number } {
     // Без заданного графика фиксируем факт прихода, но не судим об опоздании.
-    if (!schedule) return { status: AttendanceStatus.ON_TIME, lateMinutes: 0 };
+    if (!schedule) return { status: 'ON_TIME', lateMinutes: 0 };
 
     const weekday = localIsoWeekday(now, timezone);
     if (!schedule.workdays.includes(weekday)) {
-      return { status: AttendanceStatus.DAY_OFF, lateMinutes: 0 };
+      return { status: 'DAY_OFF', lateMinutes: 0 };
     }
 
     const arrival = localMinutesOfDay(now, timezone);
@@ -252,38 +302,36 @@ export class AttendanceService {
     }
 
     const lateMinutes = Math.max(0, arrival - (start + schedule.graceMinutes));
-    return {
-      status: lateMinutes > 0 ? AttendanceStatus.LATE : AttendanceStatus.ON_TIME,
-      lateMinutes,
-    };
+    return { status: lateMinutes > 0 ? 'LATE' : 'ON_TIME', lateMinutes };
   }
 
-  /** Начисление за приход. Уникальный индекс по (reason, ref) не даёт начислить дважды. */
+  /**
+   * Начисление за приход. Ключ документа содержит причину и саму отметку,
+   * поэтому повторная обработка того же события не начислит очки дважды.
+   */
   private async awardCheckInPoints(
     userId: string,
     attendanceId: string,
     status: AttendanceStatus,
   ): Promise<void> {
-    if (status !== AttendanceStatus.ON_TIME && status !== AttendanceStatus.LATE) return;
+    if (status !== 'ON_TIME' && status !== 'LATE') return;
 
-    const onTime = status === AttendanceStatus.ON_TIME;
-    await this.prisma.pointsEntry.upsert({
-      where: {
-        userId_reason_refType_refId: {
-          userId,
-          reason: onTime ? PointsReason.CHECK_IN_ON_TIME : PointsReason.LATE_PENALTY,
-          refType: 'Attendance',
-          refId: attendanceId,
-        },
-      },
-      create: {
-        userId,
-        reason: onTime ? PointsReason.CHECK_IN_ON_TIME : PointsReason.LATE_PENALTY,
-        points: onTime ? POINTS_ON_TIME : POINTS_LATE,
-        refType: 'Attendance',
-        refId: attendanceId,
-      },
-      update: {},
-    });
+    const onTime = status === 'ON_TIME';
+    const reason = onTime ? 'CHECK_IN_ON_TIME' : 'LATE_PENALTY';
+
+    const entry: PointsDoc = {
+      userId,
+      reason,
+      points: onTime ? POINTS_ON_TIME : POINTS_LATE,
+      refType: 'Attendance',
+      refId: attendanceId,
+      comment: null,
+      createdAt: Timestamp.now(),
+    };
+
+    await this.db
+      .collection(COLLECTIONS.points)
+      .doc(pointsDocId(userId, reason, 'Attendance', attendanceId))
+      .set(entry, { merge: false });
   }
 }

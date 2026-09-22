@@ -44,7 +44,7 @@ export class AttendanceController {
     @Query('from') from: string,
     @Query('to') to: string,
   ) {
-    return this.attendance.listForUser(user.id, new Date(from), new Date(to));
+    return this.attendance.listForUser(user.id, from, to);
   }
 
   @Get()
@@ -55,7 +55,7 @@ export class AttendanceController {
     @Query('to') to: string,
     @Query('departmentId') departmentId?: string,
   ) {
-    return this.attendance.listScoped(user, new Date(from), new Date(to), departmentId);
+    return this.attendance.listScoped(user, from, to, departmentId);
   }
 
   /**
