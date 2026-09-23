@@ -10,6 +10,7 @@ import { PermissionsGuard } from './common/guards/permissions.guard';
 import { DevicesModule } from './devices/devices.module';
 import { EmployeesModule } from './employees/employees.module';
 import { OfficesModule } from './offices/offices.module';
+import { DepartmentsModule } from './departments/departments.module';
 import { AttendanceModule } from './attendance/attendance.module';
 
 @Module({
@@ -21,6 +22,7 @@ import { AttendanceModule } from './attendance/attendance.module';
     DevicesModule,
     EmployeesModule,
     OfficesModule,
+    DepartmentsModule,
     AttendanceModule,
   ],
   providers: [
