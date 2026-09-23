@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { FirebaseAuthGuard } from './auth/firebase-auth.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
 import { DevicesModule } from './devices/devices.module';
+import { EmployeesModule } from './employees/employees.module';
 import { AttendanceModule } from './attendance/attendance.module';
 
 @Module({
@@ -17,6 +18,7 @@ import { AttendanceModule } from './attendance/attendance.module';
     FirebaseModule,
     AuthModule,
     DevicesModule,
+    EmployeesModule,
     AttendanceModule,
   ],
   providers: [
