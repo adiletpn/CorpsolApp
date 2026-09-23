@@ -156,3 +156,31 @@ export function scopeFor(
   }
   return null;
 }
+
+/**
+ * Какие роли вправе выдавать обладатель роли. Правило отдельное от
+ * `account.role.assign`, потому что права мало: ЧР должен заводить людей,
+ * но не должен уметь сделать супер-админа — ни другому, ни себе.
+ *
+ * Список пустой означает, что роль вообще не заводит сотрудников.
+ */
+export const ASSIGNABLE_ROLES: Record<Role, readonly Role[]> = {
+  MOP: [],
+  ROP: [],
+  // ЧР работает только с линейным персоналом отделов продаж.
+  HR: ['MOP', 'ROP'],
+  DIRECTOR: [],
+  SUPER_ADMIN: [...ROLES],
+};
+
+export function canAssignRole(actor: Role, target: Role): boolean {
+  return ASSIGNABLE_ROLES[actor].includes(target);
+}
+
+/**
+ * Можно ли управлять сотрудником с такой ролью: менять данные, увольнять.
+ * Опирается на тот же список, поэтому ЧР не уволит директора.
+ */
+export function canManageEmployee(actor: Role, target: Role): boolean {
+  return canAssignRole(actor, target);
+}
