@@ -3,6 +3,7 @@ import { Timestamp } from 'firebase-admin/firestore';
 import {
   CHECK_IN_REJECTION_MESSAGES,
   checkGeofence,
+  matchesKnownBssid,
   parseQrPayload,
   type CheckInRejection,
 } from '@corpsol/shared';
@@ -116,10 +117,10 @@ export class AttendanceService {
     }
 
     // Фактор 4 — офисный Wi-Fi. Включается, только если для офиса заданы BSSID.
+    // Сравнение идёт через нормализацию: разделители и регистр у роутера
+    // и у телефона различаются, и посимвольное сравнение не совпало бы никогда.
     if (office.wifiBssids.length > 0) {
-      const bssid = dto.wifiBssid?.toLowerCase();
-      const known = office.wifiBssids.map((item) => item.toLowerCase());
-      if (!bssid || !known.includes(bssid)) {
+      if (!matchesKnownBssid(dto.wifiBssid, office.wifiBssids)) {
         throw new CheckInRejected('outside_fence', { reasonDetail: 'wifi_mismatch' });
       }
     }
