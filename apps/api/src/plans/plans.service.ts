@@ -93,6 +93,31 @@ export class PlansService {
     return false;
   }
 
+  /**
+   * Выполнение личных планов сотрудника за период. Нужно расчёту премий:
+   * они считаются по личному плану, а не по общему плану отдела.
+   */
+  async progressForUser(
+    organizationId: string,
+    userId: string,
+    periodStart: string,
+  ): Promise<PlanProgress[]> {
+    const snapshot = await this.db
+      .collection(COLLECTIONS.plans)
+      .where('organizationId', '==', organizationId)
+      .where('scope', '==', 'USER')
+      .where('ownerId', '==', userId)
+      .where('periodStart', '==', periodStart)
+      .get();
+
+    return Promise.all(
+      snapshot.docs.map(async (doc) => {
+        const plan = doc.data() as PlanDoc;
+        return calculateProgress(plan.metric, plan.target, await this.measure(plan));
+      }),
+    );
+  }
+
   private async toView(id: string, doc: PlanDoc): Promise<PlanView> {
     const achieved = await this.measure(doc);
 
