@@ -13,6 +13,7 @@ import { OfficesModule } from './offices/offices.module';
 import { DepartmentsModule } from './departments/departments.module';
 import { PlansModule } from './plans/plans.module';
 import { OffersModule } from './offers/offers.module';
+import { PayrollModule } from './payroll/payroll.module';
 import { AttendanceModule } from './attendance/attendance.module';
 
 @Module({
@@ -27,6 +28,7 @@ import { AttendanceModule } from './attendance/attendance.module';
     DepartmentsModule,
     PlansModule,
     OffersModule,
+    PayrollModule,
     AttendanceModule,
   ],
   providers: [
