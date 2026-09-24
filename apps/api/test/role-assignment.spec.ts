@@ -1,4 +1,4 @@
-import { ROLES, canAssignRole, canManageEmployee, type Role } from '@corpsol/shared';
+import { ROLES, can, canAssignRole, canManageEmployee, type Role } from '@corpsol/shared';
 
 describe('правила выдачи ролей', () => {
   it('ЧР заводит только линейный персонал', () => {
@@ -39,5 +39,25 @@ describe('правила выдачи ролей', () => {
       expect(canAssignRole(actor, actor)).toBe(false);
       expect(canAssignRole(actor, 'SUPER_ADMIN')).toBe(false);
     }
+  });
+});
+
+describe('разделение создания и подтверждения оффера', () => {
+  it('МОП заводит офферы, но не подтверждает их', () => {
+    expect(can('MOP', 'offer.create')).toBe(true);
+    // Принятый оффер закрывает план и влияет на премию. Если подтверждать
+    // может тот, кому за это платят, контроль перестаёт быть контролем.
+    expect(can('MOP', 'offer.confirm')).toBe(false);
+  });
+
+  it('подтверждает руководитель и выше', () => {
+    expect(can('ROP', 'offer.confirm')).toBe(true);
+    expect(can('DIRECTOR', 'offer.confirm')).toBe(true);
+    expect(can('SUPER_ADMIN', 'offer.confirm')).toBe(true);
+  });
+
+  it('ЧР к сделкам отношения не имеет', () => {
+    expect(can('HR', 'offer.confirm')).toBe(false);
+    expect(can('HR', 'offer.create')).toBe(false);
   });
 });
