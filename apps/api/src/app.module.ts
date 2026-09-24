@@ -12,6 +12,7 @@ import { EmployeesModule } from './employees/employees.module';
 import { OfficesModule } from './offices/offices.module';
 import { DepartmentsModule } from './departments/departments.module';
 import { PlansModule } from './plans/plans.module';
+import { OffersModule } from './offers/offers.module';
 import { AttendanceModule } from './attendance/attendance.module';
 
 @Module({
@@ -25,6 +26,7 @@ import { AttendanceModule } from './attendance/attendance.module';
     OfficesModule,
     DepartmentsModule,
     PlansModule,
+    OffersModule,
     AttendanceModule,
   ],
   providers: [
