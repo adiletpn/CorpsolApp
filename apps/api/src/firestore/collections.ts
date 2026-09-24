@@ -79,6 +79,18 @@ export const userAchievementDocId = (userId: string, achievementCode: string): s
 export const externalIdentityDocId = (provider: string, externalKey: string): string =>
   `${provider}_${sanitize(externalKey)}`;
 
+/**
+ * План. Ключ собран из владельца, метрики и начала периода, поэтому
+ * на один отдел не заведутся два противоречащих плана по звонкам
+ * за один месяц — повторная постановка перезапишет прежний.
+ */
+export const planDocId = (
+  scope: string,
+  ownerId: string,
+  metric: string,
+  periodStart: string,
+): string => `${scope}_${sanitize(ownerId)}_${metric}_${periodStart}`;
+
 /** Предагрегат за день — читается дашбордами вместо перебора отметок и звонков. */
 export const dailySummaryDocId = (userId: string, date: string): string =>
   `${sanitize(userId)}_${date}`;
