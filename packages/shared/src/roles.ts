@@ -67,6 +67,10 @@ export const PERMISSIONS = [
   'offer.read.department',
   'offer.read.self',
   'offer.create',
+  // Подтверждение сделки отделено от её создания: оффер закрывает план
+  // и влияет на премию, поэтому отмечать его принятым не должен тот,
+  // кому за это платят.
+  'offer.confirm',
 
   // аналитика и геймификация
   'analytics.company',
@@ -88,6 +92,8 @@ const MOP_PERMISSIONS: Permission[] = [
   'payroll.read.self',
   'offer.read.self',
   'offer.create',
+  // offer.confirm здесь намеренно отсутствует: принятый оффер закрывает план
+  // и влияет на премию, поэтому подтверждать его не должен тот, кому за это платят.
   'leaderboard.read',
 ];
 
@@ -100,6 +106,7 @@ const ROP_PERMISSIONS: Permission[] = [
   'plan.read.all',
   'payroll.read.department',
   'offer.read.department',
+  'offer.confirm',
   'analytics.department',
 ];
 
@@ -123,6 +130,7 @@ const DIRECTOR_PERMISSIONS: Permission[] = [
   'payroll.read.all',
   'payroll.manage',
   'offer.read.all',
+  'offer.confirm',
   'analytics.company',
   'analytics.department',
   'leaderboard.read',
