@@ -242,3 +242,45 @@ export interface OfferDoc {
   sentDate: string;
   resolvedAt: Timestamp | null;
 }
+
+export interface BonusRuleDoc {
+  organizationId: string;
+  /** Пусто — правило действует на всю компанию, иначе только на отдел. */
+  departmentId: string | null;
+
+  kind: 'PLAN_COMPLETION' | 'PER_UNIT' | 'ATTENDANCE' | 'LATE_PENALTY' | 'ABSENCE_PENALTY';
+  metric: 'CALLS' | 'TALK_MINUTES' | 'OFFERS' | 'REVENUE' | null;
+
+  threshold: number;
+  /** Фиксированная сумма в тиынах. */
+  amountMinor: number;
+  /** Либо доля от оклада в базисных пунктах: 500 = 5%. */
+  percentBps: number;
+
+  isActive: boolean;
+  createdAt: Timestamp;
+}
+
+export type PayrollStatus = 'DRAFT' | 'APPROVED' | 'PAID';
+
+export interface PayrollDoc {
+  userId: string;
+  organizationId: string;
+  departmentId: string | null;
+
+  periodStart: string;
+  periodEnd: string;
+
+  baseSalaryMinor: number;
+  bonusMinor: number;
+  penaltyMinor: number;
+  totalMinor: number;
+
+  /** Построчная расшифровка: из чего сложилась сумма. */
+  lines: Array<{ ruleId: string; kind: string; title: string; amountMinor: number }>;
+
+  status: PayrollStatus;
+  calculatedAt: Timestamp;
+  approvedBy: string | null;
+  approvedAt: Timestamp | null;
+}
