@@ -181,3 +181,64 @@ export interface AuditEventDoc {
   ip: string | null;
   createdAt: Timestamp;
 }
+
+export interface PlanDoc {
+  scope: 'DEPARTMENT' | 'USER';
+  organizationId: string;
+  /** Отдел или сотрудник — в зависимости от области плана. */
+  ownerId: string;
+  metric: 'CALLS' | 'TALK_MINUTES' | 'OFFERS' | 'REVENUE';
+  /** Для REVENUE — сумма в тиынах, для остальных метрик штуки или минуты. */
+  target: number;
+
+  /** Границы периода, «ГГГГ-ММ-ДД». Строками, потому что входят в ключ. */
+  periodStart: string;
+  periodEnd: string;
+
+  createdBy: string;
+  createdAt: Timestamp;
+}
+
+export type CallSource = 'BITRIX' | 'KCELL' | 'MANUAL';
+
+export interface CallDoc {
+  userId: string;
+  organizationId: string;
+  departmentId: string | null;
+
+  source: CallSource;
+  direction: 'INBOUND' | 'OUTBOUND';
+  status: 'ANSWERED' | 'NO_ANSWER' | 'BUSY' | 'FAILED';
+  clientPhone: string;
+
+  startedAt: Timestamp;
+  /** Календарная дата звонка «ГГГГ-ММ-ДД» — по ней идут выборки за период. */
+  callDate: string;
+
+  /** Полная длительность соединения, включая гудки. */
+  durationSeconds: number;
+  /** Чистое время разговора. План считается по нему, а не по гудкам. */
+  talkSeconds: number;
+
+  recordingUrl: string | null;
+  importedAt: Timestamp;
+}
+
+export type OfferStatus = 'SENT' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
+
+export interface OfferDoc {
+  userId: string;
+  organizationId: string;
+  departmentId: string | null;
+
+  clientName: string;
+  clientPhone: string | null;
+  /** Сумма оффера в тиынах. */
+  amountMinor: number;
+  status: OfferStatus;
+
+  sentAt: Timestamp;
+  /** Календарная дата отправки «ГГГГ-ММ-ДД». */
+  sentDate: string;
+  resolvedAt: Timestamp | null;
+}
