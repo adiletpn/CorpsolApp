@@ -15,6 +15,7 @@ import { PlansModule } from './plans/plans.module';
 import { OffersModule } from './offers/offers.module';
 import { PayrollModule } from './payroll/payroll.module';
 import { GamificationModule } from './gamification/gamification.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 import { AttendanceModule } from './attendance/attendance.module';
 
 @Module({
@@ -31,6 +32,7 @@ import { AttendanceModule } from './attendance/attendance.module';
     OffersModule,
     PayrollModule,
     GamificationModule,
+    AnalyticsModule,
     AttendanceModule,
   ],
   providers: [
