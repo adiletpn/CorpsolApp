@@ -5,3 +5,4 @@ export * from './wifi';
 export * from './plans';
 export * from './payroll';
 export * from './leaderboard';
+export * from './analytics';
