@@ -162,3 +162,24 @@ Firebase Auth по своей природе разрешает вход с лю
 каждом запросе. Кеш безопасен: увольнение и открепление устройства вызывают
 `revokeRefreshTokens`, а токен проверяется с `checkRevoked`, поэтому доступ
 закрывается сразу, не дожидаясь истечения кеша.
+
+## Карта API
+
+| Область | Эндпоинты | Кто имеет доступ |
+|---|---|---|
+| Вход | `POST /auth/session`, `POST /auth/logout`, `GET /auth/me` | все |
+| Сотрудники | `GET/POST /employees`, `PATCH /employees/:id`, `POST /employees/:id/terminate` | ЧР, супер-админ |
+| Устройства | `GET /devices/requests`, `POST /devices/requests/:id/approve` | ЧР, супер-админ |
+| Офисы | `GET/POST /offices`, `PATCH /offices/:id` | супер-админ |
+| Терминалы | `GET/POST /terminals`, `POST /terminals/:id/active` | супер-админ |
+| Отделы | `GET/POST /departments`, `PATCH /departments/:id` | супер-админ |
+| Приход | `POST /attendance/check-in`, `GET /attendance/me` | МОП, РОП |
+| Планы | `GET /plans`, `POST /plans` | чтение по роли, постановка — директор |
+| Офферты | `GET/POST /offers`, `POST /offers/:id/resolve` | создание — МОП, подтверждение — РОП и выше |
+| Зарплата | `GET /payroll`, `POST /payroll/calculate`, `GET/POST /payroll/rules` | чтение по роли, расчёт — директор |
+| Рейтинг | `GET /gamification/leaderboard`, `GET /gamification/my-points` | все |
+| Аналитика | `GET /analytics/company`, `GET /analytics/department` | директор и РОП |
+
+Области видимости совпадают с матрицей прав в
+[roles.ts](packages/shared/src/roles.ts): МОП видит только себя и общий план
+отдела, РОП — свой отдел, директор — компанию целиком.
