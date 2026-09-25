@@ -132,6 +132,11 @@ export class PlansService {
     };
   }
 
+  /** Выполнение конкретного плана. Нужно аналитике, которая читает планы сама. */
+  async progressForPlan(plan: PlanDoc): Promise<PlanProgress> {
+    return calculateProgress(plan.metric, plan.target, await this.measure(plan));
+  }
+
   /** Фактическое значение метрики за период плана. */
   private async measure(plan: PlanDoc): Promise<number> {
     switch (plan.metric) {
