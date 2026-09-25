@@ -6,3 +6,4 @@ export * from './plans';
 export * from './payroll';
 export * from './leaderboard';
 export * from './analytics';
+export * from './phone';
