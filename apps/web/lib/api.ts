@@ -1,6 +1,6 @@
 'use client';
 
-import { auth, currentIdToken } from './firebase';
+import { currentIdToken, getAuthClient } from './firebase';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
 
@@ -59,7 +59,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   // Firebase обновляет токен заранее, поэтому 401 означает отзыв доступа:
   // сотрудника уволили либо права изменились. Повтор не поможет.
   if (response.status === 401 && needsAuth) {
-    await auth.signOut().catch(() => undefined);
+    await getAuthClient().signOut().catch(() => undefined);
     throw await parseError(response);
   }
 

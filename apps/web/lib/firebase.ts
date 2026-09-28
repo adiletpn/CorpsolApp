@@ -15,18 +15,35 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID ?? '',
 };
 
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+let cached: Auth | null = null;
 
-export const auth: Auth = getAuth(app);
+/**
+ * Firebase поднимается лениво и только в браузере.
+ *
+ * Инициализация на уровне модуля выполнялась бы и при сборке страницы
+ * на сервере, где ключей нет, — сборка падала бы с `auth/invalid-api-key`.
+ * А на рабочем сервере это был бы лишний экземпляр там, где он не нужен.
+ */
+export function getAuthClient(): Auth {
+  if (typeof window === 'undefined') {
+    throw new Error('Firebase Auth доступен только в браузере');
+  }
 
-// Локальная разработка через эмулятор Firebase Auth.
-const emulatorHost = process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST;
-if (emulatorHost && typeof window !== 'undefined') {
-  connectAuthEmulator(auth, `http://${emulatorHost}`, { disableWarnings: true });
+  if (cached) return cached;
+
+  const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+  cached = getAuth(app);
+
+  const emulatorHost = process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST;
+  if (emulatorHost) {
+    connectAuthEmulator(cached, `http://${emulatorHost}`, { disableWarnings: true });
+  }
+
+  return cached;
 }
 
 /** Свежий токен для запроса к бэкенду. Firebase обновляет его сам. */
 export async function currentIdToken(): Promise<string | null> {
-  const user = auth.currentUser;
+  const user = getAuthClient().currentUser;
   return user ? user.getIdToken() : null;
 }

@@ -5,7 +5,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { can, type Permission } from '@corpsol/shared';
 
 import { ApiError, request } from './api';
-import { auth } from './firebase';
+import { getAuthClient } from './firebase';
 import type { Session } from './types';
 
 interface SessionState {
@@ -41,7 +41,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const unsubscribe = onAuthStateChanged(getAuthClient(), async (user) => {
       if (!user) {
         setSession(null);
         setLoading(false);
@@ -53,7 +53,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         if (profile.role === 'MOP') throw new ManagerNotAllowed();
         setSession(profile);
       } catch {
-        await signOut(auth).catch(() => undefined);
+        await signOut(getAuthClient()).catch(() => undefined);
         setSession(null);
       } finally {
         setLoading(false);
@@ -65,7 +65,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   const handleSignIn = useCallback(
     async (email: string, password: string) => {
-      await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
+      await signInWithEmailAndPassword(getAuthClient(), email.trim().toLowerCase(), password);
 
       try {
         const profile = await load();
@@ -74,7 +74,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       } catch (cause) {
         // Firebase уже пустил в аккаунт, но в панели ему делать нечего —
         // иначе приложение осталось бы в подвешенном состоянии.
-        await signOut(auth).catch(() => undefined);
+        await signOut(getAuthClient()).catch(() => undefined);
         throw cause;
       }
     },
@@ -83,7 +83,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   const handleSignOut = useCallback(async () => {
     await request('/auth/logout', { method: 'POST' }).catch(() => undefined);
-    await signOut(auth);
+    await signOut(getAuthClient());
     setSession(null);
   }, []);
 
