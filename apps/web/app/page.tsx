@@ -9,6 +9,10 @@ import { Employees } from '../components/screens/Employees';
 import { Devices } from '../components/screens/Devices';
 import { Settings } from '../components/screens/Settings';
 import { Integrations } from '../components/screens/Integrations';
+import { Plans } from '../components/screens/Plans';
+import { Offers } from '../components/screens/Offers';
+import { Payroll } from '../components/screens/Payroll';
+import { Leaderboard } from '../components/screens/Leaderboard';
 
 /**
  * Панель — одна страница с переключением разделов состоянием.
@@ -22,6 +26,10 @@ function Panel() {
     overview: <Overview />,
     employees: <Employees />,
     devices: <Devices />,
+    plans: <Plans />,
+    offers: <Offers />,
+    payroll: <Payroll />,
+    leaderboard: <Leaderboard />,
     settings: <Settings />,
     integrations: <Integrations />,
   };
