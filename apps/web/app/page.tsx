@@ -1,12 +1,42 @@
+'use client';
+
+import React, { useState } from 'react';
+
+import { SessionProvider } from '../lib/session';
+import { Shell } from '../components/Shell';
+import { Overview } from '../components/screens/Overview';
+import { Employees } from '../components/screens/Employees';
+import { Devices } from '../components/screens/Devices';
+import { Settings } from '../components/screens/Settings';
+import { Integrations } from '../components/screens/Integrations';
+
+/**
+ * Панель — одна страница с переключением разделов состоянием.
+ * Маршрутизация здесь не нужна: разделов немного, а экран терминала
+ * живёт отдельной страницей, потому что открывается по своей ссылке.
+ */
+function Panel() {
+  const [section, setSection] = useState('overview');
+
+  const screens: Record<string, React.ReactNode> = {
+    overview: <Overview />,
+    employees: <Employees />,
+    devices: <Devices />,
+    settings: <Settings />,
+    integrations: <Integrations />,
+  };
+
+  return (
+    <Shell active={section} onNavigate={setSection}>
+      {screens[section] ?? <Overview />}
+    </Shell>
+  );
+}
+
 export default function HomePage() {
   return (
-    <main style={{ padding: 48, maxWidth: 720 }}>
-      <h1 style={{ marginBottom: 8 }}>CorpSol</h1>
-      <p style={{ color: 'var(--text-muted)', lineHeight: 1.6 }}>
-        Панель руководителей. Экран терминала для отметки прихода открывается по
-        собственной ссылке вида <code>/terminal/&lt;id&gt;?token=&lt;токен&gt;</code> —
-        токен выпускает администратор.
-      </p>
-    </main>
+    <SessionProvider>
+      <Panel />
+    </SessionProvider>
   );
 }
