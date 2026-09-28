@@ -6,7 +6,9 @@ import { CallsService } from './calls.service';
 import { CallsImportService } from './calls-import.service';
 import { WorkNumbersService } from './work-numbers.service';
 import { parseKcellExport } from './kcell-parser';
-import { ImportCallsDto, LinkWorkNumberDto } from './dto';
+import { IntegrationsService } from './integrations.service';
+import { BitrixSyncService } from './bitrix-sync.service';
+import { ConnectBitrixDto, ImportCallsDto, LinkWorkNumberDto, SyncBitrixDto } from './dto';
 
 @Controller('calls')
 export class CallsController {
@@ -14,6 +16,8 @@ export class CallsController {
     private readonly calls: CallsService,
     private readonly importer: CallsImportService,
     private readonly workNumbers: WorkNumbersService,
+    private readonly integrations: IntegrationsService,
+    private readonly bitrixSync: BitrixSyncService,
   ) {}
 
   @Get()
@@ -58,6 +62,37 @@ export class CallsController {
     );
 
     return { ...summary, rejectedRows: parsed.rejected };
+  }
+
+  /** Состояние интеграций. Адрес вебхука отдаётся только замаскированным. */
+  @Get('integrations')
+  @RequirePermissions('integration.manage')
+  listIntegrations(@CurrentUser() user: AuthenticatedUser) {
+    return this.integrations.list(user);
+  }
+
+  @Post('integrations/bitrix')
+  @HttpCode(200)
+  @RequirePermissions('integration.manage')
+  connectBitrix(@CurrentUser() user: AuthenticatedUser, @Body() dto: ConnectBitrixDto) {
+    return this.integrations.connectBitrix(user, dto.webhookUrl);
+  }
+
+  @Delete('integrations/bitrix')
+  @HttpCode(204)
+  @RequirePermissions('integration.manage')
+  disconnectBitrix(@CurrentUser() user: AuthenticatedUser) {
+    return this.integrations.disconnect(user, 'BITRIX');
+  }
+
+  @Post('integrations/bitrix/sync')
+  @HttpCode(200)
+  @RequirePermissions('integration.manage')
+  syncBitrix(@CurrentUser() user: AuthenticatedUser, @Body() dto: SyncBitrixDto) {
+    return this.bitrixSync.sync(
+      user.organizationId,
+      dto.since ? new Date(dto.since) : undefined,
+    );
   }
 
   @Get('work-numbers')
