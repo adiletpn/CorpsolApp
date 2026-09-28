@@ -107,3 +107,82 @@ export interface CompanyStats {
   revenueMinor: number;
   departments: DepartmentStats[];
 }
+
+export interface PlanProgress {
+  metric: 'CALLS' | 'TALK_MINUTES' | 'OFFERS' | 'REVENUE';
+  target: number;
+  achieved: number;
+  ratio: number;
+  remaining: number;
+  isComplete: boolean;
+}
+
+export interface Plan {
+  id: string;
+  scope: 'DEPARTMENT' | 'USER';
+  ownerId: string;
+  metric: PlanProgress['metric'];
+  periodStart: string;
+  periodEnd: string;
+  progress: PlanProgress;
+}
+
+export interface Offer {
+  id: string;
+  userId: string;
+  clientName: string;
+  clientPhone: string | null;
+  amountMinor: number;
+  status: 'SENT' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
+  sentDate: string;
+  sentAt: string;
+  resolvedAt: string | null;
+}
+
+export interface PayrollLine {
+  ruleId: string;
+  kind: string;
+  title: string;
+  amountMinor: number;
+}
+
+export interface Payroll {
+  id: string;
+  userId: string;
+  periodStart: string;
+  periodEnd: string;
+  baseSalaryMinor: number;
+  bonusMinor: number;
+  penaltyMinor: number;
+  totalMinor: number;
+  lines: PayrollLine[];
+  status: 'DRAFT' | 'APPROVED' | 'PAID';
+}
+
+export interface BonusRule {
+  id: string;
+  kind: 'PLAN_COMPLETION' | 'PER_UNIT' | 'ATTENDANCE' | 'LATE_PENALTY' | 'ABSENCE_PENALTY';
+  metric: PlanProgress['metric'] | null;
+  departmentId: string | null;
+  threshold: number;
+  amountMinor: number;
+  percentBps: number;
+  isActive: boolean;
+}
+
+export interface RankedEntry {
+  userId: string;
+  fullName: string;
+  points: number;
+  rank: number;
+  pointsBehindLeader: number;
+  breakdown?: Record<string, number>;
+}
+
+export interface LeaderboardResult {
+  departmentId: string | null;
+  periodStart: string;
+  periodEnd: string;
+  entries: RankedEntry[];
+  self: RankedEntry | null;
+}
