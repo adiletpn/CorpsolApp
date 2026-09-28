@@ -1,5 +1,7 @@
 import { normalizePhone, parseDurationSeconds } from '@corpsol/shared';
 
+import type { ImportedCall, ImportReport } from './types';
+
 /**
  * Разбор детализации Kcell.
  *
@@ -9,23 +11,6 @@ import { normalizePhone, parseDurationSeconds } from '@corpsol/shared';
  * ищем по названию, а не по позиции — иначе очередная выгрузка молча
  * разложилась бы не по тем полям.
  */
-
-export interface ParsedCall {
-  /** Рабочий номер сотрудника — по нему звонок сопоставляется с человеком. */
-  employeePhone: string;
-  clientPhone: string;
-  direction: 'INBOUND' | 'OUTBOUND';
-  startedAt: Date;
-  durationSeconds: number;
-  /** Ключ идемпотентности: повторный импорт не создаст дубль. */
-  externalId: string;
-}
-
-export interface ParseReport {
-  calls: ParsedCall[];
-  /** Строки, которые не удалось разобрать, с указанием причины. */
-  rejected: Array<{ line: number; reason: string; raw: string }>;
-}
 
 /** Возможные названия столбцов. Регистр и пробелы не важны. */
 const COLUMN_ALIASES = {
@@ -173,9 +158,9 @@ function buildExternalId(employeePhone: string, clientPhone: string, startedAt: 
   return `${employeePhone}_${clientPhone}_${startedAt.getTime()}`;
 }
 
-export function parseKcellExport(content: string): ParseReport {
+export function parseKcellExport(content: string): ImportReport {
   const lines = content.split(/\r?\n/).filter((line) => line.trim() !== '');
-  const report: ParseReport = { calls: [], rejected: [] };
+  const report: ImportReport = { calls: [], rejected: [] };
 
   if (lines.length < 2) return report;
 
@@ -212,14 +197,19 @@ export function parseKcellExport(content: string): ParseReport {
       return;
     }
 
+    const durationSeconds = parseDurationSeconds(
+      columns.duration !== undefined ? cells[columns.duration] : 0,
+    );
+
     report.calls.push({
-      employeePhone,
+      employeeKey: employeePhone,
       clientPhone,
       direction: parseDirection(columns.direction !== undefined ? cells[columns.direction] : undefined),
       startedAt,
-      durationSeconds: parseDurationSeconds(
-        columns.duration !== undefined ? cells[columns.duration] : 0,
-      ),
+      durationSeconds,
+      // В детализации оператора отдельного времени разговора нет:
+      // длительность соединения и есть разговор.
+      talkSeconds: durationSeconds,
       externalId: buildExternalId(employeePhone, clientPhone, startedAt),
     });
   });

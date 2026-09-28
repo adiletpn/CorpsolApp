@@ -41,7 +41,7 @@ describe('разбор выгрузки Kcell', () => {
 
     expect(rejected).toHaveLength(0);
     expect(calls).toHaveLength(1);
-    expect(calls[0].employeePhone).toBe('+77012345678');
+    expect(calls[0].employeeKey).toBe('+77012345678');
     expect(calls[0].clientPhone).toBe('+77071112233');
     expect(calls[0].durationSeconds).toBe(83);
     expect(calls[0].direction).toBe('OUTBOUND');
