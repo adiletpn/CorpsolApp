@@ -27,3 +27,66 @@ export interface AttendanceRecord {
   status: CheckInResponse['status'];
   lateMinutes: number;
 }
+
+export interface PayrollLine {
+  ruleId: string;
+  kind: string;
+  title: string;
+  amountMinor: number;
+}
+
+export interface Payroll {
+  id: string;
+  periodStart: string;
+  periodEnd: string;
+  baseSalaryMinor: number;
+  bonusMinor: number;
+  penaltyMinor: number;
+  totalMinor: number;
+  lines: PayrollLine[];
+  status: 'DRAFT' | 'APPROVED' | 'PAID';
+}
+
+export interface Offer {
+  id: string;
+  clientName: string;
+  clientPhone: string | null;
+  amountMinor: number;
+  status: 'SENT' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
+  sentDate: string;
+}
+
+export interface PlanProgress {
+  metric: 'CALLS' | 'TALK_MINUTES' | 'OFFERS' | 'REVENUE';
+  target: number;
+  achieved: number;
+  ratio: number;
+  remaining: number;
+  isComplete: boolean;
+}
+
+export interface Plan {
+  id: string;
+  scope: 'DEPARTMENT' | 'USER';
+  metric: PlanProgress['metric'];
+  progress: PlanProgress;
+}
+
+export interface RankedEntry {
+  userId: string;
+  fullName: string;
+  points: number;
+  rank: number;
+  pointsBehindLeader: number;
+}
+
+export interface LeaderboardResult {
+  entries: RankedEntry[];
+  self: RankedEntry | null;
+}
+
+export interface CallsSummary {
+  total: number;
+  answered: number;
+  talkMinutes: number;
+}
