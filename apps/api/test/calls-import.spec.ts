@@ -1,21 +1,22 @@
 import { CallsImportService } from '../src/calls/calls-import.service';
 import { COLLECTIONS } from '../src/firestore/collections';
-import type { ParsedCall } from '../src/calls/kcell-parser';
+import type { ImportedCall } from '../src/calls/types';
 import { FakeFirestore, fakeFirebase } from './fake-firestore';
 
 const ORG = 'org-1';
 
-function call(overrides: Partial<ParsedCall> = {}): ParsedCall {
+function call(overrides: Partial<ImportedCall> = {}): ImportedCall {
   const startedAt = overrides.startedAt ?? new Date('2026-09-25T09:15:00Z');
-  const employeePhone = overrides.employeePhone ?? '+77012345678';
+  const employeePhone = overrides.employeeKey ?? '+77012345678';
   const clientPhone = overrides.clientPhone ?? '+77071112233';
 
   return {
-    employeePhone,
+    employeeKey: employeePhone,
     clientPhone,
     direction: 'OUTBOUND',
     startedAt,
     durationSeconds: 83,
+    talkSeconds: 83,
     externalId: `${employeePhone}_${clientPhone}_${startedAt.getTime()}`,
     ...overrides,
   };
@@ -78,12 +79,12 @@ describe('сопоставление звонков с сотрудниками'
 
     const result = await service.importCalls(
       ORG,
-      [call(), call({ employeePhone: '+77079999999' }), call({ employeePhone: '+77079999999' })],
+      [call(), call({ employeeKey: '+77079999999' }), call({ employeeKey: '+77079999999' })],
       'KCELL',
     );
 
     expect(result.imported).toBe(1);
-    expect(result.unmatched).toEqual([{ employeePhone: '+77079999999', count: 2 }]);
+    expect(result.unmatched).toEqual([{ employeeKey: '+77079999999', count: 2 }]);
   });
 });
 
@@ -115,7 +116,7 @@ describe('защита от повторной загрузки', () => {
 describe('статус звонка', () => {
   it('звонок без разговора считается неотвеченным', async () => {
     const { firestore, service } = setup([{ id: 'u1', phone: '+77012345678' }]);
-    const missed = call({ durationSeconds: 0 });
+    const missed = call({ durationSeconds: 0, talkSeconds: 0 });
 
     await service.importCalls(ORG, [missed], 'KCELL');
 
@@ -141,7 +142,7 @@ describe('дата звонка', () => {
     // 20:30 UTC — это уже следующий день в Алматы.
     const lateCall = call({ startedAt: new Date('2026-09-25T20:30:00Z') });
 
-    await service.importCalls(ORG, [lateCall], 'KCELL', 'Asia/Almaty');
+    await service.importCalls(ORG, [lateCall], 'KCELL', 'phone', 'Asia/Almaty');
 
     const stored = firestore.read(COLLECTIONS.calls, `KCELL_${lateCall.externalId}`);
     expect(stored?.callDate).toBe('2026-09-26');
