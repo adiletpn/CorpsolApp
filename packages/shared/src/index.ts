@@ -7,3 +7,4 @@ export * from './payroll';
 export * from './leaderboard';
 export * from './analytics';
 export * from './phone';
+export * from './achievements';
