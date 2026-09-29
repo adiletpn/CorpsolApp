@@ -43,27 +43,31 @@ packages/shared общие роли, права, геометрия геозон
 
 ## Запуск
 
-Данные живут в Firebase: Firestore для документов, Firebase Auth для входа.
-Локально всё поднимается на эмуляторах — облачный проект для разработки не нужен.
+Всё поднимается локально на эмуляторах Firebase — облачный проект не нужен,
+данные никуда не уходят.
+
+Разово:
 
 ```bash
+brew install openjdk        # эмулятор Firestore работает на Java
+npm install -g firebase-tools
 npm install
 npm run build:shared
-
-npm install -g firebase-tools
-firebase emulators:start --only auth,firestore
 ```
 
-В отдельном окне:
+Дальше четыре окна терминала:
 
 ```bash
-cp apps/api/.env.example apps/api/.env
+./scripts/dev.sh emulators   # Auth :9099, Firestore :8080, интерфейс :4000
+./scripts/dev.sh seed        # демо-данные
+./scripts/dev.sh api         # бэкенд :3001
+./scripts/dev.sh web         # панель :3000
+```
 
-export FIRESTORE_EMULATOR_HOST=localhost:8080
-export FIREBASE_AUTH_EMULATOR_HOST=localhost:9099
+Мобильное приложение — отдельно, ему нужен адрес машины в локальной сети:
 
-npm run seed -w @corpsol/api
-npm run dev:api
+```bash
+cd apps/mobile && npx expo start
 ```
 
 Сид создаёт учётки с общеизвестным паролем, поэтому против боевого проекта
@@ -74,6 +78,20 @@ npm run dev:api
 ```bash
 npm test -w @corpsol/api
 ```
+
+## Доступ к базе
+
+Правила в [firestore.rules](firestore.rules) запрещают клиентам обращаться
+к Firestore напрямую. Вся работа с данными идёт через бэкенд, который ходит
+в базу с правами администратора и проверяет права сам.
+
+Это не перестраховка: ключ приложения Firebase публичен и лежит в любом
+собранном клиенте. Открой коллекции на чтение — и сотрудник прочитает чужие
+оклады в обход проверок, а заодно подделает себе отметку прихода.
+
+Составные индексы перечислены в [firestore.indexes.json](firestore.indexes.json).
+Запрос с несколькими условиями и диапазоном по дате Firestore без индекса
+отклоняет, поэтому список покрывает все выборки из сервисов.
 
 ## Источники данных по звонкам
 
