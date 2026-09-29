@@ -163,7 +163,10 @@ async function main(): Promise<void> {
     endTime: '18:00',
     graceMinutes: 5,
     workdays: [1, 2, 3, 4, 5],
-    effectiveFrom: now,
+    // Действует с начала года, а не с момента запуска сида: иначе для любой
+    // прошлой даты графика не существует, и правка табеля за вчера не может
+    // определить опоздание — расчёт молча ставит «вовремя».
+    effectiveFrom: Timestamp.fromDate(new Date(Date.UTC(new Date().getUTCFullYear(), 0, 1))),
     effectiveTo: null,
   });
 
