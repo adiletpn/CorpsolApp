@@ -13,14 +13,16 @@ import { CurrentUser, type AuthenticatedUser } from '../common/decorators/curren
 import { Public } from '../common/decorators/public.decorator';
 import { RequirePermissions } from '../common/decorators/require-permissions.decorator';
 import { AttendanceService } from './attendance.service';
+import { AttendanceAdjustmentService } from './adjustment.service';
 import { TerminalService } from './terminal.service';
-import { CheckInDto, CheckOutDto } from './dto';
+import { AdjustAttendanceDto, CheckInDto, CheckOutDto } from './dto';
 
 @Controller('attendance')
 export class AttendanceController {
   constructor(
     private readonly attendance: AttendanceService,
     private readonly terminals: TerminalService,
+    private readonly adjustments: AttendanceAdjustmentService,
   ) {}
 
   @Post('check-in')
@@ -56,6 +58,22 @@ export class AttendanceController {
     @Query('departmentId') departmentId?: string,
   ) {
     return this.attendance.listScoped(user, from, to, departmentId);
+  }
+
+  /**
+   * Ручная правка табеля руководителем: сотрудник забыл отсканировать,
+   * был на выезде к клиенту. Причина обязательна, запись помечается
+   * как ручная и попадает в журнал аудита.
+   */
+  @Post('adjust/:userId')
+  @HttpCode(200)
+  @RequirePermissions('attendance.adjust')
+  adjust(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('userId') userId: string,
+    @Body() dto: AdjustAttendanceDto,
+  ) {
+    return this.adjustments.adjust(user, userId, dto);
   }
 
   /**
