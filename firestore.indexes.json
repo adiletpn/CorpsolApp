@@ -1,0 +1,198 @@
+{
+  "//": "Составные индексы Firestore. Запрос с несколькими условиями и диапазоном по дате без индекса отклоняется, поэтому список должен покрывать все выборки из сервисов. Каждый индекс подписан тем местом, ради которого он заведён.",
+  "indexes": [
+    {
+      "//": "Табель сотрудника за период — личный экран и расчёт зарплаты",
+      "collectionGroup": "attendance",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "workDate", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "//": "Табель отдела за период — экран РОПа",
+      "collectionGroup": "attendance",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "departmentId", "order": "ASCENDING" },
+        { "fieldPath": "workDate", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "//": "Табель компании за период — сводка директора",
+      "collectionGroup": "attendance",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "organizationId", "order": "ASCENDING" },
+        { "fieldPath": "workDate", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "//": "Звонки сотрудника за период",
+      "collectionGroup": "calls",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "callDate", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "Звонки отдела за период — план отдела по звонкам",
+      "collectionGroup": "calls",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "departmentId", "order": "ASCENDING" },
+        { "fieldPath": "callDate", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "Звонки компании за период",
+      "collectionGroup": "calls",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "organizationId", "order": "ASCENDING" },
+        { "fieldPath": "callDate", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "Сделки сотрудника за период",
+      "collectionGroup": "offers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "sentDate", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "Сделки отдела за период — план отдела по сделкам и выручке",
+      "collectionGroup": "offers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "departmentId", "order": "ASCENDING" },
+        { "fieldPath": "sentDate", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "Сделки компании за период — выручка в сводке директора",
+      "collectionGroup": "offers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "organizationId", "order": "ASCENDING" },
+        { "fieldPath": "sentDate", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "Активные сотрудники организации — рейтинг, аналитика, импорт звонков",
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "organizationId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "Активные сотрудники отдела — рейтинг отдела и счётчик состава",
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "departmentId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "Личные планы владельца на период — расчёт премий",
+      "collectionGroup": "plans",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "organizationId", "order": "ASCENDING" },
+        { "fieldPath": "scope", "order": "ASCENDING" },
+        { "fieldPath": "ownerId", "order": "ASCENDING" },
+        { "fieldPath": "periodStart", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "Все планы организации на период — экран планов",
+      "collectionGroup": "plans",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "organizationId", "order": "ASCENDING" },
+        { "fieldPath": "periodStart", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "Активная привязка устройства сотрудника",
+      "collectionGroup": "devices",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "isActive", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "Очередь заявок на перепривязку — экран ЧР",
+      "collectionGroup": "deviceRequests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "Поиск незакрытой заявки по сотруднику и устройству",
+      "collectionGroup": "deviceRequests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "deviceId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "Личный график сотрудника, действующий на дату",
+      "collectionGroup": "workSchedules",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "effectiveFrom", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "//": "График отдела, действующий на дату",
+      "collectionGroup": "workSchedules",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "departmentId", "order": "ASCENDING" },
+        { "fieldPath": "effectiveFrom", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "//": "Расчётные листы организации за период",
+      "collectionGroup": "payrolls",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "organizationId", "order": "ASCENDING" },
+        { "fieldPath": "periodStart", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "Расчётные листы отдела за период",
+      "collectionGroup": "payrolls",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "departmentId", "order": "ASCENDING" },
+        { "fieldPath": "periodStart", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "Действующие правила премирования организации",
+      "collectionGroup": "bonusRules",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "organizationId", "order": "ASCENDING" },
+        { "fieldPath": "isActive", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
