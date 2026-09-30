@@ -14,6 +14,7 @@ import { Offers } from '../components/screens/Offers';
 import { Payroll } from '../components/screens/Payroll';
 import { Leaderboard } from '../components/screens/Leaderboard';
 import { Audit } from '../components/screens/Audit';
+import { Schedules } from '../components/screens/Schedules';
 
 /**
  * Панель — одна страница с переключением разделов состоянием.
@@ -32,6 +33,7 @@ function Panel() {
     payroll: <Payroll />,
     leaderboard: <Leaderboard />,
     audit: <Audit />,
+    schedules: <Schedules />,
     settings: <Settings />,
     integrations: <Integrations />,
   };
