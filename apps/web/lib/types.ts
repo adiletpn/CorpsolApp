@@ -179,6 +179,21 @@ export interface RankedEntry {
   breakdown?: Record<string, number>;
 }
 
+export interface Schedule {
+  id: string;
+  departmentId: string | null;
+  userId: string | null;
+  /** Имя отдела или сотрудника, которому принадлежит график. */
+  ownerName: string;
+  startTime: string;
+  endTime: string;
+  graceMinutes: number;
+  /** Дни недели: 1 — понедельник … 7 — воскресенье. */
+  workdays: number[];
+  effectiveFrom: string;
+  effectiveTo: string | null;
+}
+
 export interface AuditEvent {
   id: string;
   action: string;
