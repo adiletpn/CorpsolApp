@@ -18,6 +18,7 @@ import { GamificationModule } from './gamification/gamification.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { CallsModule } from './calls/calls.module';
 import { AttendanceModule } from './attendance/attendance.module';
+import { AuditModule } from './audit/audit.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { AttendanceModule } from './attendance/attendance.module';
     AnalyticsModule,
     CallsModule,
     AttendanceModule,
+    AuditModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: FirebaseAuthGuard },
