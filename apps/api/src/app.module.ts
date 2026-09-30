@@ -19,6 +19,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { CallsModule } from './calls/calls.module';
 import { AttendanceModule } from './attendance/attendance.module';
 import { AuditModule } from './audit/audit.module';
+import { SchedulesModule } from './schedules/schedules.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { AuditModule } from './audit/audit.module';
     CallsModule,
     AttendanceModule,
     AuditModule,
+    SchedulesModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: FirebaseAuthGuard },
