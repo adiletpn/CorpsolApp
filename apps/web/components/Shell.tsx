@@ -26,6 +26,7 @@ const NAV: NavItem[] = [
   { key: 'offers', label: 'Сделки', permissions: ['offer.read.all', 'offer.read.department'] },
   { key: 'payroll', label: 'Зарплата', permissions: ['payroll.read.all', 'payroll.read.department'] },
   { key: 'leaderboard', label: 'Рейтинг', permissions: ['leaderboard.read'] },
+  { key: 'audit', label: 'Журнал', permissions: ['audit.read'] },
   { key: 'settings', label: 'Настройки', permissions: ['settings.manage', 'office.manage'] },
   { key: 'integrations', label: 'Интеграции', permissions: ['integration.manage'] },
 ];

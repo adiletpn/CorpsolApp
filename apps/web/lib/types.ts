@@ -179,6 +179,16 @@ export interface RankedEntry {
   breakdown?: Record<string, number>;
 }
 
+export interface AuditEvent {
+  id: string;
+  action: string;
+  actor: { id: string; fullName: string } | null;
+  targetType: string | null;
+  targetId: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+}
+
 export interface LeaderboardResult {
   departmentId: string | null;
   periodStart: string;
