@@ -89,6 +89,7 @@ export class OffersService {
     await this.collection.doc(offerId).update({ status, resolvedAt });
 
     await this.firebase.firestore.collection(COLLECTIONS.auditEvents).doc().set({
+      organizationId: actor.organizationId,
       actorId: actor.id,
       action: `offer.${status.toLowerCase()}`,
       targetType: 'Offer',

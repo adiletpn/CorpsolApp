@@ -173,6 +173,12 @@ export interface PointsDoc {
 }
 
 export interface AuditEventDoc {
+  /**
+   * Организация обязательна: без неё выборку журнала пришлось бы фильтровать
+   * через автора события, а Firestore не умеет join — чужие события утекли бы
+   * в отчёт соседней компании.
+   */
+  organizationId: string;
   actorId: string | null;
   action: string;
   targetType: string | null;

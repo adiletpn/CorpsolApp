@@ -182,7 +182,10 @@ export class DevicesService {
       revokedBy: actorId,
     });
 
+    const owner = await this.db.collection(COLLECTIONS.users).doc(userId).get();
+
     batch.set(this.db.collection(COLLECTIONS.auditEvents).doc(), {
+      organizationId: (owner.data() as UserDoc | undefined)?.organizationId ?? '',
       actorId,
       action: 'device.unbind',
       targetType: 'User',

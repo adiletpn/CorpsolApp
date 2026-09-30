@@ -105,7 +105,7 @@ export class EmployeesService {
       throw cause;
     }
 
-    await this.audit(actor.id, 'employee.create', created.uid, { role: dto.role });
+    await this.audit(actor, 'employee.create', created.uid, { role: dto.role });
 
     return { ...this.toView(created.uid, doc), temporaryPassword };
   }
@@ -133,7 +133,7 @@ export class EmployeesService {
     };
 
     await this.db.collection(COLLECTIONS.users).doc(userId).update(patch);
-    await this.audit(actor.id, 'employee.update', userId, { fields: Object.keys(patch) });
+    await this.audit(actor, 'employee.update', userId, { fields: Object.keys(patch) });
 
     return this.toView(userId, { ...doc, ...patch } as UserDoc);
   }
@@ -167,7 +167,7 @@ export class EmployeesService {
     // Телефон освобождается: его можно будет закрепить за другим сотрудником.
     await this.devices.unbind(userId, actor.id).catch(() => undefined);
 
-    await this.audit(actor.id, 'employee.terminate', userId, { reason: reason ?? null });
+    await this.audit(actor, 'employee.terminate', userId, { reason: reason ?? null });
   }
 
   /** Список сотрудников с учётом области видимости роли. */
@@ -280,13 +280,14 @@ export class EmployeesService {
   }
 
   private async audit(
-    actorId: string,
+    actor: AuthenticatedUser,
     action: string,
     targetId: string,
     metadata: Record<string, unknown>,
   ): Promise<void> {
     await this.db.collection(COLLECTIONS.auditEvents).doc().set({
-      actorId,
+      organizationId: actor.organizationId,
+      actorId: actor.id,
       action,
       targetType: 'User',
       targetId,

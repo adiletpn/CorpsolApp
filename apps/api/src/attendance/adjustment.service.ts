@@ -101,6 +101,7 @@ export class AttendanceAdjustmentService {
     await ref.set(record);
 
     await this.db.collection(COLLECTIONS.auditEvents).doc().set({
+      organizationId: actor.organizationId,
       actorId: actor.id,
       action: 'attendance.adjust',
       targetType: 'Attendance',
