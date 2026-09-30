@@ -22,10 +22,7 @@ export const ROLE_LABELS: Record<Role, string> = {
  * один и тот же список, чтобы права не разъезжались между слоями.
  */
 export const PERMISSIONS = [
-  // учётные записи и настройки
-  'account.create',
-  'account.delete',
-  'account.role.assign',
+  // настройки
   'settings.manage',
   'integration.manage',
   'office.manage',
@@ -151,23 +148,9 @@ export function can(role: Role, permission: Permission): boolean {
   return ROLE_PERMISSIONS[role].includes(permission);
 }
 
-/** Область видимости данных для роли — определяет, какой фильтр вешать на запрос. */
-export type DataScope = 'all' | 'department' | 'self';
-
-export function scopeFor(
-  role: Role,
-  domain: 'employee' | 'attendance' | 'calls' | 'plan' | 'payroll' | 'offer',
-): DataScope | null {
-  const order: DataScope[] = ['all', 'department', 'self'];
-  for (const scope of order) {
-    if (can(role, `${domain}.read.${scope}` as Permission)) return scope;
-  }
-  return null;
-}
-
 /**
  * Какие роли вправе выдавать обладатель роли. Правило отдельное от
- * `account.role.assign`, потому что права мало: ЧР должен заводить людей,
+ * `employee.create`, потому что права мало: ЧР должен заводить людей,
  * но не должен уметь сделать супер-админа — ни другому, ни себе.
  *
  * Список пустой означает, что роль вообще не заводит сотрудников.
