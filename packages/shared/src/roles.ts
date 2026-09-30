@@ -33,7 +33,6 @@ export const PERMISSIONS = [
   'employee.terminate',
   'employee.read.all',
   'employee.read.department',
-  'employee.read.self',
 
   // посещаемость
   'attendance.read.all',
@@ -79,7 +78,8 @@ export const PERMISSIONS = [
 export type Permission = (typeof PERMISSIONS)[number];
 
 const MOP_PERMISSIONS: Permission[] = [
-  'employee.read.self',
+  // Свой профиль сотрудник получает через /auth/me — отдельного права
+  // для этого не нужно, оно гарантировано самим фактом входа.
   'attendance.read.self',
   'attendance.checkin',
   'calls.read.self',
