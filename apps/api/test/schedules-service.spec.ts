@@ -158,3 +158,30 @@ describe('границы смены', () => {
     expect(schedule.endTime).toBe('23:59');
   });
 });
+
+describe('допуск на опоздание', () => {
+  it('по умолчанию пять минут', async () => {
+    const { service } = setup();
+
+    const schedule = await service.create(admin, base);
+
+    expect(schedule.graceMinutes).toBe(5);
+  });
+
+  it('нулевой допуск сохраняется, а не подменяется умолчанием', async () => {
+    const { service } = setup();
+
+    // Ноль — осознанный выбор строгого режима, а не «значение не задано».
+    const schedule = await service.create(admin, { ...base, graceMinutes: 0 });
+
+    expect(schedule.graceMinutes).toBe(0);
+  });
+
+  it('заданный допуск сохраняется', async () => {
+    const { service } = setup();
+
+    const schedule = await service.create(admin, { ...base, graceMinutes: 15 });
+
+    expect(schedule.graceMinutes).toBe(15);
+  });
+});
