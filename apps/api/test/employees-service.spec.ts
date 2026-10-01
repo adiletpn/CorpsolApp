@@ -552,3 +552,50 @@ describe('карточка одного сотрудника', () => {
     expect(found.baseSalaryMinor).toBe(33_333_333);
   });
 });
+
+describe('журнал кадровых действий', () => {
+  const events = (firestore: FakeFirestore) => firestore.all(COLLECTIONS.auditEvents);
+
+  it('заведение записывается', async () => {
+    const { firestore, service } = setup();
+
+    await service.create(actor('HR', 'hr-1'), { ...newEmployee, role: 'ROP' });
+
+    const [event] = events(firestore);
+    expect(event.action).toBe('employee.create');
+    expect(event.actorId).toBe('hr-1');
+    expect(event.metadata).toEqual({ role: 'ROP' });
+  });
+
+  it('изменение записывается с перечнем полей', async () => {
+    const { firestore, service } = setup();
+    seedEmployee(firestore, 'mop-1');
+
+    await service.update(actor('HR'), 'mop-1', { baseSalaryMinor: 30_000_000 });
+
+    // Спор об окладе решается журналом: кто и когда менял сумму.
+    const [event] = events(firestore);
+    expect(event.action).toBe('employee.update');
+    expect(event.metadata).toEqual({ fields: ['baseSalaryMinor', 'updatedAt'] });
+  });
+
+  it('увольнение записывается вместе с причиной', async () => {
+    const { firestore, auth, service } = setup();
+    seedEmployee(firestore, 'mop-1');
+    await auth.createUser({ uid: 'mop-1', email: 'mop-1@corpsol.kz', password: 'x' });
+
+    await service.terminate(actor('HR'), 'mop-1', 'Переход в другую компанию');
+
+    const event = events(firestore).find((item) => item.action === 'employee.terminate');
+    expect(event?.metadata).toEqual({ reason: 'Переход в другую компанию' });
+  });
+
+  it('все записи помечены организацией', async () => {
+    const { firestore, service } = setup();
+
+    await service.create(actor('HR'), newEmployee);
+
+    // Без организации журнал одной компании был бы виден другой.
+    expect(events(firestore).every((item) => item.organizationId === ORG)).toBe(true);
+  });
+});
