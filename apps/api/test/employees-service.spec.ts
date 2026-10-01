@@ -194,3 +194,45 @@ describe('отдел и офис при заведении', () => {
     expect(created.officeId).toBeNull();
   });
 });
+
+describe('учётная запись нового сотрудника', () => {
+  it('выдаёт временный пароль', async () => {
+    const { service } = setup();
+
+    const created = await service.create(actor('HR'), newEmployee);
+
+    // Пароль показывается кадровику один раз — передать его сотруднику больше нечем.
+    expect(created.temporaryPassword).toEqual(expect.any(String));
+    expect(created.temporaryPassword.length).toBeGreaterThanOrEqual(12);
+  });
+
+  it('пароль каждый раз новый', async () => {
+    const { service } = setup();
+
+    const first = await service.create(actor('HR'), newEmployee);
+    const second = await service.create(actor('HR'), {
+      ...newEmployee,
+      email: 'aigerim@corpsol.kz',
+    });
+
+    expect(first.temporaryPassword).not.toBe(second.temporaryPassword);
+  });
+
+  it('кладёт роль в claims токена', async () => {
+    const { auth, service } = setup();
+
+    const created = await service.create(actor('HR'), { ...newEmployee, role: 'ROP' });
+
+    // Правила Firestore читают роль из токена, а не из базы.
+    expect(auth.record(created.id)?.claims).toEqual({ role: 'ROP' });
+  });
+
+  it('сотрудник заводится активным', async () => {
+    const { service } = setup();
+
+    const created = await service.create(actor('HR'), newEmployee);
+
+    expect(created.status).toBe('ACTIVE');
+    expect(created.terminatedAt).toBeNull();
+  });
+});
