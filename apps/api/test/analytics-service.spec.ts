@@ -555,3 +555,59 @@ describe('признаки, требующие вмешательства', () =
     expect(stats.risks).toEqual([]);
   });
 });
+
+describe('сводка компании складывается из отделов', () => {
+  const company = () => {
+    const context = setup();
+    seedDepartment(context.firestore, 'dep-1', 'Продажи');
+    seedDepartment(context.firestore, 'dep-2', 'Поддержка');
+    seedUser(context.firestore, 'mop-1', { departmentId: 'dep-1' });
+    seedUser(context.firestore, 'mop-2', { departmentId: 'dep-2' });
+    seedOffer(context.firestore, 'o1', 'mop-1', 400_000);
+    seedOffer(context.firestore, 'o2', 'mop-2', 600_000);
+    return context;
+  };
+
+  it('выручка равна сумме по отделам', async () => {
+    const { service } = company();
+
+    const stats = await service.company(actor('DIRECTOR'), PERIOD.start, PERIOD.end);
+
+    const sum = stats.departments.reduce((total, item) => total + item.revenueMinor, 0);
+    expect(stats.revenueMinor).toBe(sum);
+    expect(stats.revenueMinor).toBe(1_000_000);
+  });
+
+  it('границы периода возвращаются вызвавшему', async () => {
+    const { service } = company();
+
+    const stats = await service.company(actor('DIRECTOR'), PERIOD.start, PERIOD.end);
+
+    // Отчёт без периода нельзя ни сверить, ни подшить.
+    expect(stats.periodStart).toBe('2026-09-01');
+    expect(stats.periodEnd).toBe('2026-09-30');
+  });
+
+  it('пустая компания не роняет расчёт', async () => {
+    const { service } = setup();
+
+    const stats = await service.company(actor('DIRECTOR'), PERIOD.start, PERIOD.end);
+
+    expect(stats.headcount).toBe(0);
+    expect(stats.departments).toEqual([]);
+    expect(stats.revenueMinor).toBe(0);
+  });
+
+  it('сотрудник без отдела не теряется из численности', async () => {
+    const { firestore, service } = setup();
+    seedDepartment(firestore, 'dep-1', 'Продажи');
+    seedUser(firestore, 'mop-1', { departmentId: 'dep-1' });
+    seedUser(firestore, 'mop-new', { departmentId: null });
+
+    const stats = await service.company(actor('DIRECTOR'), PERIOD.start, PERIOD.end);
+
+    // Новичка ещё не распределили, но в штате он уже есть.
+    expect(stats.headcount).toBe(2);
+    expect(stats.departments[0].headcount).toBe(1);
+  });
+});
