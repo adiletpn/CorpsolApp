@@ -353,3 +353,83 @@ describe('доступ к сводке по отделу', () => {
     ).rejects.toThrow(/Отдел не найден/);
   });
 });
+
+describe('выполнение планов в показателях', () => {
+  it('усредняет личные планы сотрудника', async () => {
+    const { firestore, service } = setup(fakePlans({ user: [0.4, 0.8] }));
+    seedDepartment(firestore, 'dep-1', 'Продажи');
+    seedUser(firestore, 'mop-1');
+
+    const stats = await service.department(
+      actor('ROP', 'rop-1', { departmentId: 'dep-1' }),
+      PERIOD.start,
+      PERIOD.end,
+    );
+
+    expect(stats.employees?.[0].planRatio).toBeCloseTo(0.6);
+  });
+
+  it('без планов отдаёт null, а не ноль', async () => {
+    const { firestore, service } = setup(fakePlans({ user: [] }));
+    seedDepartment(firestore, 'dep-1', 'Продажи');
+    seedUser(firestore, 'mop-1');
+
+    const stats = await service.department(
+      actor('ROP', 'rop-1', { departmentId: 'dep-1' }),
+      PERIOD.start,
+      PERIOD.end,
+    );
+
+    // Ноль означал бы «план провален», тогда как плана просто нет.
+    expect(stats.employees?.[0].planRatio).toBeNull();
+    expect(stats.planRatio).toBeNull();
+  });
+
+  it('план отдела считается отдельно от личных', async () => {
+    const { firestore, service } = setup(fakePlans({ user: [1], plan: 0.5 }));
+    seedDepartment(firestore, 'dep-1', 'Продажи');
+    seedUser(firestore, 'mop-1');
+    firestore.seed(COLLECTIONS.plans, 'plan-1', {
+      organizationId: ORG,
+      scope: 'DEPARTMENT',
+      ownerId: 'dep-1',
+      metric: 'REVENUE',
+      periodStart: PERIOD.start,
+      periodEnd: PERIOD.end,
+      targetValue: 1_000_000,
+    });
+
+    const stats = await service.department(
+      actor('ROP', 'rop-1', { departmentId: 'dep-1' }),
+      PERIOD.start,
+      PERIOD.end,
+    );
+
+    // Личные планы могут быть выполнены, а общий — нет: это разные цифры.
+    expect(stats.planRatio).toBeCloseTo(0.5);
+    expect(stats.employees?.[0].planRatio).toBeCloseTo(1);
+  });
+
+  it('план чужого отдела не подхватывается', async () => {
+    const { firestore, service } = setup(fakePlans({ plan: 0.9 }));
+    seedDepartment(firestore, 'dep-1', 'Продажи');
+    seedUser(firestore, 'mop-1');
+    firestore.seed(COLLECTIONS.plans, 'plan-other', {
+      organizationId: ORG,
+      scope: 'DEPARTMENT',
+      ownerId: 'dep-2',
+      metric: 'REVENUE',
+      periodStart: PERIOD.start,
+      periodEnd: PERIOD.end,
+      targetValue: 1_000_000,
+    });
+
+    const stats = await service.department(
+      actor('ROP', 'rop-1', { departmentId: 'dep-1' }),
+      PERIOD.start,
+      PERIOD.end,
+    );
+
+    expect(stats.planRatio).toBeNull();
+  });
+});
