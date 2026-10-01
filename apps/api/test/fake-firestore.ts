@@ -76,12 +76,34 @@ function snapshotOf(store: Map<string, Document>, id: string) {
   };
 }
 
+interface Order {
+  field: string;
+  direction: 'asc' | 'desc';
+}
+
+/** Сравнивает значения так же, как Firestore: числа, строки и Timestamp. */
+function compare(left: unknown, right: unknown): number {
+  const asNumber = (value: unknown): number | null => {
+    if (typeof value === 'number') return value;
+    if (value instanceof Date) return value.getTime();
+    const stamp = value as { toMillis?: () => number } | null;
+    return typeof stamp?.toMillis === 'function' ? stamp.toMillis() : null;
+  };
+
+  const leftNumber = asNumber(left);
+  const rightNumber = asNumber(right);
+  if (leftNumber !== null && rightNumber !== null) return leftNumber - rightNumber;
+
+  return String(left).localeCompare(String(right));
+}
+
 class FakeQuery {
   constructor(
     private readonly store: Map<string, Document>,
     private readonly collectionName: string,
     private readonly filters: Filter[] = [],
     private readonly limitValue: number | null = null,
+    private readonly orders: Order[] = [],
   ) {}
 
   where(field: string, op: Operator, value: unknown): FakeQuery {
@@ -90,22 +112,42 @@ class FakeQuery {
       this.collectionName,
       [...this.filters, { field, op, value }],
       this.limitValue,
+      this.orders,
     );
   }
 
-  /** Сортировка на результат выборки в тестах не влияет, поэтому сквозная. */
-  orderBy(): FakeQuery {
-    return this;
+  /**
+   * Сортировка настоящая: limit отсекает хвост уже упорядоченной выборки,
+   * и без неё «последние сто событий» в тестах оказались бы случайными.
+   */
+  orderBy(field: string, direction: 'asc' | 'desc' = 'asc'): FakeQuery {
+    return new FakeQuery(this.store, this.collectionName, this.filters, this.limitValue, [
+      ...this.orders,
+      { field, direction },
+    ]);
   }
 
   limit(value: number): FakeQuery {
-    return new FakeQuery(this.store, this.collectionName, this.filters, value);
+    return new FakeQuery(
+      this.store,
+      this.collectionName,
+      this.filters,
+      value,
+      this.orders,
+    );
   }
 
   async get() {
     let entries = [...this.store.entries()].filter(([, doc]) =>
       this.filters.every((filter) => matches(doc, filter)),
     );
+
+    for (const order of [...this.orders].reverse()) {
+      entries.sort(([, left], [, right]) => {
+        const result = compare(left[order.field], right[order.field]);
+        return order.direction === 'desc' ? -result : result;
+      });
+    }
 
     if (this.limitValue !== null) entries = entries.slice(0, this.limitValue);
 
