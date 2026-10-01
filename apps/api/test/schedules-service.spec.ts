@@ -185,3 +185,38 @@ describe('допуск на опоздание', () => {
     expect(schedule.graceMinutes).toBe(15);
   });
 });
+
+describe('дни недели', () => {
+  it('повторы убираются', async () => {
+    const { service } = setup();
+
+    const schedule = await service.create(admin, { ...base, workdays: [1, 1, 3, 3, 3] });
+
+    expect(schedule.workdays).toEqual([1, 3]);
+  });
+
+  it('порядок приводится к возрастающему', async () => {
+    const { service } = setup();
+
+    // В отчёте «пт, вт, пн» читается хуже, чем «пн, вт, пт».
+    const schedule = await service.create(admin, { ...base, workdays: [5, 2, 1] });
+
+    expect(schedule.workdays).toEqual([1, 2, 5]);
+  });
+
+  it('шестидневка сохраняется целиком', async () => {
+    const { service } = setup();
+
+    const schedule = await service.create(admin, { ...base, workdays: [1, 2, 3, 4, 5, 6] });
+
+    expect(schedule.workdays).toEqual([1, 2, 3, 4, 5, 6]);
+  });
+
+  it('воскресенье как единственный рабочий день допустимо', async () => {
+    const { service } = setup();
+
+    const schedule = await service.create(admin, { ...base, workdays: [7] });
+
+    expect(schedule.workdays).toEqual([7]);
+  });
+});
