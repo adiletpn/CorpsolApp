@@ -433,3 +433,66 @@ describe('выполнение планов в показателях', () => {
     expect(stats.planRatio).toBeNull();
   });
 });
+
+describe('разбивка по сотрудникам', () => {
+  it('сводка по компании её не содержит', async () => {
+    const { firestore, service } = setup();
+    seedDepartment(firestore, 'dep-1', 'Продажи');
+    seedUser(firestore, 'mop-1');
+
+    const stats = await service.company(actor('DIRECTOR'), PERIOD.start, PERIOD.end);
+
+    // Список всех сотрудников компании на обзорном экране не нужен
+    // и обошёлся бы в лишние чтения Firestore.
+    expect(stats.departments[0].employees).toBeUndefined();
+  });
+
+  it('сводка по отделу её содержит', async () => {
+    const { firestore, service } = setup();
+    seedDepartment(firestore, 'dep-1', 'Продажи');
+    seedUser(firestore, 'mop-1');
+
+    const stats = await service.department(
+      actor('ROP', 'rop-1', { departmentId: 'dep-1' }),
+      PERIOD.start,
+      PERIOD.end,
+    );
+
+    expect(stats.employees).toHaveLength(1);
+  });
+
+  it('сотрудники отсортированы по русскому алфавиту', async () => {
+    const { firestore, service } = setup();
+    seedDepartment(firestore, 'dep-1', 'Продажи');
+    seedUser(firestore, 'u1', { fullName: 'Ялта' });
+    seedUser(firestore, 'u2', { fullName: 'Болат' });
+    seedUser(firestore, 'u3', { fullName: 'Айгерим' });
+
+    const stats = await service.department(
+      actor('ROP', 'rop-1', { departmentId: 'dep-1' }),
+      PERIOD.start,
+      PERIOD.end,
+    );
+
+    expect(stats.employees?.map((item) => item.fullName)).toEqual([
+      'Айгерим',
+      'Болат',
+      'Ялта',
+    ]);
+  });
+
+  it('отделы в сводке компании тоже по алфавиту', async () => {
+    const { firestore, service } = setup();
+    seedDepartment(firestore, 'dep-1', 'Яростные продажи');
+    seedDepartment(firestore, 'dep-2', 'Аналитика');
+    seedUser(firestore, 'mop-1', { departmentId: 'dep-1' });
+    seedUser(firestore, 'mop-2', { departmentId: 'dep-2' });
+
+    const stats = await service.company(actor('DIRECTOR'), PERIOD.start, PERIOD.end);
+
+    expect(stats.departments.map((item) => item.name)).toEqual([
+      'Аналитика',
+      'Яростные продажи',
+    ]);
+  });
+});
