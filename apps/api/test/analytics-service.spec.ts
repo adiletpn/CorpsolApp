@@ -272,3 +272,84 @@ describe('табель в показателях', () => {
     expect(stats.employees?.[0].rates.averageLateMinutes).toBe(0);
   });
 });
+
+describe('доступ к сводке по отделу', () => {
+  const twoDepartments = () => {
+    const context = setup();
+    seedDepartment(context.firestore, 'dep-1', 'Продажи');
+    seedDepartment(context.firestore, 'dep-2', 'Поддержка');
+    seedUser(context.firestore, 'mop-1', { departmentId: 'dep-1' });
+    seedUser(context.firestore, 'mop-2', { departmentId: 'dep-2' });
+    return context;
+  };
+
+  it('руководитель получает свой отдел', async () => {
+    const { service } = twoDepartments();
+
+    const stats = await service.department(
+      actor('ROP', 'rop-1', { departmentId: 'dep-1' }),
+      PERIOD.start,
+      PERIOD.end,
+    );
+
+    expect(stats.departmentId).toBe('dep-1');
+    expect(stats.headcount).toBe(1);
+  });
+
+  it('запрошенный чужой отдел подменяется своим', async () => {
+    const { service } = twoDepartments();
+
+    // Явный запрос чужого отдела не должен давать чужие цифры.
+    const stats = await service.department(
+      actor('ROP', 'rop-1', { departmentId: 'dep-1' }),
+      PERIOD.start,
+      PERIOD.end,
+      'dep-2',
+    );
+
+    expect(stats.departmentId).toBe('dep-1');
+  });
+
+  it('руководитель без отдела получает отказ', async () => {
+    const { service } = twoDepartments();
+
+    await expect(
+      service.department(actor('ROP', 'rop-1'), PERIOD.start, PERIOD.end),
+    ).rejects.toThrow(/не привязан к отделу/);
+  });
+
+  it('директор обязан назвать отдел', async () => {
+    const { service } = twoDepartments();
+
+    // Без явного указания непонятно, чей экран показывать.
+    await expect(
+      service.department(actor('DIRECTOR'), PERIOD.start, PERIOD.end),
+    ).rejects.toThrow(/Укажите отдел/);
+  });
+
+  it('директор открывает любой отдел', async () => {
+    const { service } = twoDepartments();
+
+    const stats = await service.department(
+      actor('DIRECTOR'),
+      PERIOD.start,
+      PERIOD.end,
+      'dep-2',
+    );
+
+    expect(stats.name).toBe('Поддержка');
+  });
+
+  it('отдел чужой организации не открывается', async () => {
+    const { firestore, service } = twoDepartments();
+    firestore.seed(COLLECTIONS.departments, 'dep-alien', {
+      organizationId: 'other-org',
+      name: 'Чужой отдел',
+      headId: null,
+    });
+
+    await expect(
+      service.department(actor('DIRECTOR'), PERIOD.start, PERIOD.end, 'dep-alien'),
+    ).rejects.toThrow(/Отдел не найден/);
+  });
+});
