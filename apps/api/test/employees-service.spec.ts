@@ -362,3 +362,56 @@ describe('увольнение', () => {
     expect(devices.unbind).toHaveBeenCalledWith('mop-1', 'actor-1');
   });
 });
+
+describe('ограничения увольнения', () => {
+  it('нельзя уволить самого себя', async () => {
+    const { firestore, service } = setup();
+    seedEmployee(firestore, 'hr-1', { role: 'HR' });
+
+    // Самоувольнение оставило бы организацию без кадровика
+    // и выглядело бы в журнале как чужое действие.
+    await expect(service.terminate(actor('HR', 'hr-1'), 'hr-1')).rejects.toThrow(/самого себя/);
+  });
+
+  it('повторное увольнение отклоняется', async () => {
+    const { firestore, service } = setup();
+    seedEmployee(firestore, 'mop-1', { status: 'TERMINATED' });
+
+    await expect(service.terminate(actor('HR'), 'mop-1')).rejects.toThrow(/уже уволен/);
+  });
+
+  it('ЧР не увольняет директора', async () => {
+    const { firestore, service } = setup();
+    seedEmployee(firestore, 'director-1', { role: 'DIRECTOR' });
+
+    await expect(
+      service.terminate(actor('HR'), 'director-1'),
+    ).rejects.toThrow(/не вправе управлять/);
+  });
+
+  it('не увольняет сотрудника чужой организации', async () => {
+    const { firestore, service } = setup();
+    seedEmployee(firestore, 'alien', { organizationId: 'other-org' });
+
+    await expect(service.terminate(actor('HR'), 'alien')).rejects.toThrow(/не найден/);
+  });
+
+  it('отсутствие привязанного телефона не срывает увольнение', async () => {
+    const { firestore, auth } = setup();
+    seedEmployee(firestore, 'mop-1');
+    await auth.createUser({ uid: 'mop-1', email: 'mop-1@corpsol.kz', password: 'x' });
+
+    const failingDevices = {
+      unbind: jest.fn(async () => {
+        throw new Error('У сотрудника нет привязанного устройства');
+      }),
+    } as unknown as DevicesService;
+    const service = new EmployeesService(fakeFirebase(firestore, auth), failingDevices);
+
+    await service.terminate(actor('HR'), 'mop-1');
+
+    // Доступ важнее отвязки: уволенный не должен остаться в системе
+    // из-за того, что телефона у него и не было.
+    expect(auth.record('mop-1')?.disabled).toBe(true);
+  });
+});
