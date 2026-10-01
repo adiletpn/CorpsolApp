@@ -111,3 +111,31 @@ describe('кого какая роль вправе заводить', () => {
     expect(auth.size).toBe(0);
   });
 });
+
+describe('адрес почты при заведении', () => {
+  it('приводится к нижнему регистру', async () => {
+    const { service } = setup();
+
+    const created = await service.create(actor('HR'), newEmployee);
+
+    // Вход сверяет адрес точно, а кадровик вводит его как придётся.
+    expect(created.email).toBe('nurlan@corpsol.kz');
+  });
+
+  it('повторное заведение отклоняется', async () => {
+    const { service } = setup();
+    await service.create(actor('HR'), newEmployee);
+
+    await expect(service.create(actor('HR'), newEmployee)).rejects.toThrow(/уже заведён/);
+  });
+
+  it('различие в регистре не считается новым сотрудником', async () => {
+    const { service } = setup();
+    await service.create(actor('HR'), { ...newEmployee, email: 'nurlan@corpsol.kz' });
+
+    // Иначе на одного человека завелись бы две карточки и два табеля.
+    await expect(
+      service.create(actor('HR'), { ...newEmployee, email: 'NURLAN@CORPSOL.KZ' }),
+    ).rejects.toThrow(/уже заведён/);
+  });
+});
