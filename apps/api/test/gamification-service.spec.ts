@@ -295,3 +295,57 @@ describe('своё место в рейтинге', () => {
     expect(result.self?.rank).toBe(2);
   });
 });
+
+describe('расшифровка очков', () => {
+  it('группирует начисления по причине', async () => {
+    const { firestore, service } = setup();
+    seedMember(firestore, 'mop-1');
+    seedPoints(firestore, 'p1', 'mop-1', 10, { reason: 'CALL_VOLUME' });
+    seedPoints(firestore, 'p2', 'mop-1', 5, { reason: 'CALL_VOLUME' });
+    seedPoints(firestore, 'p3', 'mop-1', 30, { reason: 'OFFER_ACCEPTED' });
+
+    const result = await service.leaderboard(actor('MOP'), PERIOD.start, PERIOD.end);
+
+    // Без расшифровки сотрудник не поймёт, чем поднимать свой счёт.
+    expect(result.entries[0].breakdown).toEqual({ CALL_VOLUME: 15, OFFER_ACCEPTED: 30 });
+  });
+
+  it('личная сводка повторяет расчёт рейтинга', async () => {
+    const { firestore, service } = setup();
+    seedMember(firestore, 'mop-1');
+    seedPoints(firestore, 'p1', 'mop-1', 10, { reason: 'CALL_VOLUME' });
+    seedPoints(firestore, 'p2', 'mop-1', 30, { reason: 'OFFER_ACCEPTED' });
+
+    const summary = await service.myPoints(actor('MOP'), PERIOD.start, PERIOD.end);
+
+    // Расхождение экрана сотрудника с рейтингом выглядело бы как обман.
+    expect(summary).toEqual({
+      total: 40,
+      byReason: { CALL_VOLUME: 10, OFFER_ACCEPTED: 30 },
+    });
+  });
+
+  it('личная сводка отсекает чужой период', async () => {
+    const { firestore, service } = setup();
+    seedMember(firestore, 'mop-1');
+    seedPoints(firestore, 'p-old', 'mop-1', 99, {
+      createdAt: Timestamp.fromDate(new Date('2026-08-10T10:00:00Z')),
+    });
+
+    const summary = await service.myPoints(actor('MOP'), PERIOD.start, PERIOD.end);
+
+    expect(summary.total).toBe(0);
+  });
+
+  it('штрафные начисления уменьшают счёт', async () => {
+    const { firestore, service } = setup();
+    seedMember(firestore, 'mop-1');
+    seedPoints(firestore, 'p1', 'mop-1', 50, { reason: 'OFFER_ACCEPTED' });
+    seedPoints(firestore, 'p2', 'mop-1', -20, { reason: 'LATE' });
+
+    const summary = await service.myPoints(actor('MOP'), PERIOD.start, PERIOD.end);
+
+    expect(summary.total).toBe(30);
+    expect(summary.byReason.LATE).toBe(-20);
+  });
+});
