@@ -141,3 +141,59 @@ describe('кто попадает в показатели работы', () => {
     expect(stats.headcount).toBe(1);
   });
 });
+
+describe('выручка в сводке', () => {
+  it('складывает подтверждённые сделки', async () => {
+    const { firestore, service } = setup();
+    seedDepartment(firestore, 'dep-1', 'Продажи');
+    seedUser(firestore, 'mop-1');
+    seedOffer(firestore, 'o1', 'mop-1', 300_000);
+    seedOffer(firestore, 'o2', 'mop-1', 700_000);
+
+    const stats = await service.company(actor('DIRECTOR'), PERIOD.start, PERIOD.end);
+
+    expect(stats.acceptedOffers).toBe(2);
+    expect(stats.revenueMinor).toBe(1_000_000);
+  });
+
+  it('не считает выручкой отправленные и отклонённые', async () => {
+    const { firestore, service } = setup();
+    seedDepartment(firestore, 'dep-1', 'Продажи');
+    seedUser(firestore, 'mop-1');
+    seedOffer(firestore, 'sent', 'mop-1', 500_000, { status: 'SENT' });
+    seedOffer(firestore, 'rejected', 'mop-1', 900_000, { status: 'REJECTED' });
+
+    // Отправленное предложение — ещё не деньги компании.
+    const stats = await service.company(actor('DIRECTOR'), PERIOD.start, PERIOD.end);
+
+    expect(stats.revenueMinor).toBe(0);
+  });
+
+  it('не считает сделки за пределами периода', async () => {
+    const { firestore, service } = setup();
+    seedDepartment(firestore, 'dep-1', 'Продажи');
+    seedUser(firestore, 'mop-1');
+    seedOffer(firestore, 'inside', 'mop-1', 100_000, { sentDate: '2026-09-15' });
+    seedOffer(firestore, 'before', 'mop-1', 400_000, { sentDate: '2026-08-31' });
+    seedOffer(firestore, 'after', 'mop-1', 800_000, { sentDate: '2026-10-01' });
+
+    const stats = await service.company(actor('DIRECTOR'), PERIOD.start, PERIOD.end);
+
+    expect(stats.revenueMinor).toBe(100_000);
+  });
+
+  it('сделка уволенного не теряется из выручки отдела', async () => {
+    const { firestore, service } = setup();
+    seedDepartment(firestore, 'dep-1', 'Продажи');
+    seedUser(firestore, 'mop-1');
+    seedOffer(firestore, 'o1', 'mop-1', 250_000);
+
+    const stats = await service.department(
+      actor('ROP', 'rop-1', { departmentId: 'dep-1' }),
+      PERIOD.start,
+      PERIOD.end,
+    );
+
+    expect(stats.revenueMinor).toBe(250_000);
+  });
+});
