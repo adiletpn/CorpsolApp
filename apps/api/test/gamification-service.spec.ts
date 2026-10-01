@@ -349,3 +349,24 @@ describe('расшифровка очков', () => {
     expect(summary.byReason.LATE).toBe(-20);
   });
 });
+
+describe('пустой рейтинг', () => {
+  it('отдел без участников возвращает пустую таблицу, а не ошибку', async () => {
+    const { service } = setup();
+
+    const result = await service.leaderboard(actor('MOP'), PERIOD.start, PERIOD.end);
+
+    expect(result.entries).toEqual([]);
+    expect(result.self).toBeNull();
+  });
+
+  it('границы периода возвращаются вызвавшему', async () => {
+    const { service } = setup();
+
+    const result = await service.leaderboard(actor('MOP'), PERIOD.start, PERIOD.end);
+
+    // Экран подписывает таблицу периодом — он должен прийти с ответом.
+    expect(result.periodStart).toBe('2026-09-01');
+    expect(result.periodEnd).toBe('2026-09-30');
+  });
+});
