@@ -261,3 +261,59 @@ describe('согласованность учётки и карточки', () =
     expect(retry.email).toBe('nurlan@corpsol.kz');
   });
 });
+
+describe('изменение карточки', () => {
+  it('меняет только переданные поля', async () => {
+    const { firestore, service } = setup();
+    seedEmployee(firestore, 'mop-1', { fullName: 'Старое имя' });
+
+    const updated = await service.update(actor('HR'), 'mop-1', { fullName: 'Новое имя' });
+
+    // Частичное обновление не должно обнулять оклад и отдел.
+    expect(updated.fullName).toBe('Новое имя');
+    expect(updated.baseSalaryMinor).toBe(25_000_000);
+    expect(updated.departmentId).toBe('dep-1');
+  });
+
+  it('повышение до роли, которую актор выдавать не вправе, отклоняется', async () => {
+    const { firestore, service } = setup();
+    seedEmployee(firestore, 'mop-1');
+
+    await expect(
+      service.update(actor('HR'), 'mop-1', { role: 'DIRECTOR' }),
+    ).rejects.toThrow(/не вправе выдавать роль/);
+  });
+
+  it('смена роли обновляет claims токена', async () => {
+    const { firestore, auth, service } = setup();
+    seedEmployee(firestore, 'mop-1');
+    await auth.createUser({ uid: 'mop-1', email: 'mop-1@corpsol.kz', password: 'x' });
+
+    await service.update(actor('HR'), 'mop-1', { role: 'ROP' });
+
+    // Устаревшие claims оставили бы новому руководителю права менеджера.
+    expect(auth.record('mop-1')?.claims).toEqual({ role: 'ROP' });
+  });
+
+  it('не трогает сотрудника чужой организации', async () => {
+    const { firestore, service } = setup();
+    seedEmployee(firestore, 'alien', { organizationId: 'other-org' });
+
+    await expect(
+      service.update(actor('HR'), 'alien', { fullName: 'Взлом' }),
+    ).rejects.toThrow(/не найден/);
+  });
+
+  it('перевод в чужой отдел отклоняется', async () => {
+    const { firestore, service } = setup();
+    seedEmployee(firestore, 'mop-1');
+    firestore.seed(COLLECTIONS.departments, 'dep-alien', {
+      organizationId: 'other-org',
+      name: 'Чужой отдел',
+    });
+
+    await expect(
+      service.update(actor('HR'), 'mop-1', { departmentId: 'dep-alien' }),
+    ).rejects.toThrow(/Отдел не найден/);
+  });
+});
