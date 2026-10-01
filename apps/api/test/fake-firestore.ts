@@ -227,7 +227,83 @@ export class FakeFirestore {
   }
 }
 
+interface AuthRecord {
+  uid: string;
+  email: string;
+  displayName?: string;
+  disabled: boolean;
+  claims: Record<string, unknown>;
+  tokensRevokedAt: number | null;
+}
+
+/**
+ * Firebase Auth в памяти. Заведение сотрудника затрагивает два хранилища
+ * сразу — учётку и карточку, — и проверять надо именно их согласованность:
+ * что при сбое записи карточки не остаётся учётка, по которой можно войти.
+ */
+export class FakeAuth {
+  private readonly users = new Map<string, AuthRecord>();
+  private counter = 0;
+
+  async createUser(input: {
+    email: string;
+    password: string;
+    displayName?: string;
+  }): Promise<{ uid: string }> {
+    this.counter += 1;
+    const uid = `uid-${this.counter}`;
+    this.users.set(uid, {
+      uid,
+      email: input.email,
+      displayName: input.displayName,
+      disabled: false,
+      claims: {},
+      tokensRevokedAt: null,
+    });
+    return { uid };
+  }
+
+  /** Настоящий Admin SDK бросает ошибку, когда адрес свободен. */
+  async getUserByEmail(email: string): Promise<AuthRecord> {
+    const found = [...this.users.values()].find((user) => user.email === email);
+    if (!found) throw new Error('auth/user-not-found');
+    return found;
+  }
+
+  async setCustomUserClaims(uid: string, claims: Record<string, unknown>): Promise<void> {
+    const user = this.require(uid);
+    user.claims = { ...claims };
+  }
+
+  async updateUser(uid: string, patch: Partial<AuthRecord>): Promise<void> {
+    Object.assign(this.require(uid), patch);
+  }
+
+  async revokeRefreshTokens(uid: string): Promise<void> {
+    this.require(uid).tokensRevokedAt = Date.now();
+  }
+
+  async deleteUser(uid: string): Promise<void> {
+    this.users.delete(uid);
+  }
+
+  /** Прямой доступ для проверок в тестах. */
+  record(uid: string): AuthRecord | undefined {
+    return this.users.get(uid);
+  }
+
+  get size(): number {
+    return this.users.size;
+  }
+
+  private require(uid: string): AuthRecord {
+    const user = this.users.get(uid);
+    if (!user) throw new Error(`auth/user-not-found: ${uid}`);
+    return user;
+  }
+}
+
 /** Оборачивает поддельный Firestore в тот же интерфейс, что ждут сервисы. */
-export function fakeFirebase(firestore: FakeFirestore): FirebaseService {
-  return { firestore } as unknown as FirebaseService;
+export function fakeFirebase(firestore: FakeFirestore, auth?: FakeAuth): FirebaseService {
+  return { firestore, auth } as unknown as FirebaseService;
 }
