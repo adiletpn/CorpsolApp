@@ -139,3 +139,58 @@ describe('адрес почты при заведении', () => {
     ).rejects.toThrow(/уже заведён/);
   });
 });
+
+describe('отдел и офис при заведении', () => {
+  it('принимает отдел своей организации', async () => {
+    const { service } = setup();
+
+    const created = await service.create(actor('HR'), {
+      ...newEmployee,
+      departmentId: 'dep-1',
+    });
+
+    expect(created.departmentId).toBe('dep-1');
+  });
+
+  it('отклоняет несуществующий отдел', async () => {
+    const { service } = setup();
+
+    await expect(
+      service.create(actor('HR'), { ...newEmployee, departmentId: 'нет-такого' }),
+    ).rejects.toThrow(/Отдел не найден/);
+  });
+
+  it('отклоняет отдел чужой организации', async () => {
+    const { firestore, service } = setup();
+    firestore.seed(COLLECTIONS.departments, 'dep-alien', {
+      organizationId: 'other-org',
+      name: 'Чужой отдел',
+    });
+
+    // Сотрудник в чужом отделе попал бы в чужие отчёты и рейтинги.
+    await expect(
+      service.create(actor('HR'), { ...newEmployee, departmentId: 'dep-alien' }),
+    ).rejects.toThrow(/Отдел не найден/);
+  });
+
+  it('отклоняет офис чужой организации', async () => {
+    const { firestore, service } = setup();
+    firestore.seed(COLLECTIONS.offices, 'office-alien', {
+      organizationId: 'other-org',
+      name: 'Чужой офис',
+    });
+
+    await expect(
+      service.create(actor('HR'), { ...newEmployee, officeId: 'office-alien' }),
+    ).rejects.toThrow(/Офис не найден/);
+  });
+
+  it('без отдела и офиса сотрудник заводится', async () => {
+    const { service } = setup();
+
+    const created = await service.create(actor('HR'), newEmployee);
+
+    expect(created.departmentId).toBeNull();
+    expect(created.officeId).toBeNull();
+  });
+});
