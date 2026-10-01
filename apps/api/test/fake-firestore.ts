@@ -245,13 +245,15 @@ export class FakeAuth {
   private readonly users = new Map<string, AuthRecord>();
   private counter = 0;
 
+  /** Admin SDK позволяет задать uid явно — этим пользуются тесты. */
   async createUser(input: {
+    uid?: string;
     email: string;
     password: string;
     displayName?: string;
   }): Promise<{ uid: string }> {
     this.counter += 1;
-    const uid = `uid-${this.counter}`;
+    const uid = input.uid ?? `uid-${this.counter}`;
     this.users.set(uid, {
       uid,
       email: input.email,
