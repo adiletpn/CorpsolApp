@@ -317,3 +317,48 @@ describe('изменение карточки', () => {
     ).rejects.toThrow(/Отдел не найден/);
   });
 });
+
+describe('увольнение', () => {
+  const fire = async () => {
+    const context = setup();
+    seedEmployee(context.firestore, 'mop-1');
+    await context.auth.createUser({ uid: 'mop-1', email: 'mop-1@corpsol.kz', password: 'x' });
+    return context;
+  };
+
+  it('карточка сохраняется, но помечается уволенной', async () => {
+    const { firestore, service } = await fire();
+
+    await service.terminate(actor('HR'), 'mop-1');
+
+    // Удалять карточку нельзя: на ней держатся табель, расчёты и история.
+    const doc = firestore.read(COLLECTIONS.users, 'mop-1');
+    expect(doc?.status).toBe('TERMINATED');
+    expect(doc?.terminatedAt).toBeDefined();
+  });
+
+  it('учётка блокируется', async () => {
+    const { auth, service } = await fire();
+
+    await service.terminate(actor('HR'), 'mop-1');
+
+    expect(auth.record('mop-1')?.disabled).toBe(true);
+  });
+
+  it('выданные токены отзываются сразу', async () => {
+    const { auth, service } = await fire();
+
+    await service.terminate(actor('HR'), 'mop-1');
+
+    // Без отзыва уволенный работал бы до истечения последнего токена.
+    expect(auth.record('mop-1')?.tokensRevokedAt).not.toBeNull();
+  });
+
+  it('телефон освобождается под нового сотрудника', async () => {
+    const { devices, service } = await fire();
+
+    await service.terminate(actor('HR'), 'mop-1');
+
+    expect(devices.unbind).toHaveBeenCalledWith('mop-1', 'actor-1');
+  });
+});
