@@ -495,3 +495,17 @@ describe('уволенные в списке', () => {
     expect(fired?.terminatedAt).toBe('2026-08-01T00:00:00.000Z');
   });
 });
+
+describe('порядок в списке', () => {
+  it('сортируется по имени с учётом кириллицы', async () => {
+    const { firestore, service } = setup();
+    seedEmployee(firestore, 'u1', { fullName: 'Ялта' });
+    seedEmployee(firestore, 'u2', { fullName: 'Болат' });
+    seedEmployee(firestore, 'u3', { fullName: 'Айгерим' });
+
+    const list = await service.list(actor('HR'));
+
+    // Firestore сортирует по кодам символов, для русских имён это не алфавит.
+    expect(list.map((item) => item.fullName)).toEqual(['Айгерим', 'Болат', 'Ялта']);
+  });
+});
