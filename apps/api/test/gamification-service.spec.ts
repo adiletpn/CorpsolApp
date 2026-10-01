@@ -235,3 +235,63 @@ describe('очки внутри периода', () => {
     expect(mine?.points).toBe(20);
   });
 });
+
+describe('своё место в рейтинге', () => {
+  const crowd = () => {
+    const context = setup();
+    for (let index = 1; index <= 14; index += 1) {
+      const id = `mop-${index}`;
+      seedMember(context.firestore, id);
+      seedPoints(context.firestore, `p-${index}`, id, 100 - index);
+    }
+    return context;
+  };
+
+  it('показывает верхушку из десяти', async () => {
+    const { service } = crowd();
+
+    const result = await service.leaderboard(actor('MOP', 'mop-14'), PERIOD.start, PERIOD.end);
+
+    // Десять строк плюс сам сотрудник, не попавший в них.
+    expect(result.entries).toHaveLength(11);
+  });
+
+  it('добавляет сотрудника, не попавшего в верхушку', async () => {
+    const { service } = crowd();
+
+    const result = await service.leaderboard(actor('MOP', 'mop-14'), PERIOD.start, PERIOD.end);
+
+    // Рейтинг без своего места перечисляет чужие успехи, а не мотивирует.
+    expect(result.entries.some((item) => item.userId === 'mop-14')).toBe(true);
+  });
+
+  it('отдаёт своё место отдельным полем', async () => {
+    const { service } = crowd();
+
+    const result = await service.leaderboard(actor('MOP', 'mop-14'), PERIOD.start, PERIOD.end);
+
+    expect(result.self?.userId).toBe('mop-14');
+    expect(result.self?.rank).toBe(14);
+  });
+
+  it('не дублирует лидера в его же верхушке', async () => {
+    const { service } = crowd();
+
+    const result = await service.leaderboard(actor('MOP', 'mop-1'), PERIOD.start, PERIOD.end);
+
+    expect(result.entries).toHaveLength(10);
+    expect(result.self?.rank).toBe(1);
+  });
+
+  it('руководитель видит и своё место среди подчинённых', async () => {
+    const { firestore, service } = setup();
+    seedMember(firestore, 'rop-1', { role: 'ROP' });
+    seedMember(firestore, 'mop-1');
+    seedPoints(firestore, 'p1', 'rop-1', 5);
+    seedPoints(firestore, 'p2', 'mop-1', 9);
+
+    const result = await service.leaderboard(actor('ROP', 'rop-1'), PERIOD.start, PERIOD.end);
+
+    expect(result.self?.rank).toBe(2);
+  });
+});
