@@ -339,3 +339,65 @@ describe('список графиков', () => {
     await expect(service.list(admin)).resolves.toEqual([]);
   });
 });
+
+describe('удаление графика', () => {
+  it('убирает график из списка', async () => {
+    const { service } = setup();
+    const schedule = await service.create(admin, base);
+
+    await service.remove(admin, schedule.id);
+
+    await expect(service.list(admin)).resolves.toEqual([]);
+  });
+
+  it('несуществующий график не найден', async () => {
+    const { service } = setup();
+
+    await expect(service.remove(admin, 'нет-такого')).rejects.toThrow(/не найден/);
+  });
+
+  it('чужой график удалить нельзя', async () => {
+    const { firestore, service } = setup();
+    firestore.seed(COLLECTIONS.departments, 'dep-alien', {
+      organizationId: 'other-org',
+      name: 'Чужой отдел',
+      headId: null,
+    });
+    firestore.seed(COLLECTIONS.workSchedules, 'alien', {
+      departmentId: 'dep-alien',
+      userId: null,
+      startTime: '10:00',
+      endTime: '19:00',
+      graceMinutes: 5,
+      workdays: [1],
+      effectiveFrom: Timestamp.now(),
+      effectiveTo: null,
+    });
+
+    await expect(service.remove(admin, 'alien')).rejects.toThrow(/не найден/);
+  });
+
+  it('чужой график остаётся на месте после отказа', async () => {
+    const { firestore, service } = setup();
+    firestore.seed(COLLECTIONS.departments, 'dep-alien', {
+      organizationId: 'other-org',
+      name: 'Чужой отдел',
+      headId: null,
+    });
+    firestore.seed(COLLECTIONS.workSchedules, 'alien', {
+      departmentId: 'dep-alien',
+      userId: null,
+      startTime: '10:00',
+      endTime: '19:00',
+      graceMinutes: 5,
+      workdays: [1],
+      effectiveFrom: Timestamp.now(),
+      effectiveTo: null,
+    });
+
+    await service.remove(admin, 'alien').catch(() => undefined);
+
+    // Проверка принадлежности должна срабатывать до удаления, а не после.
+    expect(firestore.read(COLLECTIONS.workSchedules, 'alien')).toBeDefined();
+  });
+});
