@@ -113,3 +113,65 @@ describe('кто попадает в рейтинг', () => {
     expect(result.entries).toHaveLength(1);
   });
 });
+
+describe('область рейтинга по ролям', () => {
+  const twoDepartments = () => {
+    const context = setup();
+    seedMember(context.firestore, 'mop-1', { departmentId: 'dep-1' });
+    seedMember(context.firestore, 'mop-2', { departmentId: 'dep-2' });
+    return context;
+  };
+
+  it('менеджер видит рейтинг своего отдела', async () => {
+    const { service } = twoDepartments();
+
+    const result = await service.leaderboard(actor('MOP'), PERIOD.start, PERIOD.end);
+
+    // Соревноваться с соседним отделом бессмысленно: условия разные.
+    expect(result.departmentId).toBe('dep-1');
+    expect(result.entries.map((item) => item.userId)).toEqual(['mop-1']);
+  });
+
+  it('запрос чужого отдела подменяется своим, а не отклоняется', async () => {
+    const { service } = twoDepartments();
+
+    const result = await service.leaderboard(actor('MOP'), PERIOD.start, PERIOD.end, 'dep-2');
+
+    // Рейтинг — не то место, где уместна ошибка доступа.
+    expect(result.departmentId).toBe('dep-1');
+  });
+
+  it('директор по умолчанию видит компанию целиком', async () => {
+    const { service } = twoDepartments();
+
+    const result = await service.leaderboard(
+      actor('DIRECTOR', 'dir', { departmentId: null }),
+      PERIOD.start,
+      PERIOD.end,
+    );
+
+    expect(result.departmentId).toBeNull();
+    expect(result.entries).toHaveLength(2);
+  });
+
+  it('директор может сузить рейтинг до отдела', async () => {
+    const { service } = twoDepartments();
+
+    const result = await service.leaderboard(
+      actor('DIRECTOR', 'dir', { departmentId: null }),
+      PERIOD.start,
+      PERIOD.end,
+      'dep-2',
+    );
+
+    expect(result.entries.map((item) => item.userId)).toEqual(['mop-2']);
+  });
+
+  it('менеджер без отдела получает отказ', async () => {
+    const { service } = twoDepartments();
+
+    await expect(
+      service.leaderboard(actor('MOP', 'mop-1', { departmentId: null }), PERIOD.start, PERIOD.end),
+    ).rejects.toThrow(/не привязан к отделу/);
+  });
+});
