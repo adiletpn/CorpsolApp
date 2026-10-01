@@ -117,3 +117,44 @@ describe('кому принадлежит график', () => {
     ).rejects.toThrow(/Сотрудник не найден/);
   });
 });
+
+describe('границы смены', () => {
+  it('конец раньше начала отклоняется', async () => {
+    const { service } = setup();
+
+    await expect(
+      service.create(admin, { ...base, startTime: '18:00', endTime: '09:00' }),
+    ).rejects.toThrow(/позже начала/);
+  });
+
+  it('смена нулевой длины отклоняется', async () => {
+    const { service } = setup();
+
+    await expect(
+      service.create(admin, { ...base, startTime: '09:00', endTime: '09:00' }),
+    ).rejects.toThrow(/позже начала/);
+  });
+
+  it('ночная смена через полночь пока не принимается', async () => {
+    const { service } = setup();
+
+    // Расчёт опоздания считает минуты от начала суток: на графике
+    // 22:00–06:00 он посчитал бы приход в 22:00 опозданием на 16 часов.
+    await expect(
+      service.create(admin, { ...base, startTime: '22:00', endTime: '06:00' }),
+    ).rejects.toThrow(/Ночные смены/);
+  });
+
+  it('смена в пределах одних суток принимается', async () => {
+    const { service } = setup();
+
+    const schedule = await service.create(admin, {
+      ...base,
+      startTime: '08:30',
+      endTime: '23:59',
+    });
+
+    expect(schedule.startTime).toBe('08:30');
+    expect(schedule.endTime).toBe('23:59');
+  });
+});
