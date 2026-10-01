@@ -220,3 +220,60 @@ describe('дни недели', () => {
     expect(schedule.workdays).toEqual([7]);
   });
 });
+
+describe('срок действия графика', () => {
+  it('без указания действует с начала года', async () => {
+    const { service } = setup();
+
+    const schedule = await service.create(admin, base);
+
+    // График «с сегодня» не нашёлся бы при правке табеля за прошедшие дни,
+    // и опоздание молча записалось бы как приход вовремя.
+    const year = new Date().getUTCFullYear();
+    expect(schedule.effectiveFrom).toBe(`${year}-01-01T00:00:00.000Z`);
+  });
+
+  it('заданная дата начала сохраняется', async () => {
+    const { service } = setup();
+
+    const schedule = await service.create(admin, {
+      ...base,
+      effectiveFrom: '2026-03-01T00:00:00.000Z',
+    });
+
+    expect(schedule.effectiveFrom).toBe('2026-03-01T00:00:00.000Z');
+  });
+
+  it('бессрочный график не имеет даты окончания', async () => {
+    const { service } = setup();
+
+    const schedule = await service.create(admin, base);
+
+    expect(schedule.effectiveTo).toBeNull();
+  });
+
+  it('окончание раньше начала отклоняется', async () => {
+    const { service } = setup();
+
+    await expect(
+      service.create(admin, {
+        ...base,
+        effectiveFrom: '2026-06-01T00:00:00.000Z',
+        effectiveTo: '2026-03-01T00:00:00.000Z',
+      }),
+    ).rejects.toThrow(/раньше его начала/);
+  });
+
+  it('совпадение начала и окончания отклоняется', async () => {
+    const { service } = setup();
+
+    // График нулевой длительности не действует ни одного дня.
+    await expect(
+      service.create(admin, {
+        ...base,
+        effectiveFrom: '2026-06-01T00:00:00.000Z',
+        effectiveTo: '2026-06-01T00:00:00.000Z',
+      }),
+    ).rejects.toThrow(/раньше его начала/);
+  });
+});
