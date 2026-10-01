@@ -509,3 +509,46 @@ describe('порядок в списке', () => {
     expect(list.map((item) => item.fullName)).toEqual(['Айгерим', 'Болат', 'Ялта']);
   });
 });
+
+describe('карточка одного сотрудника', () => {
+  it('отдаётся своей организации', async () => {
+    const { firestore, service } = setup();
+    seedEmployee(firestore, 'mop-1', { fullName: 'Болат' });
+
+    const found = await service.findOne(actor('HR'), 'mop-1');
+
+    expect(found.fullName).toBe('Болат');
+  });
+
+  it('несуществующий сотрудник не найден', async () => {
+    const { service } = setup();
+
+    await expect(service.findOne(actor('HR'), 'нет-такого')).rejects.toThrow(/не найден/);
+  });
+
+  it('чужая организация отвечает «не найден», а не «нет доступа»', async () => {
+    const { firestore, service } = setup();
+    seedEmployee(firestore, 'alien', { organizationId: 'other-org' });
+
+    // Ответ «нет доступа» подтвердил бы, что такой сотрудник существует.
+    await expect(service.findOne(actor('HR'), 'alien')).rejects.toThrow(/не найден/);
+  });
+
+  it('руководитель не открывает карточку из чужого отдела', async () => {
+    const { firestore, service } = setup();
+    seedEmployee(firestore, 'mop-2', { departmentId: 'dep-2' });
+
+    await expect(
+      service.findOne(actor('ROP', 'rop-1', { departmentId: 'dep-1' }), 'mop-2'),
+    ).rejects.toThrow(/не из вашего отдела/);
+  });
+
+  it('оклад отдаётся в тиынах без округления', async () => {
+    const { firestore, service } = setup();
+    seedEmployee(firestore, 'mop-1', { baseSalaryMinor: 33_333_333 });
+
+    const found = await service.findOne(actor('HR'), 'mop-1');
+
+    expect(found.baseSalaryMinor).toBe(33_333_333);
+  });
+});
