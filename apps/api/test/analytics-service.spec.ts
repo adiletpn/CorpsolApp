@@ -496,3 +496,62 @@ describe('разбивка по сотрудникам', () => {
     ]);
   });
 });
+
+describe('признаки, требующие вмешательства', () => {
+  const chronicLateness = (firestore: FakeFirestore, userId: string) => {
+    for (let day = 1; day <= 10; day += 1) {
+      const date = `2026-09-${String(day).padStart(2, '0')}`;
+      seedDay(firestore, userId, date, day <= 6 ? 'LATE' : 'ON_TIME', 25);
+    }
+  };
+
+  it('поднимаются до уровня сотрудника', async () => {
+    const { firestore, service } = setup();
+    seedDepartment(firestore, 'dep-1', 'Продажи');
+    seedUser(firestore, 'mop-1');
+    chronicLateness(firestore, 'mop-1');
+
+    const stats = await service.department(
+      actor('ROP', 'rop-1', { departmentId: 'dep-1' }),
+      PERIOD.start,
+      PERIOD.end,
+    );
+
+    expect(stats.employees?.[0].risks.length).toBeGreaterThan(0);
+  });
+
+  it('поднимаются и до уровня отдела', async () => {
+    const { firestore, service } = setup();
+    seedDepartment(firestore, 'dep-1', 'Продажи');
+    seedUser(firestore, 'mop-1');
+    chronicLateness(firestore, 'mop-1');
+
+    // Руководитель видит проблему отдела, не разбирая каждого по отдельности.
+    const stats = await service.department(
+      actor('ROP', 'rop-1', { departmentId: 'dep-1' }),
+      PERIOD.start,
+      PERIOD.end,
+    );
+
+    expect(stats.risks.length).toBeGreaterThan(0);
+  });
+
+  it('при ровной работе список пуст', async () => {
+    const { firestore, service } = setup();
+    seedDepartment(firestore, 'dep-1', 'Продажи');
+    seedUser(firestore, 'mop-1');
+    for (let day = 1; day <= 10; day += 1) {
+      seedDay(firestore, 'mop-1', `2026-09-${String(day).padStart(2, '0')}`, 'ON_TIME');
+    }
+
+    const stats = await service.department(
+      actor('ROP', 'rop-1', { departmentId: 'dep-1' }),
+      PERIOD.start,
+      PERIOD.end,
+    );
+
+    // Ложные тревоги приучают руководителя их игнорировать.
+    expect(stats.employees?.[0].risks).toEqual([]);
+    expect(stats.risks).toEqual([]);
+  });
+});
