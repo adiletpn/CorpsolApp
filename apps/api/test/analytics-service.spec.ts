@@ -197,3 +197,78 @@ describe('выручка в сводке', () => {
     expect(stats.revenueMinor).toBe(250_000);
   });
 });
+
+describe('табель в показателях', () => {
+  it('разносит дни по видам', async () => {
+    const { firestore, service } = setup();
+    seedDepartment(firestore, 'dep-1', 'Продажи');
+    seedUser(firestore, 'mop-1');
+    seedDay(firestore, 'mop-1', '2026-09-01', 'ON_TIME');
+    seedDay(firestore, 'mop-1', '2026-09-02', 'ON_TIME');
+    seedDay(firestore, 'mop-1', '2026-09-03', 'LATE', 15);
+    seedDay(firestore, 'mop-1', '2026-09-04', 'ABSENT');
+
+    const stats = await service.department(
+      actor('ROP', 'rop-1', { departmentId: 'dep-1' }),
+      PERIOD.start,
+      PERIOD.end,
+    );
+
+    const employee = stats.employees?.[0];
+    // Пришёл трижды из четырёх, вовремя — дважды из трёх.
+    expect(employee?.rates.attendanceRate).toBeCloseTo(0.75);
+    expect(employee?.rates.punctualityRate).toBeCloseTo(2 / 3);
+    expect(employee?.rates.averageLateMinutes).toBe(15);
+  });
+
+  it('выходные и уважительные причины не портят показатели', async () => {
+    const { firestore, service } = setup();
+    seedDepartment(firestore, 'dep-1', 'Продажи');
+    seedUser(firestore, 'mop-1');
+    seedDay(firestore, 'mop-1', '2026-09-01', 'ON_TIME');
+    seedDay(firestore, 'mop-1', '2026-09-02', 'DAY_OFF');
+    seedDay(firestore, 'mop-1', '2026-09-03', 'EXCUSED');
+
+    // Иначе отпуск выглядел бы как прогул.
+    const stats = await service.department(
+      actor('ROP', 'rop-1', { departmentId: 'dep-1' }),
+      PERIOD.start,
+      PERIOD.end,
+    );
+
+    expect(stats.employees?.[0].rates.expectedDays).toBe(1);
+    expect(stats.employees?.[0].rates.attendanceRate).toBe(1);
+  });
+
+  it('дни за пределами периода не учитываются', async () => {
+    const { firestore, service } = setup();
+    seedDepartment(firestore, 'dep-1', 'Продажи');
+    seedUser(firestore, 'mop-1');
+    seedDay(firestore, 'mop-1', '2026-09-01', 'ON_TIME');
+    seedDay(firestore, 'mop-1', '2026-08-15', 'ABSENT');
+
+    const stats = await service.department(
+      actor('ROP', 'rop-1', { departmentId: 'dep-1' }),
+      PERIOD.start,
+      PERIOD.end,
+    );
+
+    expect(stats.employees?.[0].rates.expectedDays).toBe(1);
+    expect(stats.employees?.[0].rates.attendanceRate).toBe(1);
+  });
+
+  it('сотрудник без единой отметки не ломает расчёт', async () => {
+    const { firestore, service } = setup();
+    seedDepartment(firestore, 'dep-1', 'Продажи');
+    seedUser(firestore, 'mop-1');
+
+    const stats = await service.department(
+      actor('ROP', 'rop-1', { departmentId: 'dep-1' }),
+      PERIOD.start,
+      PERIOD.end,
+    );
+
+    // Деление на ноль здесь обрушило бы весь экран руководителя.
+    expect(stats.employees?.[0].rates.averageLateMinutes).toBe(0);
+  });
+});
