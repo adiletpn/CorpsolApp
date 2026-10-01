@@ -236,3 +236,28 @@ describe('учётная запись нового сотрудника', () => 
     expect(created.terminatedAt).toBeNull();
   });
 });
+
+describe('согласованность учётки и карточки', () => {
+  it('сбой записи карточки удаляет созданную учётку', async () => {
+    const { firestore, auth, service } = setup();
+    // Занимаем идентификатор, который выдаст Auth: запись карточки упадёт.
+    seedEmployee(firestore, 'uid-1');
+
+    await expect(service.create(actor('HR'), newEmployee)).rejects.toThrow();
+
+    // «Призрак» — учётка без карточки — пустил бы человека в систему,
+    // где его формально не существует.
+    expect(auth.record('uid-1')).toBeUndefined();
+  });
+
+  it('после отката адрес снова свободен', async () => {
+    const { firestore, service } = setup();
+    seedEmployee(firestore, 'uid-1');
+
+    await service.create(actor('HR'), newEmployee).catch(() => undefined);
+
+    // Если бы учётка осталась, завести сотрудника повторно было бы нельзя.
+    const retry = await service.create(actor('HR'), newEmployee);
+    expect(retry.email).toBe('nurlan@corpsol.kz');
+  });
+});
