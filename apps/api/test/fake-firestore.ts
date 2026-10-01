@@ -54,6 +54,10 @@ class FakeDocRef {
     this.store.set(this.id, { ...current, ...patch });
   }
 
+  async delete() {
+    this.store.delete(this.id);
+  }
+
   /** Падает, если документ уже существует — так Firestore защищает ключ. */
   async create(value: Document) {
     if (this.store.has(this.id)) {
