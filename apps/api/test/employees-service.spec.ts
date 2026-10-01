@@ -415,3 +415,43 @@ describe('ограничения увольнения', () => {
     expect(auth.record('mop-1')?.disabled).toBe(true);
   });
 });
+
+describe('кто кого видит в списке', () => {
+  const staffed = () => {
+    const context = setup();
+    seedEmployee(context.firestore, 'mop-1', { departmentId: 'dep-1', fullName: 'Болат' });
+    seedEmployee(context.firestore, 'mop-2', { departmentId: 'dep-2', fullName: 'Алия' });
+    seedEmployee(context.firestore, 'alien', { organizationId: 'other-org', fullName: 'Чужой' });
+    return context;
+  };
+
+  it('ЧР видит всю организацию', async () => {
+    const { service } = staffed();
+
+    const list = await service.list(actor('HR'));
+
+    expect(list).toHaveLength(2);
+  });
+
+  it('руководитель видит только свой отдел', async () => {
+    const { service } = staffed();
+
+    const list = await service.list(actor('ROP', 'rop-1', { departmentId: 'dep-1' }));
+
+    expect(list.map((item) => item.id)).toEqual(['mop-1']);
+  });
+
+  it('руководитель без отдела получает отказ, а не всю компанию', async () => {
+    const { service } = staffed();
+
+    await expect(service.list(actor('ROP', 'rop-1'))).rejects.toThrow(/не привязан к отделу/);
+  });
+
+  it('сотрудники чужой организации не попадают в список', async () => {
+    const { service } = staffed();
+
+    const list = await service.list(actor('SUPER_ADMIN'));
+
+    expect(list.some((item) => item.id === 'alien')).toBe(false);
+  });
+});
