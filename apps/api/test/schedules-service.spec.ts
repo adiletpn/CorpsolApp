@@ -277,3 +277,65 @@ describe('срок действия графика', () => {
     ).rejects.toThrow(/раньше его начала/);
   });
 });
+
+describe('список графиков', () => {
+  it('показывает имя владельца, а не идентификатор', async () => {
+    const { service } = setup();
+    await service.create(admin, base);
+
+    const [schedule] = await service.list(admin);
+
+    // В списке «dep-1» ничего не говорит администратору.
+    expect(schedule.ownerName).toBe('Продажи');
+  });
+
+  it('личный график подписан именем сотрудника', async () => {
+    const { service } = setup();
+    await service.create(admin, { ...base, departmentId: undefined, userId: 'mop-1' });
+
+    const [schedule] = await service.list(admin);
+
+    expect(schedule.ownerName).toBe('Болат Сериков');
+  });
+
+  it('графики чужой организации не видны', async () => {
+    const { firestore, service } = setup();
+    await service.create(admin, base);
+    firestore.seed(COLLECTIONS.workSchedules, 'alien', {
+      departmentId: 'dep-alien',
+      userId: null,
+      startTime: '10:00',
+      endTime: '19:00',
+      graceMinutes: 5,
+      workdays: [1],
+      effectiveFrom: Timestamp.now(),
+      effectiveTo: null,
+    });
+
+    // Коллекция графиков общая, организация определяется через владельца.
+    const list = await service.list(admin);
+
+    expect(list).toHaveLength(1);
+  });
+
+  it('сортируется по имени владельца', async () => {
+    const { firestore, service } = setup();
+    firestore.seed(COLLECTIONS.departments, 'dep-2', {
+      organizationId: ORG,
+      name: 'Аналитика',
+      headId: null,
+    });
+    await service.create(admin, base);
+    await service.create(admin, { ...base, departmentId: 'dep-2' });
+
+    const list = await service.list(admin);
+
+    expect(list.map((item) => item.ownerName)).toEqual(['Аналитика', 'Продажи']);
+  });
+
+  it('пустой список не ошибка', async () => {
+    const { service } = setup();
+
+    await expect(service.list(admin)).resolves.toEqual([]);
+  });
+});
