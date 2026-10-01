@@ -455,3 +455,43 @@ describe('кто кого видит в списке', () => {
     expect(list.some((item) => item.id === 'alien')).toBe(false);
   });
 });
+
+describe('уволенные в списке', () => {
+  const withFired = () => {
+    const context = setup();
+    seedEmployee(context.firestore, 'mop-1', { fullName: 'Болат' });
+    seedEmployee(context.firestore, 'mop-fired', {
+      fullName: 'Уволенный',
+      status: 'TERMINATED',
+      terminatedAt: Timestamp.fromDate(new Date('2026-08-01T00:00:00Z')),
+    });
+    return context;
+  };
+
+  it('по умолчанию скрыты', async () => {
+    const { service } = withFired();
+
+    const list = await service.list(actor('HR'));
+
+    // Рабочий список — про тех, кто работает сегодня.
+    expect(list.map((item) => item.id)).toEqual(['mop-1']);
+  });
+
+  it('по запросу показываются', async () => {
+    const { service } = withFired();
+
+    const list = await service.list(actor('HR'), true);
+
+    // История нужна для расчётов за прошлые периоды.
+    expect(list).toHaveLength(2);
+  });
+
+  it('дата увольнения отдаётся строкой', async () => {
+    const { service } = withFired();
+
+    const list = await service.list(actor('HR'), true);
+    const fired = list.find((item) => item.id === 'mop-fired');
+
+    expect(fired?.terminatedAt).toBe('2026-08-01T00:00:00.000Z');
+  });
+});
