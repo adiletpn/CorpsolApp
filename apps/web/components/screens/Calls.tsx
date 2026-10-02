@@ -70,6 +70,11 @@ export function Calls() {
   const employeeName = (userId: string): string =>
     employees.find((employee) => employee.id === userId)?.fullName ?? 'Сотрудник удалён';
 
+  // Доля состоявшихся разговоров: именно её смотрит руководитель,
+  // а не общее число набранных номеров.
+  const answerRate =
+    summary && summary.total > 0 ? Math.round((summary.answered / summary.total) * 100) : null;
+
   return (
     <div>
       <h1 style={styles.title}>Звонки</h1>
@@ -91,6 +96,11 @@ export function Calls() {
             label="Минут разговора"
             value={String(summary?.talkMinutes ?? 0)}
             hint="Без времени ожидания ответа"
+          />
+          <Stat
+            label="Дозвон"
+            value={answerRate === null ? '—' : `${answerRate}%`}
+            hint="Доля состоявшихся разговоров"
           />
         </StatsRow>
       </Card>
