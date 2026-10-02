@@ -32,4 +32,4 @@ jobs:
       - run: npm run typecheck
 
       # Тесты идут без эмулятора Firebase: Java в CI не нужна.
-      - run: npm test -w @corpsol/api
+      - run: npm test
