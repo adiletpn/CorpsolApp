@@ -190,3 +190,41 @@ describe('отбор ручных обходов контроля', () => {
     expect(events.some((item) => item.action === 'employee.create')).toBe(false);
   });
 });
+
+describe('порядок и объём выборки', () => {
+  const dated = () => {
+    const context = setup();
+    const days = ['2026-09-10', '2026-09-20', '2026-09-15', '2026-09-05'];
+    days.forEach((day, index) => {
+      seedEvent(context.firestore, `e${index}`, {
+        createdAt: Timestamp.fromDate(new Date(`${day}T10:00:00Z`)),
+      });
+    });
+    return context;
+  };
+
+  it('новые события идут первыми', async () => {
+    const { service } = dated();
+
+    const events = await service.list(director);
+
+    // Журнал открывают, чтобы увидеть последнее, а не самое старое.
+    expect(events.map((item) => item.createdAt.slice(0, 10))).toEqual([
+      '2026-09-20',
+      '2026-09-15',
+      '2026-09-10',
+      '2026-09-05',
+    ]);
+  });
+
+  it('ограничение отсекает хвост, а не начало', async () => {
+    const { service } = dated();
+
+    const events = await service.list(director, { limit: 2 });
+
+    expect(events.map((item) => item.createdAt.slice(0, 10))).toEqual([
+      '2026-09-20',
+      '2026-09-15',
+    ]);
+  });
+});
