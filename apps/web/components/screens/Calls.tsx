@@ -136,6 +136,7 @@ export function Calls() {
                 <th style={styles.head}>Направление</th>
                 <th style={styles.head}>Разговор</th>
                 <th style={styles.head}>Итог</th>
+                <th style={styles.head}>Запись</th>
               </tr>
             </thead>
             <tbody>
@@ -150,6 +151,20 @@ export function Calls() {
                     <Badge tone={STATUS_TONES[call.status]}>
                       {STATUS_LABELS[call.status]}
                     </Badge>
+                  </td>
+                  <td style={styles.cell}>
+                    {call.recordingUrl ? (
+                      <a
+                        href={call.recordingUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={styles.link}
+                      >
+                        Прослушать
+                      </a>
+                    ) : (
+                      '—'
+                    )}
                   </td>
                 </tr>
               ))}
@@ -173,4 +188,5 @@ const styles: Record<string, React.CSSProperties> = {
     borderBottom: '1px solid var(--border)',
   },
   cell: { padding: '10px', borderBottom: '1px solid var(--border)' },
+  link: { color: 'var(--accent)', textDecoration: 'none' },
 };
