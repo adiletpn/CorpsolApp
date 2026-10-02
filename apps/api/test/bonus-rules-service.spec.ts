@@ -1,0 +1,69 @@
+import { BonusRulesService } from '../src/payroll/bonus-rules.service';
+import { COLLECTIONS } from '../src/firestore/collections';
+import type { AuthenticatedUser } from '../src/common/decorators/current-user.decorator';
+import { FakeFirestore, fakeFirebase } from './fake-firestore';
+
+const ORG = 'org-1';
+
+const director = {
+  id: 'dir-1',
+  organizationId: ORG,
+  email: 'dir@corpsol.kz',
+  role: 'DIRECTOR',
+  departmentId: null,
+  officeId: null,
+  deviceId: null,
+} as AuthenticatedUser;
+
+const base = {
+  kind: 'ATTENDANCE' as const,
+  threshold: 0,
+  amountMinor: 500_000,
+  percentBps: 0,
+};
+
+function setup() {
+  const firestore = new FakeFirestore();
+  return { firestore, service: new BonusRulesService(fakeFirebase(firestore)) };
+}
+
+describe('правило должно что-то начислять', () => {
+  it('без суммы и без процента не заводится', async () => {
+    const { service } = setup();
+
+    // Молчаливое правило-пустышка потом ищут часами: премия не начислилась,
+    // а правило вроде бы есть.
+    await expect(
+      service.create(director, { ...base, amountMinor: 0, percentBps: 0 }),
+    ).rejects.toThrow(/без суммы и без процента/);
+  });
+
+  it('фиксированная сумма принимается', async () => {
+    const { service } = setup();
+
+    const rule = await service.create(director, base);
+
+    expect(rule.amountMinor).toBe(500_000);
+  });
+
+  it('один процент без суммы принимается', async () => {
+    const { service } = setup();
+
+    const rule = await service.create(director, {
+      ...base,
+      amountMinor: 0,
+      percentBps: 1_000,
+    });
+
+    expect(rule.percentBps).toBe(1_000);
+  });
+
+  it('сумма и процент вместе допустимы', async () => {
+    const { service } = setup();
+
+    const rule = await service.create(director, { ...base, percentBps: 500 });
+
+    expect(rule.amountMinor).toBe(500_000);
+    expect(rule.percentBps).toBe(500);
+  });
+});
