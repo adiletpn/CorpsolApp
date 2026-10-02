@@ -232,3 +232,11 @@ export interface CallSummary {
   answered: number;
   talkMinutes: number;
 }
+
+export interface WorkNumberLink {
+  id: string;
+  userId: string;
+  fullName: string;
+  provider: 'KCELL' | 'BITRIX';
+  workNumber: string;
+}
