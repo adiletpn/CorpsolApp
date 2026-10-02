@@ -73,3 +73,52 @@ describe('формат рабочего номера', () => {
     await expect(service.link(admin, 'mop-1', '', 'KCELL')).rejects.toThrow();
   });
 });
+
+describe('один номер — один сотрудник', () => {
+  it('занятый номер не перевешивается на другого', async () => {
+    const { service } = setup();
+    await service.link(admin, 'mop-1', '+77071112233', 'KCELL');
+
+    // Иначе звонки первого сотрудника задним числом ушли бы второму.
+    await expect(
+      service.link(admin, 'mop-2', '+77071112233', 'KCELL'),
+    ).rejects.toThrow(/уже закреплён за другим/);
+  });
+
+  it('повторная привязка к тому же сотруднику проходит', async () => {
+    const { service } = setup();
+    await service.link(admin, 'mop-1', '+77071112233', 'KCELL');
+
+    const link = await service.link(admin, 'mop-1', '+77071112233', 'KCELL');
+
+    expect(link.userId).toBe('mop-1');
+  });
+
+  it('один номер в разных источниках — разные привязки', async () => {
+    const { firestore, service } = setup();
+
+    await service.link(admin, 'mop-1', '+77071112233', 'KCELL');
+    await service.link(admin, 'mop-2', '+77071112233', 'BITRIX');
+
+    // Нумерация Kcell и Bitrix24 независимы, пересечение случайно.
+    expect(firestore.all(COLLECTIONS.externalIdentities)).toHaveLength(2);
+  });
+
+  it('у сотрудника может быть несколько номеров', async () => {
+    const { service } = setup();
+
+    await service.link(admin, 'mop-1', '+77071112233', 'KCELL');
+    await service.link(admin, 'mop-1', '+77071112244', 'KCELL');
+
+    const links = await service.list(admin);
+    expect(links.filter((item) => item.userId === 'mop-1')).toHaveLength(2);
+  });
+
+  it('номер нельзя закрепить за чужим сотрудником', async () => {
+    const { service } = setup();
+
+    await expect(
+      service.link(admin, 'alien', '+77071112233', 'KCELL'),
+    ).rejects.toThrow(/не найден/);
+  });
+});
