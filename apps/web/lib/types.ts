@@ -211,3 +211,24 @@ export interface LeaderboardResult {
   entries: RankedEntry[];
   self: RankedEntry | null;
 }
+
+export interface Call {
+  id: string;
+  userId: string;
+  source: 'KCELL' | 'BITRIX';
+  direction: 'INBOUND' | 'OUTBOUND';
+  status: 'ANSWERED' | 'NO_ANSWER' | 'BUSY' | 'FAILED';
+  clientPhone: string;
+  callDate: string;
+  startedAt: string;
+  durationSeconds: number;
+  /** Время разговора без ожидания ответа — по нему считают нагрузку. */
+  talkSeconds: number;
+  recordingUrl: string | null;
+}
+
+export interface CallSummary {
+  total: number;
+  answered: number;
+  talkMinutes: number;
+}
