@@ -25,3 +25,20 @@ export function formatMoney(amountMinor: number): string {
 export function formatPercent(rate: number): string {
   return `${Math.round(rate * 100)}%`;
 }
+
+/**
+ * Длительность разговора в виде «7 мин 30 с».
+ *
+ * Секунды показываем всегда: у звонков в колл-центре разница между
+ * сорока секундами и двумя минутами — это разница между сбросом и разговором.
+ */
+export function formatDuration(totalSeconds: number): string {
+  if (totalSeconds <= 0) return '—';
+
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  if (minutes === 0) return `${seconds} с`;
+  if (seconds === 0) return `${minutes} мин`;
+  return `${minutes} мин ${seconds} с`;
+}
