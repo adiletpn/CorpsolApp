@@ -67,3 +67,51 @@ describe('правило должно что-то начислять', () => {
     expect(rule.percentBps).toBe(500);
   });
 });
+
+describe('метрика у правил по показателям', () => {
+  it('выполнение плана без метрики не заводится', async () => {
+    const { service } = setup();
+
+    // Непонятно, что считать выполненным: звонки, выручку или сделки.
+    await expect(
+      service.create(director, { ...base, kind: 'PLAN_COMPLETION', threshold: 100 }),
+    ).rejects.toThrow(/нужно указать метрику/);
+  });
+
+  it('оплата за единицу без метрики не заводится', async () => {
+    const { service } = setup();
+
+    await expect(
+      service.create(director, { ...base, kind: 'PER_UNIT' }),
+    ).rejects.toThrow(/нужно указать метрику/);
+  });
+
+  it('с метрикой заводится', async () => {
+    const { service } = setup();
+
+    const rule = await service.create(director, {
+      ...base,
+      kind: 'PLAN_COMPLETION',
+      metric: 'REVENUE',
+      threshold: 100,
+    });
+
+    expect(rule.metric).toBe('REVENUE');
+  });
+
+  it('правилу за посещаемость метрика не нужна', async () => {
+    const { service } = setup();
+
+    const rule = await service.create(director, base);
+
+    expect(rule.metric).toBeNull();
+  });
+
+  it('штрафу за опоздание метрика не нужна', async () => {
+    const { service } = setup();
+
+    const rule = await service.create(director, { ...base, kind: 'LATE_PENALTY' });
+
+    expect(rule.kind).toBe('LATE_PENALTY');
+  });
+});
