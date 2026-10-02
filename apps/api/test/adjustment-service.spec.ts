@@ -369,3 +369,78 @@ describe('ручная правка видна в записи', () => {
     expect(record(firestore)?.officeId).toBe('office-1');
   });
 });
+
+describe('повторная правка того же дня', () => {
+  const docId = attendanceDocId('mop-1', WORK_DATE);
+
+  const seedExisting = (firestore: FakeFirestore, fields: Record<string, unknown> = {}) => {
+    firestore.seed(COLLECTIONS.attendance, docId, {
+      userId: 'mop-1',
+      organizationId: ORG,
+      departmentId: 'dep-1',
+      officeId: 'office-1',
+      terminalId: 'terminal-1',
+      workDate: WORK_DATE,
+      checkInAt: Timestamp.fromDate(new Date(almaty('09:40'))),
+      checkOutAt: Timestamp.fromDate(new Date(almaty('18:05'))),
+      status: 'LATE',
+      lateMinutes: 35,
+      method: 'QR_SCAN',
+      lat: 43.2,
+      lng: 76.8,
+      accuracyMeters: 12,
+      distanceMeters: 30,
+      wifiBssid: null,
+      isMocked: false,
+      adjustedBy: null,
+      adjustNote: null,
+      createdAt: Timestamp.fromDate(new Date('2026-09-15T04:40:00Z')),
+      ...fields,
+    });
+  };
+
+  it('перезаписывает день, а не создаёт второй', async () => {
+    const { firestore, service } = setup();
+    seedExisting(firestore);
+
+    await service.adjust(actor('ROP'), 'mop-1', {
+      workDate: WORK_DATE,
+      status: 'EXCUSED',
+      reason: 'Предоставил справку',
+    });
+
+    // Двух записей за один день у сотрудника быть не может.
+    expect(firestore.all(COLLECTIONS.attendance)).toHaveLength(1);
+    expect(firestore.read(COLLECTIONS.attendance, docId)?.status).toBe('EXCUSED');
+  });
+
+  it('сохраняет время ухода', async () => {
+    const { firestore, service } = setup();
+    seedExisting(firestore);
+
+    await service.adjust(actor('ROP'), 'mop-1', {
+      workDate: WORK_DATE,
+      status: 'EXCUSED',
+      reason: 'Предоставил справку',
+    });
+
+    // Уход сотрудник отмечал сам — правка прихода не должна его стирать.
+    expect(firestore.read(COLLECTIONS.attendance, docId)?.checkOutAt).toBeDefined();
+  });
+
+  it('сохраняет дату появления записи', async () => {
+    const { firestore, service } = setup();
+    seedExisting(firestore);
+
+    await service.adjust(actor('ROP'), 'mop-1', {
+      workDate: WORK_DATE,
+      status: 'EXCUSED',
+      reason: 'Предоставил справку',
+    });
+
+    const saved = firestore.read(COLLECTIONS.attendance, docId) as {
+      createdAt: Timestamp;
+    };
+    expect(saved.createdAt.toDate().toISOString()).toBe('2026-09-15T04:40:00.000Z');
+  });
+});
