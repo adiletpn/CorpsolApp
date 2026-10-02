@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 
 import { query, request } from '../../lib/api';
-import { currentMonth } from '../../lib/period';
+import { currentMonth, formatDuration, formatPhone } from '../../lib/period';
 import type { Call, CallSummary } from '../../lib/types';
 import { Badge, Card, Empty, ErrorText, Stat, StatsRow } from '../ui';
 
@@ -82,7 +82,34 @@ export function Calls() {
         {calls.length === 0 ? (
           <Empty>За выбранный период звонков нет</Empty>
         ) : (
-          <p style={styles.period}>Загружено звонков: {calls.length}</p>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={styles.head}>Дата</th>
+                <th style={styles.head}>Сотрудник</th>
+                <th style={styles.head}>Клиент</th>
+                <th style={styles.head}>Направление</th>
+                <th style={styles.head}>Разговор</th>
+                <th style={styles.head}>Итог</th>
+              </tr>
+            </thead>
+            <tbody>
+              {calls.map((call) => (
+                <tr key={call.id}>
+                  <td style={styles.cell}>{call.callDate}</td>
+                  <td style={styles.cell}>{call.userId}</td>
+                  <td style={styles.cell}>{formatPhone(call.clientPhone)}</td>
+                  <td style={styles.cell}>{DIRECTION_LABELS[call.direction]}</td>
+                  <td style={styles.cell}>{formatDuration(call.talkSeconds)}</td>
+                  <td style={styles.cell}>
+                    <Badge tone={STATUS_TONES[call.status]}>
+                      {STATUS_LABELS[call.status]}
+                    </Badge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </Card>
     </div>
@@ -92,4 +119,13 @@ export function Calls() {
 const styles: Record<string, React.CSSProperties> = {
   title: { fontSize: 26, margin: '0 0 4px' },
   period: { color: 'var(--text-muted)', fontSize: 14, margin: '0 0 24px' },
+  table: { width: '100%', borderCollapse: 'collapse', fontSize: 14 },
+  head: {
+    textAlign: 'left',
+    padding: '8px 10px',
+    color: 'var(--text-muted)',
+    fontWeight: 500,
+    borderBottom: '1px solid var(--border)',
+  },
+  cell: { padding: '10px', borderBottom: '1px solid var(--border)' },
 };
