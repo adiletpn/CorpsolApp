@@ -149,3 +149,88 @@ describe('кто вправе править табель', () => {
     ).rejects.toThrow(/не найден/);
   });
 });
+
+describe('опоздание считается по графику, а не со слов', () => {
+  it('поздний приход остаётся опозданием, даже если просят «вовремя»', async () => {
+    const { firestore, service } = setup();
+    seedSchedule(firestore);
+
+    const result = await service.adjust(actor('ROP'), 'mop-1', {
+      workDate: WORK_DATE,
+      checkInAt: almaty('09:40'),
+      status: 'ON_TIME',
+      reason: 'Просили поставить вовремя',
+    });
+
+    // Иначе правка табеля превращается в способ списать опоздания.
+    expect(result.status).toBe('LATE');
+    expect(result.lateMinutes).toBe(35);
+  });
+
+  it('приход внутри допуска считается вовремя', async () => {
+    const { firestore, service } = setup();
+    seedSchedule(firestore);
+
+    const result = await service.adjust(actor('ROP'), 'mop-1', {
+      workDate: WORK_DATE,
+      checkInAt: almaty('09:05'),
+      reason: 'Сбой терминала',
+    });
+
+    expect(result.status).toBe('ON_TIME');
+    expect(result.lateMinutes).toBe(0);
+  });
+
+  it('минута сверх допуска уже опоздание', async () => {
+    const { firestore, service } = setup();
+    seedSchedule(firestore);
+
+    const result = await service.adjust(actor('ROP'), 'mop-1', {
+      workDate: WORK_DATE,
+      checkInAt: almaty('09:06'),
+      reason: 'Сбой терминала',
+    });
+
+    expect(result.status).toBe('LATE');
+    expect(result.lateMinutes).toBe(1);
+  });
+
+  it('ранний приход опозданием не считается', async () => {
+    const { firestore, service } = setup();
+    seedSchedule(firestore);
+
+    const result = await service.adjust(actor('ROP'), 'mop-1', {
+      workDate: WORK_DATE,
+      checkInAt: almaty('08:30'),
+      reason: 'Сбой терминала',
+    });
+
+    // Отрицательных минут опоздания быть не может.
+    expect(result.status).toBe('ON_TIME');
+    expect(result.lateMinutes).toBe(0);
+  });
+
+  it('личный график имеет приоритет над отдельским', async () => {
+    const { firestore, service } = setup();
+    seedSchedule(firestore);
+    firestore.seed(COLLECTIONS.workSchedules, 'schedule-personal', {
+      departmentId: null,
+      userId: 'mop-1',
+      startTime: '11:00',
+      endTime: '20:00',
+      graceMinutes: 5,
+      workdays: [1, 2, 3, 4, 5],
+      effectiveFrom: Timestamp.fromDate(new Date('2026-01-01T00:00:00Z')),
+      effectiveTo: null,
+    });
+
+    const result = await service.adjust(actor('ROP'), 'mop-1', {
+      workDate: WORK_DATE,
+      checkInAt: almaty('10:30'),
+      reason: 'Сбой терминала',
+    });
+
+    // По графику отдела это опоздание на полтора часа, по личному — приход раньше.
+    expect(result.status).toBe('ON_TIME');
+  });
+});
