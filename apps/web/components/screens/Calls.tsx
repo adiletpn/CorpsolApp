@@ -26,6 +26,11 @@ const DIRECTION_LABELS: Record<Call['direction'], string> = {
   OUTBOUND: 'Исходящий',
 };
 
+const SOURCE_LABELS: Record<Call['source'], string> = {
+  KCELL: 'Kcell',
+  BITRIX: 'Bitrix24',
+};
+
 export function Calls() {
   const [summary, setSummary] = useState<CallSummary | null>(null);
   const [calls, setCalls] = useState<Call[]>([]);
@@ -131,6 +136,7 @@ export function Calls() {
             <thead>
               <tr>
                 <th style={styles.head}>Дата</th>
+                <th style={styles.head}>Источник</th>
                 <th style={styles.head}>Сотрудник</th>
                 <th style={styles.head}>Клиент</th>
                 <th style={styles.head}>Направление</th>
@@ -143,6 +149,7 @@ export function Calls() {
               {calls.map((call) => (
                 <tr key={call.id}>
                   <td style={styles.cell}>{call.callDate}</td>
+                  <td style={styles.cell}>{SOURCE_LABELS[call.source]}</td>
                   <td style={styles.cell}>{employeeName(call.userId)}</td>
                   <td style={styles.cell}>{formatPhone(call.clientPhone)}</td>
                   <td style={styles.cell}>{DIRECTION_LABELS[call.direction]}</td>
