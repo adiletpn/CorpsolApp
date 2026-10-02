@@ -444,3 +444,105 @@ describe('повторная правка того же дня', () => {
     expect(saved.createdAt.toDate().toISOString()).toBe('2026-09-15T04:40:00.000Z');
   });
 });
+
+describe('след правки в журнале', () => {
+  const events = (firestore: FakeFirestore) => firestore.all(COLLECTIONS.auditEvents);
+
+  it('каждая правка записывается', async () => {
+    const { firestore, service } = setup();
+
+    await service.adjust(actor('ROP'), 'mop-1', {
+      workDate: WORK_DATE,
+      reason: 'Сбой терминала',
+    });
+
+    expect(events(firestore)).toHaveLength(1);
+    expect(events(firestore)[0].action).toBe('attendance.adjust');
+  });
+
+  it('запись хранит автора, сотрудника и причину', async () => {
+    const { firestore, service } = setup();
+
+    await service.adjust(actor('ROP'), 'mop-1', {
+      workDate: WORK_DATE,
+      reason: 'Терминал был обесточен',
+    });
+
+    const [event] = events(firestore);
+    expect(event.actorId).toBe('rop-1');
+    expect(event.metadata).toMatchObject({
+      userId: 'mop-1',
+      workDate: WORK_DATE,
+      reason: 'Терминал был обесточен',
+    });
+  });
+
+  it('сохраняет, каким статус был до правки', async () => {
+    const { firestore, service } = setup();
+    firestore.seed(COLLECTIONS.attendance, attendanceDocId('mop-1', WORK_DATE), {
+      userId: 'mop-1',
+      organizationId: ORG,
+      departmentId: 'dep-1',
+      workDate: WORK_DATE,
+      status: 'ABSENT',
+      lateMinutes: 0,
+      checkOutAt: null,
+      createdAt: Timestamp.now(),
+    });
+
+    await service.adjust(actor('ROP'), 'mop-1', {
+      workDate: WORK_DATE,
+      status: 'EXCUSED',
+      reason: 'Предоставил справку',
+    });
+
+    // Без прежнего статуса непонятно, что именно изменила правка.
+    expect(events(firestore)[0].metadata).toMatchObject({
+      previousStatus: 'ABSENT',
+      status: 'EXCUSED',
+    });
+  });
+
+  it('у первой правки прежнего статуса нет', async () => {
+    const { firestore, service } = setup();
+
+    await service.adjust(actor('ROP'), 'mop-1', {
+      workDate: WORK_DATE,
+      reason: 'Сбой терминала',
+    });
+
+    expect(events(firestore)[0].metadata).toMatchObject({ previousStatus: null });
+  });
+
+  it('запись помечена организацией', async () => {
+    const { firestore, service } = setup();
+
+    await service.adjust(actor('ROP'), 'mop-1', {
+      workDate: WORK_DATE,
+      reason: 'Сбой терминала',
+    });
+
+    expect(events(firestore)[0].organizationId).toBe(ORG);
+  });
+
+  it('отказ не оставляет записи в журнале', async () => {
+    const { firestore, service } = setup();
+    firestore.seed(COLLECTIONS.users, 'mop-2', {
+      organizationId: ORG,
+      fullName: 'Чужой подчинённый',
+      email: 'mop-2@corpsol.kz',
+      role: 'MOP',
+      status: 'ACTIVE',
+      departmentId: 'dep-2',
+      officeId: null,
+      baseSalaryMinor: 0,
+    });
+
+    await service
+      .adjust(actor('ROP'), 'mop-2', { workDate: WORK_DATE, reason: 'Просьба' })
+      .catch(() => undefined);
+
+    // Журнал несостоявшихся попыток ввёл бы в заблуждение при разборе.
+    expect(events(firestore)).toHaveLength(0);
+  });
+});
