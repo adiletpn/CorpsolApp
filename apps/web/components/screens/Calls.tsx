@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 
 import { query, request } from '../../lib/api';
 import { currentMonth, formatDuration, formatPhone } from '../../lib/period';
-import type { Call, CallSummary } from '../../lib/types';
+import type { Call, CallSummary, Employee } from '../../lib/types';
 import { Badge, Card, Empty, ErrorText, Stat, StatsRow } from '../ui';
 
 const STATUS_LABELS: Record<Call['status'], string> = {
@@ -29,6 +29,7 @@ const DIRECTION_LABELS: Record<Call['direction'], string> = {
 export function Calls() {
   const [summary, setSummary] = useState<CallSummary | null>(null);
   const [calls, setCalls] = useState<Call[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const period = currentMonth();
@@ -37,13 +38,15 @@ export function Calls() {
     setError(null);
     try {
       const range = query({ from: period.from, to: period.to });
-      const [result, list] = await Promise.all([
+      const [result, list, staff] = await Promise.all([
         request<CallSummary>(`/calls/summary${range}`),
         request<Call[]>(`/calls${range}`),
+        request<Employee[]>('/employees'),
       ]);
 
       setSummary(result);
       setCalls(list);
+      setEmployees(staff);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Не удалось загрузить звонки');
     }
@@ -52,6 +55,11 @@ export function Calls() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Звонки приходят с идентификатором сотрудника: Firestore не умеет join,
+  // а в таблице нужно имя.
+  const employeeName = (userId: string): string =>
+    employees.find((employee) => employee.id === userId)?.fullName ?? 'Сотрудник удалён';
 
   return (
     <div>
@@ -97,7 +105,7 @@ export function Calls() {
               {calls.map((call) => (
                 <tr key={call.id}>
                   <td style={styles.cell}>{call.callDate}</td>
-                  <td style={styles.cell}>{call.userId}</td>
+                  <td style={styles.cell}>{employeeName(call.userId)}</td>
                   <td style={styles.cell}>{formatPhone(call.clientPhone)}</td>
                   <td style={styles.cell}>{DIRECTION_LABELS[call.direction]}</td>
                   <td style={styles.cell}>{formatDuration(call.talkSeconds)}</td>
