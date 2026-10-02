@@ -7,7 +7,7 @@ import { query, request } from '../../lib/api';
 import { currentMonth, formatMoney, formatPercent } from '../../lib/period';
 import { useSession } from '../../lib/session';
 import type { CompanyStats, DepartmentStats, RiskFlag } from '../../lib/types';
-import { Badge, Card, Empty, ErrorText } from '../ui';
+import { Badge, Card, Empty, ErrorText, Stat, StatsRow } from '../ui';
 
 function Risks({ risks }: { risks: RiskFlag[] }) {
   if (risks.length === 0) return <Badge tone="success">Без замечаний</Badge>;
@@ -19,16 +19,6 @@ function Risks({ risks }: { risks: RiskFlag[] }) {
           {risk.message}
         </Badge>
       ))}
-    </div>
-  );
-}
-
-function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div style={styles.stat}>
-      <div style={styles.statValue}>{value}</div>
-      <div style={styles.statLabel}>{label}</div>
-      {hint ? <div style={styles.statHint}>{hint}</div> : null}
     </div>
   );
 }
@@ -104,7 +94,7 @@ export function Overview() {
       </p>
 
       <Card>
-        <div style={styles.statsRow}>
+        <StatsRow>
           <Stat
             label="Сотрудников"
             value={String(company ? company.headcount : department?.headcount ?? 0)}
@@ -121,7 +111,7 @@ export function Overview() {
           />
           <Stat label="Сделок принято" value={String(stats.acceptedOffers)} />
           <Stat label="Выручка" value={formatMoney(stats.revenueMinor)} />
-        </div>
+        </StatsRow>
       </Card>
 
       {company ? (
@@ -196,17 +186,6 @@ export function Overview() {
 const styles: Record<string, React.CSSProperties> = {
   title: { fontSize: 26, margin: '0 0 4px' },
   period: { color: 'var(--text-muted)', fontSize: 14, margin: '0 0 24px' },
-  statsRow: { display: 'flex', gap: 16, flexWrap: 'wrap' },
-  stat: {
-    background: 'var(--surface-muted)',
-    borderRadius: 12,
-    padding: 16,
-    minWidth: 150,
-    flex: 1,
-  },
-  statValue: { fontSize: 26, fontWeight: 700 },
-  statLabel: { fontSize: 13, color: 'var(--text-muted)', marginTop: 2 },
-  statHint: { fontSize: 11, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.4 },
   table: { width: '100%', borderCollapse: 'collapse', fontSize: 14 },
   head: {
     textAlign: 'left',
