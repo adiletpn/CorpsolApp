@@ -170,3 +170,49 @@ describe('список привязок', () => {
     await expect(service.list(admin)).resolves.toEqual([]);
   });
 });
+
+describe('снятие привязки', () => {
+  it('освобождает номер под другого сотрудника', async () => {
+    const { service } = setup();
+    await service.link(admin, 'mop-1', '+77071112233', 'KCELL');
+
+    await service.unlink(admin, 'KCELL', '+77071112233');
+
+    // Сотрудник уволился — его рабочий номер передают преемнику.
+    const link = await service.link(admin, 'mop-2', '+77071112233', 'KCELL');
+    expect(link.userId).toBe('mop-2');
+  });
+
+  it('принимает номер в любой записи', async () => {
+    const { firestore, service } = setup();
+    await service.link(admin, 'mop-1', '+77071112233', 'KCELL');
+
+    await service.unlink(admin, 'KCELL', '8 707 111 22 33');
+
+    expect(firestore.all(COLLECTIONS.externalIdentities)).toHaveLength(0);
+  });
+
+  it('несуществующая привязка не найдена', async () => {
+    const { service } = setup();
+
+    await expect(service.unlink(admin, 'KCELL', '+77079998877')).rejects.toThrow(
+      /не найдена/,
+    );
+  });
+
+  it('чужую привязку снять нельзя', async () => {
+    const { firestore, service } = setup();
+    const id = externalIdentityDocId('KCELL', '+77079998877');
+    firestore.seed(COLLECTIONS.externalIdentities, id, {
+      userId: 'alien',
+      provider: 'KCELL',
+      externalKey: '+77079998877',
+      organizationId: 'other-org',
+    });
+
+    await expect(service.unlink(admin, 'KCELL', '+77079998877')).rejects.toThrow(
+      /не найдена/,
+    );
+    expect(firestore.read(COLLECTIONS.externalIdentities, id)).toBeDefined();
+  });
+});
