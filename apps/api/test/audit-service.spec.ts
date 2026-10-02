@@ -138,3 +138,55 @@ describe('кто автор действия', () => {
     expect(events.every((item) => item.actor?.fullName === 'Айгерим Нурланова')).toBe(true);
   });
 });
+
+describe('отбор ручных обходов контроля', () => {
+  const mixed = () => {
+    const context = setup();
+    seedEvent(context.firestore, 'adjust', { action: 'attendance.adjust' });
+    seedEvent(context.firestore, 'unbind', { action: 'device.unbind' });
+    seedEvent(context.firestore, 'terminate', { action: 'employee.terminate' });
+    seedEvent(context.firestore, 'create', { action: 'employee.create' });
+    seedEvent(context.firestore, 'update', { action: 'employee.update' });
+    return context;
+  };
+
+  it('показывает только обходы автоматического контроля', async () => {
+    const { service } = mixed();
+
+    const events = await service.list(director, { sensitiveOnly: true });
+
+    // Смысл системы — автоматический контроль. Ручные обходы — то,
+    // ради чего журнал вообще заведён.
+    expect(events.map((item) => item.action).sort()).toEqual([
+      'attendance.adjust',
+      'device.unbind',
+      'employee.terminate',
+    ]);
+  });
+
+  it('без отбора показывает всё', async () => {
+    const { service } = mixed();
+
+    const events = await service.list(director);
+
+    expect(events).toHaveLength(5);
+  });
+
+  it('отбор по конкретному действию', async () => {
+    const { service } = mixed();
+
+    const events = await service.list(director, { action: 'device.unbind' });
+
+    expect(events).toHaveLength(1);
+    expect(events[0].action).toBe('device.unbind');
+  });
+
+  it('заведение сотрудника обходом не считается', async () => {
+    const { service } = mixed();
+
+    const events = await service.list(director, { sensitiveOnly: true });
+
+    // Приём на работу идёт обычным порядком и внимания не требует.
+    expect(events.some((item) => item.action === 'employee.create')).toBe(false);
+  });
+});
