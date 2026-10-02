@@ -11,6 +11,7 @@ import { Settings } from '../components/screens/Settings';
 import { Integrations } from '../components/screens/Integrations';
 import { Plans } from '../components/screens/Plans';
 import { Calls } from '../components/screens/Calls';
+import { WorkNumbers } from '../components/screens/WorkNumbers';
 import { Offers } from '../components/screens/Offers';
 import { Payroll } from '../components/screens/Payroll';
 import { Leaderboard } from '../components/screens/Leaderboard';
@@ -32,6 +33,7 @@ function Panel() {
     plans: <Plans />,
     offers: <Offers />,
     calls: <Calls />,
+    'work-numbers': <WorkNumbers />,
     payroll: <Payroll />,
     leaderboard: <Leaderboard />,
     audit: <Audit />,
