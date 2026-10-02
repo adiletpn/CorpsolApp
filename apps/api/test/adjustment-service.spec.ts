@@ -234,3 +234,77 @@ describe('опоздание считается по графику, а не с�
     expect(result.status).toBe('ON_TIME');
   });
 });
+
+describe('дни без прихода', () => {
+  it('без времени прихода день считается прогулом', async () => {
+    const { firestore, service } = setup();
+    seedSchedule(firestore);
+
+    const result = await service.adjust(actor('ROP'), 'mop-1', {
+      workDate: WORK_DATE,
+      reason: 'Не вышел на смену',
+    });
+
+    expect(result.status).toBe('ABSENT');
+    expect(result.lateMinutes).toBe(0);
+  });
+
+  it('уважительная причина проставляется явно', async () => {
+    const { firestore, service } = setup();
+    seedSchedule(firestore);
+
+    const result = await service.adjust(actor('ROP'), 'mop-1', {
+      workDate: WORK_DATE,
+      status: 'EXCUSED',
+      reason: 'Больничный лист',
+    });
+
+    expect(result.status).toBe('EXCUSED');
+  });
+
+  it('уважительная причина не даёт опоздания даже при позднем приходе', async () => {
+    const { firestore, service } = setup();
+    seedSchedule(firestore);
+
+    const result = await service.adjust(actor('ROP'), 'mop-1', {
+      workDate: WORK_DATE,
+      checkInAt: almaty('14:00'),
+      status: 'EXCUSED',
+      reason: 'Приём у врача по согласованию',
+    });
+
+    // Согласованный поздний приход — не опоздание, иначе штраф за визит к врачу.
+    expect(result.status).toBe('EXCUSED');
+    expect(result.lateMinutes).toBe(0);
+  });
+
+  it('выходной остаётся выходным', async () => {
+    const { firestore, service } = setup();
+    seedSchedule(firestore);
+
+    const result = await service.adjust(actor('ROP'), 'mop-1', {
+      workDate: WORK_DATE,
+      checkInAt: almaty('12:00'),
+      status: 'DAY_OFF',
+      reason: 'Зашёл за документами в выходной',
+    });
+
+    expect(result.status).toBe('DAY_OFF');
+    expect(result.lateMinutes).toBe(0);
+  });
+
+  it('приход в нерабочий день графика не становится опозданием', async () => {
+    const { firestore, service } = setup();
+    // 15 сентября 2026 — вторник, исключаем его из рабочих дней.
+    seedSchedule(firestore, { workdays: [1, 3, 4, 5] });
+
+    const result = await service.adjust(actor('ROP'), 'mop-1', {
+      workDate: WORK_DATE,
+      checkInAt: almaty('13:00'),
+      reason: 'Вышел подменить коллегу',
+    });
+
+    expect(result.status).toBe('DAY_OFF');
+    expect(result.lateMinutes).toBe(0);
+  });
+});
