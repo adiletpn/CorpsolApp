@@ -5,7 +5,26 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { query, request } from '../../lib/api';
 import { currentMonth } from '../../lib/period';
 import type { Call, CallSummary } from '../../lib/types';
-import { Card, Empty, ErrorText, Stat, StatsRow } from '../ui';
+import { Badge, Card, Empty, ErrorText, Stat, StatsRow } from '../ui';
+
+const STATUS_LABELS: Record<Call['status'], string> = {
+  ANSWERED: 'Состоялся',
+  NO_ANSWER: 'Не ответили',
+  BUSY: 'Занято',
+  FAILED: 'Сбой',
+};
+
+const STATUS_TONES: Record<Call['status'], 'neutral' | 'success' | 'warning' | 'danger'> = {
+  ANSWERED: 'success',
+  NO_ANSWER: 'warning',
+  BUSY: 'warning',
+  FAILED: 'danger',
+};
+
+const DIRECTION_LABELS: Record<Call['direction'], string> = {
+  INBOUND: 'Входящий',
+  OUTBOUND: 'Исходящий',
+};
 
 export function Calls() {
   const [summary, setSummary] = useState<CallSummary | null>(null);
