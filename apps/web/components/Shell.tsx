@@ -24,6 +24,7 @@ const NAV: NavItem[] = [
   { key: 'devices', label: 'Устройства', permissions: ['device.unbind'] },
   { key: 'plans', label: 'Планы', permissions: ['plan.read.all', 'plan.read.department'] },
   { key: 'offers', label: 'Сделки', permissions: ['offer.read.all', 'offer.read.department'] },
+  { key: 'calls', label: 'Звонки', permissions: ['calls.read.all', 'calls.read.department'] },
   { key: 'payroll', label: 'Зарплата', permissions: ['payroll.read.all', 'payroll.read.department'] },
   { key: 'leaderboard', label: 'Рейтинг', permissions: ['leaderboard.read'] },
   { key: 'schedules', label: 'Графики', permissions: ['settings.manage', 'attendance.adjust'] },
