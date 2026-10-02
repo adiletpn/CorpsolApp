@@ -18,3 +18,7 @@ jobs:
 
       # ci, а не install: ставит ровно то, что записано в package-lock.json.
       - run: npm ci
+
+      # Бэкенд и панель импортируют @corpsol/shared собранным,
+      # поэтому проверка типов без этого шага падает на каждом импорте.
+      - run: npm run build:shared
