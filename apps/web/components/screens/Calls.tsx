@@ -32,13 +32,18 @@ export function Calls() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedUserId, setSelectedUserId] = useState('');
 
   const period = currentMonth();
 
   const load = useCallback(async () => {
     setError(null);
     try {
-      const range = query({ from: period.from, to: period.to });
+      const range = query({
+        from: period.from,
+        to: period.to,
+        userId: selectedUserId || undefined,
+      });
       const [result, list, staff] = await Promise.all([
         request<CallSummary>(`/calls/summary${range}`),
         request<Call[]>(`/calls${range}`),
@@ -54,7 +59,7 @@ export function Calls() {
       // Иначе пустая таблица до ответа сервера читается как «звонков нет».
       setLoading(false);
     }
-  }, [period.from, period.to]);
+  }, [period.from, period.to, selectedUserId]);
 
   useEffect(() => {
     void load();
