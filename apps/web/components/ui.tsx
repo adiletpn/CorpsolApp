@@ -90,6 +90,30 @@ export function Badge({
   return <span style={{ ...styles.badge, color, borderColor: color }}>{children}</span>;
 }
 
+/** Плитка с крупным числом: сводки отчётов собираются из них. */
+export function Stat({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+}) {
+  return (
+    <div style={styles.stat}>
+      <div style={styles.statValue}>{value}</div>
+      <div style={styles.statLabel}>{label}</div>
+      {hint ? <div style={styles.statHint}>{hint}</div> : null}
+    </div>
+  );
+}
+
+/** Ряд плиток, переносящийся на узком экране. */
+export function StatsRow({ children }: { children: React.ReactNode }) {
+  return <div style={styles.statsRow}>{children}</div>;
+}
+
 export function Empty({ children }: { children: React.ReactNode }) {
   return <p style={styles.empty}>{children}</p>;
 }
@@ -141,6 +165,17 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 12,
     fontWeight: 600,
   },
+  statsRow: { display: 'flex', gap: 16, flexWrap: 'wrap' },
+  stat: {
+    background: 'var(--surface-muted)',
+    borderRadius: 12,
+    padding: 16,
+    minWidth: 150,
+    flex: 1,
+  },
+  statValue: { fontSize: 26, fontWeight: 700 },
+  statLabel: { fontSize: 13, color: 'var(--text-muted)', marginTop: 2 },
+  statHint: { fontSize: 11, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.4 },
   empty: { color: 'var(--text-muted)', fontSize: 14, margin: 0 },
   error: { color: 'var(--danger)', fontSize: 14, lineHeight: 1.5, margin: '8px 0 0' },
 };
