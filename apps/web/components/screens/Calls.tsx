@@ -31,6 +31,7 @@ export function Calls() {
   const [calls, setCalls] = useState<Call[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const period = currentMonth();
 
@@ -49,6 +50,9 @@ export function Calls() {
       setEmployees(staff);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Не удалось загрузить звонки');
+    } finally {
+      // Иначе пустая таблица до ответа сервера читается как «звонков нет».
+      setLoading(false);
     }
   }, [period.from, period.to]);
 
@@ -87,7 +91,9 @@ export function Calls() {
       </Card>
 
       <Card title="Журнал звонков">
-        {calls.length === 0 ? (
+        {loading ? (
+          <Empty>Загружаем…</Empty>
+        ) : calls.length === 0 ? (
           <Empty>За выбранный период звонков нет</Empty>
         ) : (
           <table style={styles.table}>
