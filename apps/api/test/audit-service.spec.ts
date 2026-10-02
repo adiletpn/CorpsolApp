@@ -228,3 +228,36 @@ describe('порядок и объём выборки', () => {
     ]);
   });
 });
+
+describe('объём выборки', () => {
+  it('по умолчанию берёт сто событий', async () => {
+    const { firestore, service } = setup();
+    for (let index = 0; index < 150; index += 1) {
+      seedEvent(firestore, `e${index}`);
+    }
+
+    const events = await service.list(director);
+
+    expect(events).toHaveLength(100);
+  });
+
+  it('запрос сверх предела урезается до пятисот', async () => {
+    const { firestore, service } = setup();
+    for (let index = 0; index < 600; index += 1) {
+      seedEvent(firestore, `e${index}`);
+    }
+
+    // Выгрузка журнала целиком — это оплаченные чтения и подвисший экран.
+    const events = await service.list(director, { limit: 10_000 });
+
+    expect(events).toHaveLength(500);
+  });
+
+  it('нулевой и отрицательный предел не дают пустой ответ', async () => {
+    const { firestore, service } = setup();
+    seedEvent(firestore, 'e1');
+
+    await expect(service.list(director, { limit: 0 })).resolves.toHaveLength(1);
+    await expect(service.list(director, { limit: -5 })).resolves.toHaveLength(1);
+  });
+});
