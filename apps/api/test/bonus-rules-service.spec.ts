@@ -158,3 +158,50 @@ describe('область действия правила', () => {
     expect(rule.isActive).toBe(false);
   });
 });
+
+describe('включение и выключение', () => {
+  it('выключает действующее правило', async () => {
+    const { firestore, service } = setup();
+    const rule = await service.create(director, base);
+
+    await service.setActive(director, rule.id, false);
+
+    // Удалять правило нельзя: прошлые расчёты на него ссылаются.
+    expect(firestore.read(COLLECTIONS.bonusRules, rule.id)?.isActive).toBe(false);
+  });
+
+  it('включает обратно', async () => {
+    const { firestore, service } = setup();
+    const rule = await service.create(director, { ...base, isActive: false });
+
+    await service.setActive(director, rule.id, true);
+
+    expect(firestore.read(COLLECTIONS.bonusRules, rule.id)?.isActive).toBe(true);
+  });
+
+  it('несуществующее правило не найдено', async () => {
+    const { service } = setup();
+
+    await expect(
+      service.setActive(director, 'нет-такого', false),
+    ).rejects.toThrow(/не найдено/);
+  });
+
+  it('чужое правило выключить нельзя', async () => {
+    const { firestore, service } = setup();
+    firestore.seed(COLLECTIONS.bonusRules, 'alien', {
+      organizationId: 'other-org',
+      departmentId: null,
+      kind: 'ATTENDANCE',
+      metric: null,
+      threshold: 0,
+      amountMinor: 500_000,
+      percentBps: 0,
+      isActive: true,
+    });
+
+    await expect(service.setActive(director, 'alien', false)).rejects.toThrow(/не найдено/);
+    expect(firestore.read(COLLECTIONS.bonusRules, 'alien')?.isActive).toBe(true);
+  });
+});
+
