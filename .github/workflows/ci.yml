@@ -22,3 +22,5 @@ jobs:
       # Бэкенд и панель импортируют @corpsol/shared собранным,
       # поэтому проверка типов без этого шага падает на каждом импорте.
       - run: npm run build:shared
+
+      - run: npm run typecheck
