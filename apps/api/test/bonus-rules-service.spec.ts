@@ -115,3 +115,46 @@ describe('метрика у правил по показателям', () => {
     expect(rule.kind).toBe('LATE_PENALTY');
   });
 });
+
+describe('область действия правила', () => {
+  it('без отдела правило общее для компании', async () => {
+    const { service } = setup();
+
+    const rule = await service.create(director, base);
+
+    expect(rule.departmentId).toBeNull();
+  });
+
+  it('с отделом правило действует только в нём', async () => {
+    const { service } = setup();
+
+    const rule = await service.create(director, { ...base, departmentId: 'dep-1' });
+
+    expect(rule.departmentId).toBe('dep-1');
+  });
+
+  it('правило помечается организацией', async () => {
+    const { service } = setup();
+
+    const rule = await service.create(director, base);
+
+    expect(rule.organizationId).toBe(ORG);
+  });
+
+  it('новое правило включено по умолчанию', async () => {
+    const { service } = setup();
+
+    const rule = await service.create(director, base);
+
+    expect(rule.isActive).toBe(true);
+  });
+
+  it('правило можно завести сразу выключенным', async () => {
+    const { service } = setup();
+
+    // Подготовить правило заранее и включить с началом периода — нормальный ход.
+    const rule = await service.create(director, { ...base, isActive: false });
+
+    expect(rule.isActive).toBe(false);
+  });
+});
