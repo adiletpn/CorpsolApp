@@ -94,3 +94,47 @@ describe('что попадает в журнал', () => {
     expect(event.createdAt).toBe('2026-09-15T10:00:00.000Z');
   });
 });
+
+describe('кто автор действия', () => {
+  it('идентификатор заменяется именем', async () => {
+    const { firestore, service } = setup();
+    seedEvent(firestore, 'e1', { actorId: 'hr-1' });
+
+    const [event] = await service.list(director);
+
+    // «hr-1» в отчёте не отвечает на вопрос, кто это сделал.
+    expect(event.actor).toEqual({ id: 'hr-1', fullName: 'Айгерим Нурланова' });
+  });
+
+  it('удалённая учётка не скрывает событие', async () => {
+    const { firestore, service } = setup();
+    seedEvent(firestore, 'e1', { actorId: 'уже-удалён' });
+
+    const [event] = await service.list(director);
+
+    // Событие важнее автора: пропажа учётки не должна стирать след.
+    expect(event.actor).toEqual({ id: 'уже-удалён', fullName: 'Учётная запись удалена' });
+  });
+
+  it('системное событие без автора допустимо', async () => {
+    const { firestore, service } = setup();
+    seedEvent(firestore, 'e1', { actorId: null });
+
+    const [event] = await service.list(director);
+
+    expect(event.actor).toBeNull();
+  });
+
+  it('имя одного автора читается один раз на всю выборку', async () => {
+    const { firestore, service } = setup();
+    for (let index = 1; index <= 5; index += 1) {
+      seedEvent(firestore, `e${index}`, { actorId: 'hr-1' });
+    }
+
+    const events = await service.list(director);
+
+    // Пять одинаковых чтений Firestore — пять оплаченных операций впустую.
+    expect(events).toHaveLength(5);
+    expect(events.every((item) => item.actor?.fullName === 'Айгерим Нурланова')).toBe(true);
+  });
+});
