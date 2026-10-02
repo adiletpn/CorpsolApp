@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { query, request } from '../../lib/api';
 import { currentMonth, formatDuration, formatPhone } from '../../lib/period';
 import type { Call, CallSummary, Employee } from '../../lib/types';
-import { Badge, Card, Empty, ErrorText, Stat, StatsRow } from '../ui';
+import { Badge, Card, Empty, ErrorText, Select, Stat, StatsRow } from '../ui';
 
 const STATUS_LABELS: Record<Call['status'], string> = {
   ANSWERED: 'Состоялся',
@@ -95,7 +95,23 @@ export function Calls() {
         </StatsRow>
       </Card>
 
-      <Card title="Журнал звонков">
+      <Card
+        title="Журнал звонков"
+        action={
+          <Select
+            value={selectedUserId}
+            onChange={(event) => setSelectedUserId(event.target.value)}
+            style={{ width: 240 }}
+          >
+            <option value="">Все сотрудники</option>
+            {employees.map((employee) => (
+              <option key={employee.id} value={employee.id}>
+                {employee.fullName}
+              </option>
+            ))}
+          </Select>
+        }
+      >
         {loading ? (
           <Empty>Загружаем…</Empty>
         ) : calls.length === 0 ? (
