@@ -4,11 +4,12 @@ import React, { useCallback, useEffect, useState } from 'react';
 
 import { query, request } from '../../lib/api';
 import { currentMonth } from '../../lib/period';
-import type { CallSummary } from '../../lib/types';
-import { Card, ErrorText, Stat, StatsRow } from '../ui';
+import type { Call, CallSummary } from '../../lib/types';
+import { Card, Empty, ErrorText, Stat, StatsRow } from '../ui';
 
 export function Calls() {
   const [summary, setSummary] = useState<CallSummary | null>(null);
+  const [calls, setCalls] = useState<Call[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const period = currentMonth();
@@ -16,10 +17,14 @@ export function Calls() {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const result = await request<CallSummary>(
-        `/calls/summary${query({ from: period.from, to: period.to })}`,
-      );
+      const range = query({ from: period.from, to: period.to });
+      const [result, list] = await Promise.all([
+        request<CallSummary>(`/calls/summary${range}`),
+        request<Call[]>(`/calls${range}`),
+      ]);
+
       setSummary(result);
+      setCalls(list);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Не удалось загрузить звонки');
     }
@@ -52,6 +57,14 @@ export function Calls() {
             hint="Без времени ожидания ответа"
           />
         </StatsRow>
+      </Card>
+
+      <Card title="Журнал звонков">
+        {calls.length === 0 ? (
+          <Empty>За выбранный период звонков нет</Empty>
+        ) : (
+          <p style={styles.period}>Загружено звонков: {calls.length}</p>
+        )}
       </Card>
     </div>
   );
