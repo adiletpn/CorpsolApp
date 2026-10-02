@@ -1,0 +1,75 @@
+import { WorkNumbersService } from '../src/calls/work-numbers.service';
+import { COLLECTIONS, externalIdentityDocId } from '../src/firestore/collections';
+import type { AuthenticatedUser } from '../src/common/decorators/current-user.decorator';
+import { FakeFirestore, fakeFirebase } from './fake-firestore';
+
+const ORG = 'org-1';
+
+const admin = {
+  id: 'admin',
+  organizationId: ORG,
+  email: 'admin@corpsol.kz',
+  role: 'SUPER_ADMIN',
+  departmentId: null,
+  officeId: null,
+  deviceId: null,
+} as AuthenticatedUser;
+
+function setup() {
+  const firestore = new FakeFirestore();
+
+  const employee = (id: string, fullName: string, organizationId = ORG) => {
+    firestore.seed(COLLECTIONS.users, id, {
+      organizationId,
+      fullName,
+      email: `${id}@corpsol.kz`,
+      role: 'MOP',
+      status: 'ACTIVE',
+      departmentId: 'dep-1',
+      officeId: null,
+      baseSalaryMinor: 0,
+    });
+  };
+
+  employee('mop-1', 'Болат Сериков');
+  employee('mop-2', 'Айгерим Нурланова');
+  employee('alien', 'Чужой сотрудник', 'other-org');
+
+  return { firestore, service: new WorkNumbersService(fakeFirebase(firestore)) };
+}
+
+describe('формат рабочего номера', () => {
+  it('приводится к единому виду', async () => {
+    const { service } = setup();
+
+    const link = await service.link(admin, 'mop-1', '8 (707) 111-22-33', 'KCELL');
+
+    // Выгрузка оператора и кадровик пишут номер по-разному,
+    // а сопоставление звонков сверяет строки точно.
+    expect(link.workNumber).toBe('+77071112233');
+  });
+
+  it('разные записи одного номера дают одну привязку', async () => {
+    const { firestore, service } = setup();
+
+    await service.link(admin, 'mop-1', '+7 707 111 22 33', 'KCELL');
+    await service.link(admin, 'mop-1', '87071112233', 'KCELL');
+
+    // Иначе на одного человека завелись бы две привязки к одному номеру.
+    expect(firestore.all(COLLECTIONS.externalIdentities)).toHaveLength(1);
+  });
+
+  it('мусор вместо номера отклоняется', async () => {
+    const { service } = setup();
+
+    await expect(
+      service.link(admin, 'mop-1', 'добавочный 101', 'KCELL'),
+    ).rejects.toThrow(/Не похоже на номер/);
+  });
+
+  it('пустая строка отклоняется', async () => {
+    const { service } = setup();
+
+    await expect(service.link(admin, 'mop-1', '', 'KCELL')).rejects.toThrow();
+  });
+});
