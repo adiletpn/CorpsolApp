@@ -205,3 +205,41 @@ describe('включение и выключение', () => {
   });
 });
 
+
+describe('список правил', () => {
+  it('показывает только свою организацию', async () => {
+    const { firestore, service } = setup();
+    await service.create(director, base);
+    firestore.seed(COLLECTIONS.bonusRules, 'alien', {
+      organizationId: 'other-org',
+      departmentId: null,
+      kind: 'ATTENDANCE',
+      metric: null,
+      threshold: 0,
+      amountMinor: 1,
+      percentBps: 0,
+      isActive: true,
+    });
+
+    const rules = await service.list(director);
+
+    expect(rules).toHaveLength(1);
+  });
+
+  it('выключенные правила из списка не пропадают', async () => {
+    const { service } = setup();
+    await service.create(director, { ...base, isActive: false });
+
+    // Иначе выключенное правило нельзя было бы включить обратно через панель.
+    const rules = await service.list(director);
+
+    expect(rules).toHaveLength(1);
+    expect(rules[0].isActive).toBe(false);
+  });
+
+  it('пустой список не ошибка', async () => {
+    const { service } = setup();
+
+    await expect(service.list(director)).resolves.toEqual([]);
+  });
+});
