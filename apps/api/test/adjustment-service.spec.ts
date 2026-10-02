@@ -308,3 +308,64 @@ describe('дни без прихода', () => {
     expect(result.lateMinutes).toBe(0);
   });
 });
+
+describe('ручная правка видна в записи', () => {
+  const record = (firestore: FakeFirestore) =>
+    firestore.read(COLLECTIONS.attendance, attendanceDocId('mop-1', WORK_DATE));
+
+  it('помечается как ручная', async () => {
+    const { firestore, service } = setup();
+
+    await service.adjust(actor('ROP'), 'mop-1', {
+      workDate: WORK_DATE,
+      checkInAt: almaty('09:00'),
+      reason: 'Сбой терминала',
+    });
+
+    // В отчётах ручной день должен отличаться от подтверждённого сканированием.
+    expect(record(firestore)?.method).toBe('MANUAL_ADJUSTMENT');
+  });
+
+  it('хранит автора и причину', async () => {
+    const { firestore, service } = setup();
+
+    await service.adjust(actor('ROP'), 'mop-1', {
+      workDate: WORK_DATE,
+      reason: 'Терминал был обесточен',
+    });
+
+    expect(record(firestore)?.adjustedBy).toBe('rop-1');
+    expect(record(firestore)?.adjustNote).toBe('Терминал был обесточен');
+  });
+
+  it('не оставляет следов проверки местоположения', async () => {
+    const { firestore, service } = setup();
+
+    await service.adjust(actor('ROP'), 'mop-1', {
+      workDate: WORK_DATE,
+      checkInAt: almaty('09:00'),
+      reason: 'Сбой терминала',
+    });
+
+    // Координат никто не снимал — проставлять их значит выдать правку
+    // за настоящую отметку в офисе.
+    const saved = record(firestore);
+    expect(saved?.lat).toBeNull();
+    expect(saved?.lng).toBeNull();
+    expect(saved?.terminalId).toBeNull();
+    expect(saved?.distanceMeters).toBeNull();
+  });
+
+  it('отдел и офис берутся из карточки сотрудника', async () => {
+    const { firestore, service } = setup();
+
+    await service.adjust(actor('ROP'), 'mop-1', {
+      workDate: WORK_DATE,
+      reason: 'Сбой терминала',
+    });
+
+    // Firestore не умеет join: без копии отчёты по отделу его не найдут.
+    expect(record(firestore)?.departmentId).toBe('dep-1');
+    expect(record(firestore)?.officeId).toBe('office-1');
+  });
+});
