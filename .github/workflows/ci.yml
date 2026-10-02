@@ -5,6 +5,12 @@ on:
     branches: [main]
   pull_request:
 
+# Новый пуш в ту же ветку отменяет предыдущий прогон: при наших двадцати
+# коммитах в день очередь иначе забивается заведомо устаревшими проверками.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     runs-on: ubuntu-latest
