@@ -122,3 +122,51 @@ describe('один номер — один сотрудник', () => {
     ).rejects.toThrow(/не найден/);
   });
 });
+
+describe('список привязок', () => {
+  it('подписан именем сотрудника', async () => {
+    const { service } = setup();
+    await service.link(admin, 'mop-1', '+77071112233', 'KCELL');
+
+    const [link] = await service.list(admin);
+
+    expect(link.fullName).toBe('Болат Сериков');
+  });
+
+  it('привязка уволенного не теряется', async () => {
+    const { firestore, service } = setup();
+    await service.link(admin, 'mop-1', '+77071112233', 'KCELL');
+    firestore.seed(COLLECTIONS.users, 'mop-1', {});
+
+    const [link] = await service.list(admin);
+
+    // Номер остаётся занятым: по нему всё ещё разложены прошлые звонки.
+    expect(link.fullName).toBe('Сотрудник удалён');
+    expect(link.workNumber).toBe('+77071112233');
+  });
+
+  it('привязки чужой организации не видны', async () => {
+    const { firestore, service } = setup();
+    await service.link(admin, 'mop-1', '+77071112233', 'KCELL');
+    firestore.seed(
+      COLLECTIONS.externalIdentities,
+      externalIdentityDocId('KCELL', '+77079998877'),
+      {
+        userId: 'alien',
+        provider: 'KCELL',
+        externalKey: '+77079998877',
+        organizationId: 'other-org',
+      },
+    );
+
+    const links = await service.list(admin);
+
+    expect(links).toHaveLength(1);
+  });
+
+  it('пустой список не ошибка', async () => {
+    const { service } = setup();
+
+    await expect(service.list(admin)).resolves.toEqual([]);
+  });
+});
