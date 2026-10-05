@@ -90,3 +90,12 @@ export interface CallsSummary {
   answered: number;
   talkMinutes: number;
 }
+
+export interface Achievement {
+  code: string;
+  title: string;
+  description: string;
+  points: number;
+  /** Дата получения, либо null — тогда это цель, а не достижение. */
+  unlockedAt: string | null;
+}
