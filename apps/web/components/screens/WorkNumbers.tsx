@@ -142,7 +142,14 @@ export function WorkNumbers() {
         </Button>
       </Card>
 
-      <Card title="Закреплённые номера">
+      <Card
+        title="Закреплённые номера"
+        action={
+          links.length > 0 ? (
+            <span style={styles.counter}>{links.length}</span>
+          ) : null
+        }
+      >
         {loading ? (
           <Empty>Загружаем…</Empty>
         ) : links.length === 0 ? (
@@ -181,6 +188,7 @@ export function WorkNumbers() {
 const styles: Record<string, React.CSSProperties> = {
   title: { fontSize: 26, margin: '0 0 4px' },
   hint: { color: 'var(--text-muted)', fontSize: 14, margin: '0 0 24px', lineHeight: 1.5 },
+  counter: { color: 'var(--text-muted)', fontSize: 14 },
   form: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 },
   table: { width: '100%', borderCollapse: 'collapse', fontSize: 14 },
   head: {
