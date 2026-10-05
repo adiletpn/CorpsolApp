@@ -53,6 +53,14 @@ export function WorkNumbers() {
   }, [load]);
 
   const unlink = async (item: WorkNumberLink) => {
+    // Снятая привязка означает, что новые звонки с этого номера перестанут
+    // попадать к сотруднику — спрашиваем, чтобы это не вышло случайно.
+    const confirmed = window.confirm(
+      `Снять номер ${formatPhone(item.workNumber)} с сотрудника ${item.fullName}?\n\n` +
+        'Новые звонки с этого номера перестанут распределяться автоматически.',
+    );
+    if (!confirmed) return;
+
     setError(null);
     try {
       const params = new URLSearchParams({
