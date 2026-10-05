@@ -58,6 +58,13 @@ export class GamificationController {
     );
   }
 
+  /** Свои ачивки — экран сотрудника. Чужие здесь не отдаются. */
+  @Get('achievements')
+  @RequirePermissions('leaderboard.read')
+  myAchievements(@CurrentUser() user: AuthenticatedUser) {
+    return this.achievements.listForUser(user.id);
+  }
+
   @Get('my-points')
   @RequirePermissions('leaderboard.read')
   myPoints(
