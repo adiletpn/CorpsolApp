@@ -40,6 +40,20 @@ export function AchievementsScreen() {
       </Text>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
+
+      {items.map((item) => {
+        const unlocked = item.unlockedAt !== null;
+
+        return (
+          <View key={item.code} style={[styles.card, unlocked ? styles.unlocked : styles.locked]}>
+            <Text style={styles.cardTitle}>{item.title}</Text>
+            <Text style={styles.cardText}>{item.description}</Text>
+            <Text style={unlocked ? styles.pointsEarned : styles.points}>
+              +{item.points} очков
+            </Text>
+          </View>
+        );
+      })}
     </ScrollView>
   );
 }
@@ -55,4 +69,18 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing(2),
   },
   error: { color: theme.colors.danger, fontSize: 14, lineHeight: 20 },
+  card: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.md,
+    padding: theme.spacing(2),
+    marginBottom: theme.spacing(1.5),
+    borderLeftWidth: 3,
+  },
+  unlocked: { borderLeftColor: theme.colors.success },
+  // Непройденные приглушены, но видны: иначе непонятно, к чему стремиться.
+  locked: { borderLeftColor: theme.colors.border, opacity: 0.6 },
+  cardTitle: { color: theme.colors.text, fontSize: 16, fontWeight: '600' },
+  cardText: { color: theme.colors.textMuted, fontSize: 13, marginTop: 4, lineHeight: 18 },
+  points: { color: theme.colors.textMuted, fontSize: 13, fontWeight: '600', marginTop: 10 },
+  pointsEarned: { color: theme.colors.success, fontSize: 13, fontWeight: '600', marginTop: 10 },
 });
