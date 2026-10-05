@@ -52,6 +52,20 @@ export function WorkNumbers() {
     void load();
   }, [load]);
 
+  const unlink = async (item: WorkNumberLink) => {
+    setError(null);
+    try {
+      const params = new URLSearchParams({
+        provider: item.provider,
+        workNumber: item.workNumber,
+      });
+      await request(`/calls/work-numbers?${params}`, { method: 'DELETE' });
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Не удалось снять привязку');
+    }
+  };
+
   const link = async () => {
     setSaving(true);
     setError(null);
