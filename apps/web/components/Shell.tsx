@@ -28,6 +28,7 @@ const NAV: NavItem[] = [
   { key: 'work-numbers', label: 'Рабочие номера', permissions: ['integration.manage'] },
   { key: 'payroll', label: 'Зарплата', permissions: ['payroll.read.all', 'payroll.read.department'] },
   { key: 'leaderboard', label: 'Рейтинг', permissions: ['leaderboard.read'] },
+  { key: 'achievements', label: 'Достижения', permissions: ['leaderboard.read'] },
   { key: 'schedules', label: 'Графики', permissions: ['settings.manage', 'attendance.adjust'] },
   { key: 'audit', label: 'Журнал', permissions: ['audit.read'] },
   { key: 'settings', label: 'Настройки', permissions: ['settings.manage', 'office.manage'] },
