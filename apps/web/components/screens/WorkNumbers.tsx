@@ -25,6 +25,12 @@ export function WorkNumbers() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Форма привязки нового номера.
+  const [userId, setUserId] = useState('');
+  const [workNumber, setWorkNumber] = useState('');
+  const [provider, setProvider] = useState<WorkNumberLink['provider']>('KCELL');
+  const [saving, setSaving] = useState(false);
+
   const load = useCallback(async () => {
     setError(null);
     try {
