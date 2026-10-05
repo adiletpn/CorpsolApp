@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 
 import { request } from '../../lib/api';
 import { formatPhone } from '../../lib/period';
-import type { WorkNumberLink } from '../../lib/types';
+import type { Employee, WorkNumberLink } from '../../lib/types';
 import { Card, Empty, ErrorText } from '../ui';
 
 const PROVIDER_LABELS: Record<WorkNumberLink['provider'], string> = {
@@ -21,13 +21,20 @@ const PROVIDER_LABELS: Record<WorkNumberLink['provider'], string> = {
  */
 export function WorkNumbers() {
   const [links, setLinks] = useState<WorkNumberLink[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setError(null);
     try {
-      setLinks(await request<WorkNumberLink[]>('/calls/work-numbers'));
+      const [list, staff] = await Promise.all([
+        request<WorkNumberLink[]>('/calls/work-numbers'),
+        request<Employee[]>('/employees'),
+      ]);
+
+      setLinks(list);
+      setEmployees(staff);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Не удалось загрузить номера');
     } finally {
