@@ -26,6 +26,9 @@ export function Achievements() {
     void load();
   }, [load]);
 
+  const earned = items.filter((item) => item.unlockedAt !== null);
+  const pending = items.filter((item) => item.unlockedAt === null);
+
   return (
     <div>
       <h1 style={styles.title}>Достижения</h1>
@@ -33,8 +36,22 @@ export function Achievements() {
 
       {error ? <ErrorText>{error}</ErrorText> : null}
 
-      <Card>
-        {loading ? <Empty>Загружаем…</Empty> : <Empty>{items.length} достижений</Empty>}
+      <Card title="Получено" action={<span style={styles.counter}>{earned.length} из {items.length}</span>}>
+        {loading ? (
+          <Empty>Загружаем…</Empty>
+        ) : earned.length === 0 ? (
+          <Empty>Пока ни одного — всё впереди</Empty>
+        ) : (
+          <div style={styles.grid}>
+            {earned.map((item) => (
+              <div key={item.code} style={styles.earned}>
+                <div style={styles.cardTitle}>{item.title}</div>
+                <div style={styles.cardText}>{item.description}</div>
+                <div style={styles.points}>+{item.points} очков</div>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
     </div>
   );
@@ -43,4 +60,19 @@ export function Achievements() {
 const styles: Record<string, React.CSSProperties> = {
   title: { fontSize: 26, margin: '0 0 4px' },
   hint: { color: 'var(--text-muted)', fontSize: 14, margin: '0 0 24px' },
+  counter: { color: 'var(--text-muted)', fontSize: 14 },
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+    gap: 14,
+  },
+  earned: {
+    background: 'var(--surface-muted)',
+    borderRadius: 12,
+    padding: 16,
+    borderLeft: '3px solid var(--success)',
+  },
+  cardTitle: { fontWeight: 600, marginBottom: 4 },
+  cardText: { color: 'var(--text-muted)', fontSize: 13, lineHeight: 1.5 },
+  points: { marginTop: 10, fontSize: 13, color: 'var(--success)', fontWeight: 600 },
 };
