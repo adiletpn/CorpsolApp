@@ -146,6 +146,7 @@ export function WorkNumbers() {
                 <th style={styles.head}>Сотрудник</th>
                 <th style={styles.head}>Номер</th>
                 <th style={styles.head}>Источник</th>
+                <th style={styles.head} />
               </tr>
             </thead>
             <tbody>
@@ -154,6 +155,11 @@ export function WorkNumbers() {
                   <td style={styles.cell}>{link.fullName}</td>
                   <td style={styles.cell}>{formatPhone(link.workNumber)}</td>
                   <td style={styles.cell}>{PROVIDER_LABELS[link.provider]}</td>
+                  <td style={styles.cell}>
+                    <Button variant="ghost" onClick={() => void unlink(link)}>
+                      Снять
+                    </Button>
+                  </td>
                 </tr>
               ))}
             </tbody>
