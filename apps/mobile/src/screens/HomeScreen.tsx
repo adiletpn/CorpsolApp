@@ -143,6 +143,9 @@ export function HomeScreen({ onScan }: { onScan: () => void }) {
             <Text style={[styles.rowStatus, { color: STATUS_COLORS[record.status] }]}>
               {STATUS_LABELS[record.status]}
               {record.lateMinutes > 0 ? ` · ${record.lateMinutes} мин` : ''}
+              {/* Сотрудник должен видеть, что день проставлен руководителем,
+                  а не сканом: иначе правка табеля остаётся для него невидимой. */}
+              {record.method === 'MANUAL_ADJUSTMENT' ? ' · вручную' : ''}
             </Text>
           </View>
         ))
