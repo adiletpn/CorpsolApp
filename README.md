@@ -1,5 +1,7 @@
 # CorpSol — контроль и геймификация работы колл-центра
 
+[![Проверки](https://github.com/adiletpn/CorpsolApp/actions/workflows/ci.yml/badge.svg)](https://github.com/adiletpn/CorpsolApp/actions/workflows/ci.yml)
+
 Монорепозиторий: единый бэкенд, веб-панель для руководителей и мобильное приложение для менеджеров.
 
 ```
