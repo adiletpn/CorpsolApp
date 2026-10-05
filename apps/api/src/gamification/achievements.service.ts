@@ -16,6 +16,15 @@ import {
 import type { AttendanceDoc, OfferDoc, PointsDoc } from '../firestore/types';
 import { PlansService } from '../plans/plans.service';
 
+export interface AchievementView {
+  code: AchievementCode;
+  title: string;
+  description: string;
+  points: number;
+  /** Когда получена, либо null — тогда это ещё цель, а не достижение. */
+  unlockedAt: string | null;
+}
+
 export interface AwardResult {
   userId: string;
   /** Ачивки, выданные именно сейчас. Ранее полученные сюда не попадают. */
