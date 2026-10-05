@@ -80,6 +80,7 @@ export function HomeScreen({ onScan }: { onScan: () => void }) {
 
   const onTimeCount = records.filter((record) => record.status === 'ON_TIME').length;
   const lateCount = records.filter((record) => record.status === 'LATE').length;
+  const absentCount = records.filter((record) => record.status === 'ABSENT').length;
 
   return (
     <ScrollView
@@ -115,7 +116,7 @@ export function HomeScreen({ onScan }: { onScan: () => void }) {
       <View style={styles.statsRow}>
         <Stat label="Вовремя" value={onTimeCount} color={theme.colors.success} />
         <Stat label="Опозданий" value={lateCount} color={theme.colors.warning} />
-        <Stat label="Смен" value={records.length} color={theme.colors.accent} />
+        <Stat label="Прогулов" value={absentCount} color={theme.colors.danger} />
       </View>
 
       <Text style={styles.sectionTitle}>Мой табель за месяц</Text>
