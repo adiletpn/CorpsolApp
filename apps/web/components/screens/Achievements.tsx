@@ -53,6 +53,24 @@ export function Achievements() {
           </div>
         )}
       </Card>
+
+      <Card title="К чему стремиться">
+        {loading ? (
+          <Empty>Загружаем…</Empty>
+        ) : pending.length === 0 ? (
+          <Empty>Все достижения получены</Empty>
+        ) : (
+          <div style={styles.grid}>
+            {pending.map((item) => (
+              <div key={item.code} style={styles.pending}>
+                <div style={styles.cardTitle}>{item.title}</div>
+                <div style={styles.cardText}>{item.description}</div>
+                <div style={styles.pendingPoints}>+{item.points} очков</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
     </div>
   );
 }
@@ -75,4 +93,12 @@ const styles: Record<string, React.CSSProperties> = {
   cardTitle: { fontWeight: 600, marginBottom: 4 },
   cardText: { color: 'var(--text-muted)', fontSize: 13, lineHeight: 1.5 },
   points: { marginTop: 10, fontSize: 13, color: 'var(--success)', fontWeight: 600 },
+  pending: {
+    background: 'var(--surface-muted)',
+    borderRadius: 12,
+    padding: 16,
+    borderLeft: '3px solid var(--border)',
+    opacity: 0.75,
+  },
+  pendingPoints: { marginTop: 10, fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 },
 };
