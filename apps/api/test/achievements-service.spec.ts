@@ -1,5 +1,7 @@
 import { Timestamp } from 'firebase-admin/firestore';
 
+import { ACHIEVEMENT_CODES } from '@corpsol/shared';
+
 import { AchievementsService } from '../src/gamification/achievements.service';
 import { COLLECTIONS, userAchievementDocId } from '../src/firestore/collections';
 import type { PlansService } from '../src/plans/plans.service';
@@ -140,5 +142,56 @@ describe('выдача ачивок', () => {
 
     expect(result.newlyEarned).toHaveLength(0);
     expect(result.pointsAwarded).toBe(0);
+  });
+});
+
+describe('список ачивок для экрана', () => {
+  it('показывает и полученные, и ещё не полученные', async () => {
+    const { service } = setup({});
+
+    const list = await service.listForUser('u1');
+
+    // Показывать только полученные бессмысленно: сотрудник не узнает,
+    // к чему стремиться, а в этом весь смысл.
+    expect(list).toHaveLength(ACHIEVEMENT_CODES.length);
+    expect(list.every((item) => item.unlockedAt === null)).toBe(true);
+  });
+
+  it('у полученной стоит дата', async () => {
+    const { firestore, service } = setup({});
+    firestore.seed(COLLECTIONS.userAchievements, userAchievementDocId('u1', 'PUNCTUAL_WEEK'), {
+      userId: 'u1',
+      achievementCode: 'PUNCTUAL_WEEK',
+      unlockedAt: Timestamp.fromDate(new Date('2026-09-15T10:00:00Z')),
+    });
+
+    const list = await service.listForUser('u1');
+    const earned = list.find((item) => item.code === 'PUNCTUAL_WEEK');
+
+    expect(earned?.unlockedAt).toBe('2026-09-15T10:00:00.000Z');
+  });
+
+  it('несёт название, описание и цену в очках', async () => {
+    const { service } = setup({});
+
+    const [first] = await service.listForUser('u1');
+
+    // Экран не должен знать правила начисления — он показывает то, что пришло.
+    expect(first.title).toEqual(expect.any(String));
+    expect(first.description).toEqual(expect.any(String));
+    expect(first.points).toBeGreaterThan(0);
+  });
+
+  it('ачивки чужого сотрудника не подмешиваются', async () => {
+    const { firestore, service } = setup({});
+    firestore.seed(COLLECTIONS.userAchievements, userAchievementDocId('u2', 'PERFECT_MONTH'), {
+      userId: 'u2',
+      achievementCode: 'PERFECT_MONTH',
+      unlockedAt: Timestamp.now(),
+    });
+
+    const list = await service.listForUser('u1');
+
+    expect(list.every((item) => item.unlockedAt === null)).toBe(true);
   });
 });
