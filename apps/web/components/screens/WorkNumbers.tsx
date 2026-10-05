@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { request } from '../../lib/api';
 import { formatPhone } from '../../lib/period';
 import type { Employee, WorkNumberLink } from '../../lib/types';
-import { Card, Empty, ErrorText } from '../ui';
+import { Button, Card, Empty, ErrorText, Field, Input, Select } from '../ui';
 
 const PROVIDER_LABELS: Record<WorkNumberLink['provider'], string> = {
   KCELL: 'Kcell',
@@ -81,6 +81,45 @@ export function WorkNumbers() {
 
       {error ? <ErrorText>{error}</ErrorText> : null}
 
+      <Card title="Закрепить номер">
+        <div style={styles.form}>
+          <Field label="Сотрудник">
+            <Select value={userId} onChange={(event) => setUserId(event.target.value)}>
+              <option value="">Выберите сотрудника</option>
+              {employees.map((employee) => (
+                <option key={employee.id} value={employee.id}>
+                  {employee.fullName}
+                </option>
+              ))}
+            </Select>
+          </Field>
+
+          <Field label="Рабочий номер" hint="Можно в любом виде: +7, 8, с пробелами">
+            <Input
+              value={workNumber}
+              onChange={(event) => setWorkNumber(event.target.value)}
+              placeholder="+7 707 111 22 33"
+            />
+          </Field>
+
+          <Field label="Источник">
+            <Select
+              value={provider}
+              onChange={(event) =>
+                setProvider(event.target.value as WorkNumberLink['provider'])
+              }
+            >
+              <option value="KCELL">Kcell</option>
+              <option value="BITRIX">Bitrix24</option>
+            </Select>
+          </Field>
+        </div>
+
+        <Button onClick={() => void link()} disabled={saving || !userId || !workNumber}>
+          {saving ? 'Сохраняем…' : 'Закрепить'}
+        </Button>
+      </Card>
+
       <Card title="Закреплённые номера">
         {loading ? (
           <Empty>Загружаем…</Empty>
@@ -114,6 +153,7 @@ export function WorkNumbers() {
 const styles: Record<string, React.CSSProperties> = {
   title: { fontSize: 26, margin: '0 0 4px' },
   hint: { color: 'var(--text-muted)', fontSize: 14, margin: '0 0 24px', lineHeight: 1.5 },
+  form: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 },
   table: { width: '100%', borderCollapse: 'collapse', fontSize: 14 },
   head: {
     textAlign: 'left',
