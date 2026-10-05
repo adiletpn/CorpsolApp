@@ -3,17 +3,18 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { theme } from '../theme';
 
-export type TabKey = 'home' | 'offers' | 'payroll' | 'rating';
+export type TabKey = 'home' | 'offers' | 'payroll' | 'rating' | 'awards';
 
 const TABS: Array<{ key: TabKey; label: string }> = [
   { key: 'home', label: 'Приход' },
   { key: 'offers', label: 'Сделки' },
   { key: 'payroll', label: 'Зарплата' },
   { key: 'rating', label: 'Рейтинг' },
+  { key: 'awards', label: 'Награды' },
 ];
 
 /**
- * Нижняя навигация. Своя, а не из библиотеки: четыре вкладки без вложенных
+ * Нижняя навигация. Своя, а не из библиотеки: пять вкладок без вложенных
  * переходов не стоят лишней зависимости и настройки нативных экранов.
  */
 export function TabBar({

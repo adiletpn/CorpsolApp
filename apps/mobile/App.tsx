@@ -9,6 +9,7 @@ import { LoginScreen } from './src/screens/LoginScreen';
 import { ScanScreen } from './src/screens/ScanScreen';
 import { OffersScreen } from './src/screens/OffersScreen';
 import { PayrollScreen } from './src/screens/PayrollScreen';
+import { AchievementsScreen } from './src/screens/AchievementsScreen';
 import { LeaderboardScreen } from './src/screens/LeaderboardScreen';
 import { theme } from './src/theme';
 
@@ -36,6 +37,7 @@ function Root() {
     offers: <OffersScreen />,
     payroll: <PayrollScreen />,
     rating: <LeaderboardScreen />,
+    awards: <AchievementsScreen />,
   };
 
   return (
