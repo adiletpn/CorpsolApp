@@ -75,6 +75,9 @@ export function HomeScreen({ onScan }: { onScan: () => void }) {
     (record) => record.checkInAt && record.workDate === today,
   );
 
+  // Свежие смены сверху: вчерашний день нужен чаще, чем первое число месяца.
+  const sorted = [...records].sort((a, b) => b.workDate.localeCompare(a.workDate));
+
   const onTimeCount = records.filter((record) => record.status === 'ON_TIME').length;
   const lateCount = records.filter((record) => record.status === 'LATE').length;
 
@@ -121,7 +124,7 @@ export function HomeScreen({ onScan }: { onScan: () => void }) {
           {failed ? 'Не удалось загрузить — потяните вниз' : 'Отметок пока нет'}
         </Text>
       ) : (
-        records.map((record) => (
+        sorted.map((record) => (
           <View key={record.id} style={styles.row}>
             <Text style={styles.rowDate}>
               {new Date(record.workDate).toLocaleDateString('ru-RU', {
