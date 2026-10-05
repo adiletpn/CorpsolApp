@@ -26,6 +26,8 @@ export interface AttendanceRecord {
   checkOutAt: string | null;
   status: CheckInResponse['status'];
   lateMinutes: number;
+  /** Как появилась отметка: скан QR либо ручная правка руководителем. */
+  method: 'QR_SCAN' | 'MANUAL_ADJUSTMENT';
 }
 
 export interface PayrollLine {
