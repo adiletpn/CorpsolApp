@@ -46,6 +46,7 @@ export function HomeScreen({ onScan }: { onScan: () => void }) {
   const { user, signOut } = useAuth();
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   const load = useCallback(async () => {
     setRefreshing(true);
@@ -55,8 +56,11 @@ export function HomeScreen({ onScan }: { onScan: () => void }) {
         `/attendance/me?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
       );
       setRecords(data);
+      setFailed(false);
     } catch {
-      // Молча оставляем прошлые данные: экран не должен падать из-за сети.
+      // Прошлые данные оставляем — экран не должен падать из-за сети, —
+      // но отмечаем сбой: иначе пустой табель прочитается как «отметок нет».
+      setFailed(true);
     } finally {
       setRefreshing(false);
     }
@@ -113,7 +117,9 @@ export function HomeScreen({ onScan }: { onScan: () => void }) {
 
       <Text style={styles.sectionTitle}>Мой табель за месяц</Text>
       {records.length === 0 ? (
-        <Text style={styles.empty}>Отметок пока нет</Text>
+        <Text style={styles.empty}>
+          {failed ? 'Не удалось загрузить — потяните вниз' : 'Отметок пока нет'}
+        </Text>
       ) : (
         records.map((record) => (
           <View key={record.id} style={styles.row}>
