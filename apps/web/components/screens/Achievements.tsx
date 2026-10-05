@@ -6,6 +6,16 @@ import { request } from '../../lib/api';
 import type { Achievement } from '../../lib/types';
 import { Card, Empty, ErrorText } from '../ui';
 
+/** Дата без времени: час получения ачивки никому не интересен. */
+function formatDate(iso: string | null): string {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('ru-RU', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
 export function Achievements() {
   const [items, setItems] = useState<Achievement[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +58,7 @@ export function Achievements() {
                 <div style={styles.cardTitle}>{item.title}</div>
                 <div style={styles.cardText}>{item.description}</div>
                 <div style={styles.points}>+{item.points} очков</div>
+                <div style={styles.date}>Получено {formatDate(item.unlockedAt)}</div>
               </div>
             ))}
           </div>
@@ -100,5 +111,6 @@ const styles: Record<string, React.CSSProperties> = {
     borderLeft: '3px solid var(--border)',
     opacity: 0.75,
   },
+  date: { marginTop: 4, fontSize: 12, color: 'var(--text-muted)' },
   pendingPoints: { marginTop: 10, fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 },
 };
