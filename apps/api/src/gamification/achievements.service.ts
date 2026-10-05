@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Timestamp } from 'firebase-admin/firestore';
 import {
   ACHIEVEMENTS,
+  ACHIEVEMENT_CODES,
   earnedAchievements,
   type AchievementCode,
   type AttendanceSummary,
@@ -85,19 +86,45 @@ export class AchievementsService {
     return { userId, newlyEarned: fresh, pointsAwarded };
   }
 
+  /**
+   * Все ачивки сразу: и полученные, и ещё нет.
+   *
+   * Показывать только полученные бессмысленно — сотрудник не узнает,
+   * к чему стремиться, а в этом весь смысл геймификации.
+   */
+  async listForUser(userId: string): Promise<AchievementView[]> {
+    const earned = await this.loadExisting(userId, [...ACHIEVEMENT_CODES]);
+
+    return ACHIEVEMENT_CODES.map((code) => {
+      const definition = ACHIEVEMENTS[code];
+      const unlockedAt = earned.get(code);
+
+      return {
+        code,
+        title: definition.title,
+        description: definition.description,
+        points: definition.points,
+        unlockedAt: unlockedAt ? unlockedAt.toDate().toISOString() : null,
+      };
+    });
+  }
+
+  /** Полученные ачивки вместе с датой: экрану нужна не только отметка. */
   private async loadExisting(
     userId: string,
     codes: AchievementCode[],
-  ): Promise<Set<AchievementCode>> {
+  ): Promise<Map<AchievementCode, Timestamp>> {
     const snapshots = await this.db.getAll(
       ...codes.map((code) =>
         this.db.collection(COLLECTIONS.userAchievements).doc(userAchievementDocId(userId, code)),
       ),
     );
 
-    const existing = new Set<AchievementCode>();
+    const existing = new Map<AchievementCode, Timestamp>();
     snapshots.forEach((snapshot, index) => {
-      if (snapshot.exists) existing.add(codes[index]);
+      if (!snapshot.exists) return;
+      const data = snapshot.data() as { unlockedAt?: Timestamp } | undefined;
+      existing.set(codes[index], data?.unlockedAt ?? Timestamp.now());
     });
 
     return existing;
