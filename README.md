@@ -218,7 +218,8 @@ Firebase Auth по своей природе разрешает вход с лю
 | Планы | `GET /plans`, `POST /plans` | чтение по роли, постановка — директор |
 | Офферты | `GET/POST /offers`, `POST /offers/:id/resolve` | создание — МОП, подтверждение — РОП и выше |
 | Зарплата | `GET /payroll`, `POST /payroll/calculate`, `GET/POST /payroll/rules` | чтение по роли, расчёт — директор |
-| Рейтинг | `GET /gamification/leaderboard`, `GET /gamification/my-points` | все |
+| Рейтинг | `GET /gamification/leaderboard`, `GET /gamification/my-points`, `GET /gamification/achievements` | все |
+| Звонки | `GET /calls`, `GET /calls/summary`, `GET/POST/DELETE /calls/work-numbers` | чтение по роли, номера — супер-админ |
 | Аналитика | `GET /analytics/company`, `GET /analytics/department` | директор и РОП |
 
 Области видимости совпадают с матрицей прав в
