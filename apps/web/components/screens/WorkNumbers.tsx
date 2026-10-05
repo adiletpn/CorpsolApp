@@ -52,6 +52,26 @@ export function WorkNumbers() {
     void load();
   }, [load]);
 
+  const link = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      await request('/calls/work-numbers', {
+        method: 'POST',
+        body: { userId, workNumber, provider },
+      });
+
+      // Поле номера очищаем, сотрудника оставляем: обычно ему заводят
+      // несколько номеров подряд.
+      setWorkNumber('');
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Не удалось закрепить номер');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div>
       <h1 style={styles.title}>Рабочие номера</h1>
