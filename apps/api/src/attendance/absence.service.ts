@@ -33,6 +33,24 @@ export class AbsenceService {
   }
 
   /**
+   * Был ли этот день рабочим для сотрудника.
+   *
+   * Нет графика — нет и прогула: мы не знаем, должен ли он был выйти,
+   * а наказывать по догадке нельзя.
+   */
+  private async wasExpectedToWork(
+    userId: string,
+    user: UserDoc,
+    at: Date,
+    timezone: string,
+  ): Promise<boolean> {
+    const schedule = await findActiveSchedule(this.db, userId, user.departmentId, at);
+    if (!schedule) return false;
+
+    return schedule.workdays.includes(localIsoWeekday(at, timezone));
+  }
+
+  /**
    * Кто должен был выйти в этот день.
    *
    * Берём только тех, кто работает с клиентами и числится активным:
