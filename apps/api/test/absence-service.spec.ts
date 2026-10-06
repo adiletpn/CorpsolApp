@@ -242,3 +242,61 @@ describe('срок работы сотрудника', () => {
     expect(recordOf(firestore, 'alien')).toBeUndefined();
   });
 });
+
+describe('что записывается в табель', () => {
+  const marked = async () => {
+    const context = setup();
+    seedEmployee(context.firestore, 'mop-1');
+    seedSchedule(context.firestore);
+    await context.service.markForOrganization(ORG, WORK_DATE);
+    return context;
+  };
+
+  it('помечается как вывод системы, а не отметка человека', async () => {
+    const { firestore } = await marked();
+
+    // В отчётах такой день должен отличаться и от скана, и от правки руками.
+    expect(recordOf(firestore, 'mop-1')?.method).toBe('AUTO_ABSENCE');
+  });
+
+  it('времени прихода нет', async () => {
+    const { firestore } = await marked();
+
+    expect(recordOf(firestore, 'mop-1')?.checkInAt).toBeNull();
+    expect(recordOf(firestore, 'mop-1')?.checkOutAt).toBeNull();
+  });
+
+  it('следов проверки местоположения нет', async () => {
+    const { firestore } = await marked();
+
+    // Никто ничего не сканировал — проставлять координаты значит солгать.
+    const record = recordOf(firestore, 'mop-1');
+    expect(record?.lat).toBeNull();
+    expect(record?.terminalId).toBeNull();
+    expect(record?.distanceMeters).toBeNull();
+  });
+
+  it('автором правки никто не числится', async () => {
+    const { firestore } = await marked();
+
+    // Прогул поставила система, а не руководитель: приписывать его
+    // человеку означало бы подставить его при разборе.
+    expect(recordOf(firestore, 'mop-1')?.adjustedBy).toBeNull();
+    expect(recordOf(firestore, 'mop-1')?.adjustNote).toBeNull();
+  });
+
+  it('отдел и офис копируются из карточки', async () => {
+    const { firestore } = await marked();
+
+    // Firestore не умеет join: без копии отчёты по отделу день не найдут.
+    expect(recordOf(firestore, 'mop-1')?.departmentId).toBe('dep-1');
+    expect(recordOf(firestore, 'mop-1')?.officeId).toBe('office-1');
+  });
+
+  it('минут опоздания ноль, а не пусто', async () => {
+    const { firestore } = await marked();
+
+    // Расчёт зарплаты складывает это поле — undefined сломал бы сумму.
+    expect(recordOf(firestore, 'mop-1')?.lateMinutes).toBe(0);
+  });
+});
