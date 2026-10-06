@@ -70,6 +70,10 @@ export class AbsenceService {
 
     await this.writeAbsences(organizationId, workDate, toMark);
 
+    if (toMark.length > 0) {
+      await this.audit(organizationId, workDate, toMark.map(([userId]) => userId));
+    }
+
     return { organizationId, workDate, expected, marked: toMark.length };
   }
 
@@ -167,6 +171,30 @@ export class AbsenceService {
     }
 
     return results;
+  }
+
+  /**
+   * Одна запись в журнал на весь прогон, а не на каждого сотрудника.
+   *
+   * Прогулы ставит система, и построчный журнал на сотню человек только
+   * засорил бы ленту, в которой ищут ручные обходы контроля.
+   */
+  private async audit(
+    organizationId: string,
+    workDate: string,
+    userIds: string[],
+  ): Promise<void> {
+    await this.db.collection(COLLECTIONS.auditEvents).doc().set({
+      organizationId,
+      // Автора нет: это не действие человека.
+      actorId: null,
+      action: 'attendance.auto_absence',
+      targetType: 'Attendance',
+      targetId: workDate,
+      metadata: { workDate, userIds, count: userIds.length },
+      ip: null,
+      createdAt: Timestamp.now(),
+    });
   }
 
   /** Записывает прогулы пачкой: по одному запросу на сотрудника дорого. */
