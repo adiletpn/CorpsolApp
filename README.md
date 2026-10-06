@@ -93,6 +93,8 @@ npm test -w @corpsol/api
 |---|---|
 | `employees-service` | выдача ролей, согласованность учётки и карточки, закрытие доступа при увольнении |
 | `adjustment-service` | опоздание пересчитывается по графику: поставить «вовремя» вручную нельзя |
+| `absence-service` | кому ставится прогул, что задача не затирает, пояса организаций |
+| `schedule-resolver` | приоритет личного графика, срок действия |
 | `audit-service` | отбор ручных обходов контроля, автор события, порядок и предел выборки |
 | `payroll`, `payroll-service`, `bonus-rules-service` | пороги премий, штрафы, предел удержания, отбор правил |
 | `analytics-service` | область видимости отделов, отсутствие плана против проваленного |
@@ -243,6 +245,7 @@ Firebase Auth по своей природе разрешает вход с лю
 | Терминалы | `GET/POST /terminals`, `POST /terminals/:id/active` | супер-админ |
 | Отделы | `GET/POST /departments`, `PATCH /departments/:id` | супер-админ |
 | Приход | `POST /attendance/check-in`, `GET /attendance/me` | МОП, РОП |
+| Прогулы | `POST /attendance/mark-absences` | РОП и выше |
 | Планы | `GET /plans`, `POST /plans` | чтение по роли, постановка — директор |
 | Офферты | `GET/POST /offers`, `POST /offers/:id/resolve` | создание — МОП, подтверждение — РОП и выше |
 | Зарплата | `GET /payroll`, `POST /payroll/calculate`, `GET/POST /payroll/rules` | чтение по роли, расчёт — директор |
