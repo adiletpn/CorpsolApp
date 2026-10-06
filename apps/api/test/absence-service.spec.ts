@@ -116,3 +116,77 @@ describe('кому ставится прогул', () => {
     expect(result.marked).toBe(1);
   });
 });
+
+describe('существующая запись не затирается', () => {
+  const seedDay = (firestore: FakeFirestore, fields: Record<string, unknown>) => {
+    firestore.seed(COLLECTIONS.attendance, attendanceDocId('mop-1', WORK_DATE), {
+      userId: 'mop-1',
+      organizationId: ORG,
+      departmentId: 'dep-1',
+      workDate: WORK_DATE,
+      lateMinutes: 0,
+      method: 'QR',
+      createdAt: Timestamp.now(),
+      ...fields,
+    });
+  };
+
+  const ready = () => {
+    const context = setup();
+    seedEmployee(context.firestore, 'mop-1');
+    seedSchedule(context.firestore);
+    return context;
+  };
+
+  it('отметка прихода остаётся на месте', async () => {
+    const { firestore, service } = ready();
+    seedDay(firestore, { status: 'ON_TIME' });
+
+    const result = await service.markForOrganization(ORG, WORK_DATE);
+
+    // Человек пришёл и отметился — ночная задача не вправе это переписать.
+    expect(result.marked).toBe(0);
+    expect(recordOf(firestore, 'mop-1')?.status).toBe('ON_TIME');
+  });
+
+  it('опоздание не превращается в прогул', async () => {
+    const { firestore, service } = ready();
+    seedDay(firestore, { status: 'LATE', lateMinutes: 25 });
+
+    await service.markForOrganization(ORG, WORK_DATE);
+
+    expect(recordOf(firestore, 'mop-1')?.status).toBe('LATE');
+    expect(recordOf(firestore, 'mop-1')?.lateMinutes).toBe(25);
+  });
+
+  it('уважительная причина не перебивается прогулом', async () => {
+    const { firestore, service } = ready();
+    seedDay(firestore, { status: 'EXCUSED', method: 'MANUAL_ADJUSTMENT' });
+
+    // Руководитель уже разобрался с этим днём. Переписать его значит
+    // обесценить ручную правку и вернуть штраф.
+    await service.markForOrganization(ORG, WORK_DATE);
+
+    expect(recordOf(firestore, 'mop-1')?.status).toBe('EXCUSED');
+  });
+
+  it('выходной остаётся выходным', async () => {
+    const { firestore, service } = ready();
+    seedDay(firestore, { status: 'DAY_OFF', method: 'MANUAL_ADJUSTMENT' });
+
+    await service.markForOrganization(ORG, WORK_DATE);
+
+    expect(recordOf(firestore, 'mop-1')?.status).toBe('DAY_OFF');
+  });
+
+  it('повторный прогон не плодит записи', async () => {
+    const { firestore, service } = ready();
+
+    await service.markForOrganization(ORG, WORK_DATE);
+    const second = await service.markForOrganization(ORG, WORK_DATE);
+
+    // Задача ночная и может запуститься дважды — например, после перезапуска.
+    expect(second.marked).toBe(0);
+    expect(firestore.all(COLLECTIONS.attendance)).toHaveLength(1);
+  });
+});
