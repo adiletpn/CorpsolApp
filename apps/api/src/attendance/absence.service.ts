@@ -33,6 +33,20 @@ export class AbsenceService {
   }
 
   /**
+   * Числился ли сотрудник в штате в этот день.
+   *
+   * Принятому в среду не ставим прогулы за понедельник и вторник,
+   * а уволенному — за дни после ухода.
+   */
+  private wasEmployed(user: UserDoc, workDate: string): boolean {
+    const hired = user.hiredAt.toDate().toISOString().slice(0, 10);
+    if (workDate < hired) return false;
+
+    if (!user.terminatedAt) return true;
+    return workDate <= user.terminatedAt.toDate().toISOString().slice(0, 10);
+  }
+
+  /**
    * Был ли этот день рабочим для сотрудника.
    *
    * Нет графика — нет и прогула: мы не знаем, должен ли он был выйти,
