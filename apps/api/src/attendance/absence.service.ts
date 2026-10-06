@@ -33,6 +33,46 @@ export class AbsenceService {
   }
 
   /**
+   * Проставляет прогулы за указанный день одной организации.
+   *
+   * Повторный запуск безопасен: день, по которому уже есть запись,
+   * не трогается вовсе — ни отметка прихода, ни выходной, ни правка
+   * руководителя не должны затираться ночной задачей.
+   */
+  async markForOrganization(
+    organizationId: string,
+    workDate: string,
+  ): Promise<AbsenceRunResult> {
+    const timezone = await this.timezoneOf(organizationId);
+    const staff = await this.workingStaff(organizationId);
+
+    // Полдень локального дня: час внутри суток не важен, а от границы
+    // он достаточно далеко, чтобы пояс не сдвинул дату.
+    const at = new Date(`${workDate}T12:00:00Z`);
+
+    let expected = 0;
+    const toMark: Array<[string, UserDoc]> = [];
+
+    for (const [userId, user] of staff) {
+      if (!this.wasEmployed(user, workDate)) continue;
+      if (!(await this.wasExpectedToWork(userId, user, at, timezone))) continue;
+
+      expected += 1;
+
+      const existing = await this.db
+        .collection(COLLECTIONS.attendance)
+        .doc(attendanceDocId(userId, workDate))
+        .get();
+
+      if (!existing.exists) toMark.push([userId, user]);
+    }
+
+    await this.writeAbsences(organizationId, workDate, toMark);
+
+    return { organizationId, workDate, expected, marked: toMark.length };
+  }
+
+  /**
    * Числился ли сотрудник в штате в этот день.
    *
    * Принятому в среду не ставим прогулы за понедельник и вторник,
@@ -83,6 +123,51 @@ export class AbsenceService {
       if (user.role === 'MOP' || user.role === 'ROP') staff.set(doc.id, user);
     }
     return staff;
+  }
+
+  /** Записывает прогулы пачкой: по одному запросу на сотрудника дорого. */
+  private async writeAbsences(
+    organizationId: string,
+    workDate: string,
+    entries: Array<[string, UserDoc]>,
+  ): Promise<void> {
+    if (entries.length === 0) return;
+
+    const batch = this.db.batch();
+    const now = Timestamp.now();
+
+    for (const [userId, user] of entries) {
+      const record: AttendanceDoc = {
+        userId,
+        organizationId,
+        departmentId: user.departmentId,
+        officeId: user.officeId,
+        terminalId: null,
+        workDate,
+        checkInAt: null,
+        checkOutAt: null,
+        status: 'ABSENT',
+        lateMinutes: 0,
+        // Источник виден в табеле: это не отметка человека, а вывод системы.
+        method: 'AUTO_ABSENCE',
+        lat: null,
+        lng: null,
+        accuracyMeters: null,
+        distanceMeters: null,
+        wifiBssid: null,
+        isMocked: false,
+        adjustedBy: null,
+        adjustNote: null,
+        createdAt: now,
+      };
+
+      batch.create(
+        this.db.collection(COLLECTIONS.attendance).doc(attendanceDocId(userId, workDate)),
+        record,
+      );
+    }
+
+    await batch.commit();
   }
 
   /** Часовой пояс организации: «вчера» у каждой своё. */

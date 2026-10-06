@@ -106,7 +106,13 @@ export interface DeviceRequestDoc {
 }
 
 export type AttendanceStatus = 'ON_TIME' | 'LATE' | 'ABSENT' | 'DAY_OFF' | 'EXCUSED';
-export type CheckMethod = 'QR' | 'MANUAL_ADJUSTMENT';
+/**
+ * Откуда взялась запись в табеле.
+ *
+ * AUTO_ABSENCE ставит ночная задача: человек не вышел, и отметки нет вовсе.
+ * В отчётах такие дни должны отличаться и от скана, и от правки руками.
+ */
+export type CheckMethod = 'QR' | 'MANUAL_ADJUSTMENT' | 'AUTO_ABSENCE';
 
 export interface AttendanceDoc {
   userId: string;
