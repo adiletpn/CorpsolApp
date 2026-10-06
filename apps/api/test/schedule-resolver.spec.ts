@@ -65,3 +65,59 @@ describe('какой график действует', () => {
     await expect(resolve(firestore, null)).resolves.toBeNull();
   });
 });
+
+describe('срок действия графика', () => {
+  it('ещё не вступивший в силу не применяется', async () => {
+    const firestore = new FakeFirestore();
+    seedSchedule(firestore, 'future', {
+      effectiveFrom: Timestamp.fromDate(new Date('2026-12-01T00:00:00Z')),
+    });
+
+    await expect(resolve(firestore)).resolves.toBeNull();
+  });
+
+  it('истёкший не применяется', async () => {
+    const firestore = new FakeFirestore();
+    seedSchedule(firestore, 'expired', {
+      effectiveTo: Timestamp.fromDate(new Date('2026-06-30T00:00:00Z')),
+    });
+
+    // Именно здесь две прежние копии расходились: правка табеля
+    // продолжала применять график, который давно закончился.
+    await expect(resolve(firestore)).resolves.toBeNull();
+  });
+
+  it('действующий с открытой датой окончания применяется', async () => {
+    const firestore = new FakeFirestore();
+    seedSchedule(firestore, 'open', { effectiveTo: null });
+
+    await expect(resolve(firestore)).resolves.not.toBeNull();
+  });
+
+  it('последний день действия ещё считается рабочим', async () => {
+    const firestore = new FakeFirestore();
+    seedSchedule(firestore, 'ends-today', {
+      effectiveTo: Timestamp.fromDate(new Date('2026-09-15T23:59:59Z')),
+    });
+
+    // Иначе в последний день графика сотрудник остался бы без него.
+    await expect(resolve(firestore)).resolves.not.toBeNull();
+  });
+
+  it('истёкший личный график не перекрывает действующий отдельский', async () => {
+    const firestore = new FakeFirestore();
+    seedSchedule(firestore, 'dep-schedule', { startTime: '09:00' });
+    seedSchedule(firestore, 'personal-expired', {
+      departmentId: null,
+      userId: 'mop-1',
+      startTime: '11:00',
+      effectiveTo: Timestamp.fromDate(new Date('2026-06-30T00:00:00Z')),
+    });
+
+    // Закончился личный график — сотрудник возвращается к общему,
+    // а не остаётся вовсе без расписания.
+    const schedule = await resolve(firestore);
+
+    expect(schedule?.startTime).toBe('09:00');
+  });
+});
