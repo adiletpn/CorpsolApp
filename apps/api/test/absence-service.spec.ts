@@ -300,3 +300,79 @@ describe('что записывается в табель', () => {
     expect(recordOf(firestore, 'mop-1')?.lateMinutes).toBe(0);
   });
 });
+
+describe('прогон по всем организациям', () => {
+  /** Вторая организация в поясе, который на пять часов позади. */
+  const twoOrganizations = () => {
+    const context = setup();
+    context.firestore.seed(COLLECTIONS.organizations, 'org-2', {
+      name: 'Вторая',
+      timezone: 'Europe/Lisbon',
+    });
+
+    seedEmployee(context.firestore, 'mop-1');
+    seedEmployee(context.firestore, 'mop-2', { organizationId: 'org-2' });
+    seedSchedule(context.firestore);
+    return context;
+  };
+
+  it('обходит каждую организацию', async () => {
+    const { service } = twoOrganizations();
+
+    const results = await service.markYesterdayEverywhere(
+      new Date('2026-09-16T10:00:00Z'),
+    );
+
+    expect(results).toHaveLength(2);
+  });
+
+  it('дата считается по поясу организации', async () => {
+    const { service } = twoOrganizations();
+
+    // 16 сентября 02:00 по UTC: в Алматы это уже 07:00 шестнадцатого,
+    // значит «вчера» — пятнадцатое. В Лиссабоне ещё 01:00 шестнадцатого,
+    // «вчера» там тоже пятнадцатое, но граница проходит иначе.
+    const results = await service.markYesterdayEverywhere(
+      new Date('2026-09-16T02:00:00Z'),
+    );
+
+    const almaty = results.find((item) => item.organizationId === ORG);
+    expect(almaty?.workDate).toBe('2026-09-15');
+  });
+
+  it('сбой в одной организации не срывает остальные', async () => {
+    const { firestore, service } = twoOrganizations();
+    // Организация без часового пояса и без сотрудников — прогон по ней
+    // не должен мешать первым двум.
+    firestore.seed(COLLECTIONS.organizations, 'org-broken', { name: 'Сломанная' });
+
+    const results = await service.markYesterdayEverywhere(
+      new Date('2026-09-16T10:00:00Z'),
+    );
+
+    expect(results.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('считает, сколько человек должно было выйти', async () => {
+    const { firestore, service } = setup();
+    seedEmployee(firestore, 'mop-1');
+    seedEmployee(firestore, 'mop-2');
+    seedEmployee(firestore, 'mop-3');
+    seedSchedule(firestore);
+    firestore.seed(COLLECTIONS.attendance, attendanceDocId('mop-3', WORK_DATE), {
+      userId: 'mop-3',
+      organizationId: ORG,
+      workDate: WORK_DATE,
+      status: 'ON_TIME',
+      lateMinutes: 0,
+      method: 'QR',
+      createdAt: Timestamp.now(),
+    });
+
+    const result = await service.markForOrganization(ORG, WORK_DATE);
+
+    // Трое должны были выйти, двое не вышли.
+    expect(result.expected).toBe(3);
+    expect(result.marked).toBe(2);
+  });
+});
