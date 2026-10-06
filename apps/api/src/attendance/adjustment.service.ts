@@ -8,6 +8,7 @@ import {
 import { Timestamp } from 'firebase-admin/firestore';
 
 import { FirebaseService } from '../firebase/firebase.service';
+import { findActiveSchedule } from '../schedules/schedule-resolver';
 import { COLLECTIONS, attendanceDocId } from '../firestore/collections';
 import type {
   AttendanceDoc,
@@ -144,7 +145,7 @@ export class AttendanceAdjustmentService {
       return { status: requestedStatus, lateMinutes: 0 };
     }
 
-    const schedule = await this.findSchedule(userId, departmentId, checkInAt);
+    const schedule = await findActiveSchedule(this.db, userId, departmentId, checkInAt);
     if (!schedule) return { status: 'ON_TIME', lateMinutes: 0 };
 
     const weekday = localIsoWeekday(checkInAt, timezone);
@@ -157,36 +158,6 @@ export class AttendanceAdjustmentService {
     const lateMinutes = Math.max(0, arrival - (start + schedule.graceMinutes));
 
     return { status: lateMinutes > 0 ? 'LATE' : 'ON_TIME', lateMinutes };
-  }
-
-  private async findSchedule(
-    userId: string,
-    departmentId: string | null,
-    at: Date,
-  ): Promise<{ startTime: string; graceMinutes: number; workdays: number[] } | null> {
-    const collection = this.db.collection(COLLECTIONS.workSchedules);
-
-    const personal = await collection
-      .where('userId', '==', userId)
-      .where('effectiveFrom', '<=', Timestamp.fromDate(at))
-      .orderBy('effectiveFrom', 'desc')
-      .limit(1)
-      .get();
-
-    if (!personal.empty) {
-      return personal.docs[0].data() as never;
-    }
-
-    if (!departmentId) return null;
-
-    const departmental = await collection
-      .where('departmentId', '==', departmentId)
-      .where('effectiveFrom', '<=', Timestamp.fromDate(at))
-      .orderBy('effectiveFrom', 'desc')
-      .limit(1)
-      .get();
-
-    return departmental.empty ? null : (departmental.docs[0].data() as never);
   }
 
   private async loadManageable(
