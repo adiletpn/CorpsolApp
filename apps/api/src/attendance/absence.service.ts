@@ -32,6 +32,27 @@ export class AbsenceService {
     return this.firebase.firestore;
   }
 
+  /**
+   * Кто должен был выйти в этот день.
+   *
+   * Берём только тех, кто работает с клиентами и числится активным:
+   * у директора и кадровика смен в табеле нет.
+   */
+  private async workingStaff(organizationId: string): Promise<Map<string, UserDoc>> {
+    const snapshot = await this.db
+      .collection(COLLECTIONS.users)
+      .where('organizationId', '==', organizationId)
+      .where('status', '==', 'ACTIVE')
+      .get();
+
+    const staff = new Map<string, UserDoc>();
+    for (const doc of snapshot.docs) {
+      const user = doc.data() as UserDoc;
+      if (user.role === 'MOP' || user.role === 'ROP') staff.set(doc.id, user);
+    }
+    return staff;
+  }
+
   /** Часовой пояс организации: «вчера» у каждой своё. */
   private async timezoneOf(organizationId: string): Promise<string> {
     const snapshot = await this.db
