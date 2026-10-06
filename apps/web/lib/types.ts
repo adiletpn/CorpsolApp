@@ -249,3 +249,11 @@ export interface Achievement {
   /** Дата получения, либо null — тогда это цель, а не достижение. */
   unlockedAt: string | null;
 }
+
+export interface AbsenceRunResult {
+  organizationId: string;
+  workDate: string;
+  /** Сколько сотрудников должны были выйти по графику. */
+  expected: number;
+  marked: number;
+}
