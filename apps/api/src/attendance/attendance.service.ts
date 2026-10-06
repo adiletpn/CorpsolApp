@@ -9,6 +9,7 @@ import {
 } from '@corpsol/shared';
 
 import { FirebaseService } from '../firebase/firebase.service';
+import { findActiveSchedule } from '../schedules/schedule-resolver';
 import {
   COLLECTIONS,
   attendanceDocId,
@@ -129,7 +130,7 @@ export class AttendanceService {
     const now = new Date();
     const workDate = localWorkDateKey(now, timezone);
 
-    const schedule = await this.resolveSchedule(actor.id, user.departmentId, now);
+    const schedule = await findActiveSchedule(this.db, actor.id, user.departmentId, now);
     const { status, lateMinutes } = this.evaluateArrival(now, timezone, schedule);
 
     const record: AttendanceDoc = {
@@ -267,42 +268,6 @@ export class AttendanceService {
   }
 
   /** Личный график имеет приоритет над отдельским. */
-  private async resolveSchedule(
-    userId: string,
-    departmentId: string | null,
-    at: Date,
-  ): Promise<WorkScheduleDoc | null> {
-    const personal = await this.db
-      .collection(COLLECTIONS.workSchedules)
-      .where('userId', '==', userId)
-      .where('effectiveFrom', '<=', Timestamp.fromDate(at))
-      .orderBy('effectiveFrom', 'desc')
-      .limit(1)
-      .get();
-
-    const active = (doc: WorkScheduleDoc): boolean =>
-      doc.effectiveTo === null || doc.effectiveTo.toDate() >= at;
-
-    if (!personal.empty) {
-      const doc = personal.docs[0].data() as WorkScheduleDoc;
-      if (active(doc)) return doc;
-    }
-
-    if (!departmentId) return null;
-
-    const departmental = await this.db
-      .collection(COLLECTIONS.workSchedules)
-      .where('departmentId', '==', departmentId)
-      .where('effectiveFrom', '<=', Timestamp.fromDate(at))
-      .orderBy('effectiveFrom', 'desc')
-      .limit(1)
-      .get();
-
-    if (departmental.empty) return null;
-    const doc = departmental.docs[0].data() as WorkScheduleDoc;
-    return active(doc) ? doc : null;
-  }
-
   private evaluateArrival(
     now: Date,
     timezone: string,
