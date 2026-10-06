@@ -42,6 +42,12 @@ function monthRange(): { from: string; to: string } {
   return { from: dateKey(from), to: dateKey(to) };
 }
 
+/** Приписка к статусу для дней, которые человек не отмечал сам. */
+const METHOD_NOTES: Partial<Record<AttendanceRecord['method'], string>> = {
+  MANUAL_ADJUSTMENT: ' · вручную',
+  AUTO_ABSENCE: ' · не отмечался',
+};
+
 export function HomeScreen({ onScan }: { onScan: () => void }) {
   const { user, signOut } = useAuth();
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
@@ -144,9 +150,10 @@ export function HomeScreen({ onScan }: { onScan: () => void }) {
             <Text style={[styles.rowStatus, { color: STATUS_COLORS[record.status] }]}>
               {STATUS_LABELS[record.status]}
               {record.lateMinutes > 0 ? ` · ${record.lateMinutes} мин` : ''}
-              {/* Сотрудник должен видеть, что день проставлен руководителем,
-                  а не сканом: иначе правка табеля остаётся для него невидимой. */}
-              {record.method === 'MANUAL_ADJUSTMENT' ? ' · вручную' : ''}
+              {/* Сотрудник должен видеть, откуда взялся день: правка
+                  руководителя и автоматический прогул — разные вещи,
+                  и оспаривать их он будет по-разному. */}
+              {METHOD_NOTES[record.method] ?? ''}
             </Text>
           </View>
         ))
