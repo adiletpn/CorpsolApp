@@ -190,3 +190,55 @@ describe('существующая запись не затирается', () =
     expect(firestore.all(COLLECTIONS.attendance)).toHaveLength(1);
   });
 });
+
+describe('срок работы сотрудника', () => {
+  it('принятому позже прогул за прошлое не ставится', async () => {
+    const { firestore, service } = setup();
+    seedEmployee(firestore, 'mop-new', {
+      hiredAt: Timestamp.fromDate(new Date('2026-09-20T00:00:00Z')),
+    });
+    seedSchedule(firestore);
+
+    // Человека ещё не было в компании — прогул за этот день абсурден.
+    const result = await service.markForOrganization(ORG, WORK_DATE);
+
+    expect(result.marked).toBe(0);
+  });
+
+  it('в день приёма прогул возможен', async () => {
+    const { firestore, service } = setup();
+    seedEmployee(firestore, 'mop-1', {
+      hiredAt: Timestamp.fromDate(new Date(`${WORK_DATE}T00:00:00Z`)),
+    });
+    seedSchedule(firestore);
+
+    // Первый рабочий день — уже рабочий.
+    const result = await service.markForOrganization(ORG, WORK_DATE);
+
+    expect(result.marked).toBe(1);
+  });
+
+  it('уволенный в выборку не попадает вовсе', async () => {
+    const { firestore, service } = setup();
+    seedEmployee(firestore, 'mop-fired', {
+      status: 'TERMINATED',
+      terminatedAt: Timestamp.fromDate(new Date('2026-08-31T00:00:00Z')),
+    });
+    seedSchedule(firestore);
+
+    const result = await service.markForOrganization(ORG, WORK_DATE);
+
+    expect(result.marked).toBe(0);
+  });
+
+  it('сотрудники чужой организации не трогаются', async () => {
+    const { firestore, service } = setup();
+    seedEmployee(firestore, 'alien', { organizationId: 'other-org' });
+    seedSchedule(firestore);
+
+    const result = await service.markForOrganization(ORG, WORK_DATE);
+
+    expect(result.marked).toBe(0);
+    expect(recordOf(firestore, 'alien')).toBeUndefined();
+  });
+});
