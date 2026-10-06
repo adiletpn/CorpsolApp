@@ -10,6 +10,7 @@ import { Devices } from '../components/screens/Devices';
 import { Settings } from '../components/screens/Settings';
 import { Integrations } from '../components/screens/Integrations';
 import { Plans } from '../components/screens/Plans';
+import { Absences } from '../components/screens/Absences';
 import { Achievements } from '../components/screens/Achievements';
 import { Calls } from '../components/screens/Calls';
 import { WorkNumbers } from '../components/screens/WorkNumbers';
@@ -36,6 +37,7 @@ function Panel() {
     calls: <Calls />,
     'work-numbers': <WorkNumbers />,
     achievements: <Achievements />,
+    absences: <Absences />,
     payroll: <Payroll />,
     leaderboard: <Leaderboard />,
     audit: <Audit />,

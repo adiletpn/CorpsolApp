@@ -30,6 +30,7 @@ const NAV: NavItem[] = [
   { key: 'leaderboard', label: 'Рейтинг', permissions: ['leaderboard.read'] },
   { key: 'achievements', label: 'Достижения', permissions: ['leaderboard.read'] },
   { key: 'schedules', label: 'Графики', permissions: ['settings.manage', 'attendance.adjust'] },
+  { key: 'absences', label: 'Прогулы', permissions: ['attendance.adjust'] },
   { key: 'audit', label: 'Журнал', permissions: ['audit.read'] },
   { key: 'settings', label: 'Настройки', permissions: ['settings.manage', 'office.manage'] },
   { key: 'integrations', label: 'Интеграции', permissions: ['integration.manage'] },
