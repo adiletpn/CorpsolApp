@@ -5,7 +5,7 @@ import { FirebaseService } from '../firebase/firebase.service';
 import { COLLECTIONS, attendanceDocId } from '../firestore/collections';
 import type { AttendanceDoc, OrganizationDoc, UserDoc } from '../firestore/types';
 import { findActiveSchedule } from '../schedules/schedule-resolver';
-import { localIsoWeekday } from '../common/utils/time';
+import { localIsoWeekday, localWorkDateKey } from '../common/utils/time';
 
 export interface AbsenceRunResult {
   organizationId: string;
@@ -123,6 +123,35 @@ export class AbsenceService {
       if (user.role === 'MOP' || user.role === 'ROP') staff.set(doc.id, user);
     }
     return staff;
+  }
+
+  /**
+   * Прогон по всем организациям за их собственное «вчера».
+   *
+   * Дата считается по часовому поясу каждой: в одно и то же мгновение
+   * у одной организации уже вчера, а у другой ещё сегодня.
+   */
+  async markYesterdayEverywhere(now = new Date()): Promise<AbsenceRunResult[]> {
+    const organizations = await this.db.collection(COLLECTIONS.organizations).get();
+    const results: AbsenceRunResult[] = [];
+
+    for (const doc of organizations.docs) {
+      const timezone = (doc.data() as OrganizationDoc).timezone ?? 'Asia/Almaty';
+      const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const workDate = localWorkDateKey(yesterday, timezone);
+
+      try {
+        results.push(await this.markForOrganization(doc.id, workDate));
+      } catch (cause) {
+        // Падение по одной организации не должно оставить без прогулов
+        // все остальные.
+        this.logger.error(
+          `Прогулы за ${workDate} не проставлены в организации ${doc.id}: ${String(cause)}`,
+        );
+      }
+    }
+
+    return results;
   }
 
   /** Записывает прогулы пачкой: по одному запросу на сотрудника дорого. */
