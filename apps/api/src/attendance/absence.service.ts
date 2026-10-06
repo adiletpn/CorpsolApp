@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { Timestamp } from 'firebase-admin/firestore';
 
 import { FirebaseService } from '../firebase/firebase.service';
@@ -123,6 +124,20 @@ export class AbsenceService {
       if (user.role === 'MOP' || user.role === 'ROP') staff.set(doc.id, user);
     }
     return staff;
+  }
+
+  /**
+   * Ночной прогон. Три часа — время, когда вчерашний день закрыт
+   * в любом из поясов, где мы работаем, а нагрузки на базу нет.
+   */
+  @Cron(CronExpression.EVERY_DAY_AT_3AM)
+  async runNightly(): Promise<void> {
+    const results = await this.markYesterdayEverywhere();
+    const marked = results.reduce((total, item) => total + item.marked, 0);
+
+    this.logger.log(
+      `Прогулы проставлены: ${marked} в ${results.length} организациях`,
+    );
   }
 
   /**
