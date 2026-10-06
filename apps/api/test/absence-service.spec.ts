@@ -376,3 +376,62 @@ describe('прогон по всем организациям', () => {
     expect(result.marked).toBe(2);
   });
 });
+
+describe('след прогона в журнале', () => {
+  const events = (firestore: FakeFirestore) => firestore.all(COLLECTIONS.auditEvents);
+
+  const ready = () => {
+    const context = setup();
+    seedEmployee(context.firestore, 'mop-1');
+    seedEmployee(context.firestore, 'mop-2');
+    seedSchedule(context.firestore);
+    return context;
+  };
+
+  it('одна запись на весь прогон, а не на каждого', async () => {
+    const { firestore, service } = ready();
+
+    await service.markForOrganization(ORG, WORK_DATE);
+
+    // Построчный журнал на сотню человек засорил бы ленту,
+    // в которой ищут ручные обходы контроля.
+    expect(events(firestore)).toHaveLength(1);
+    expect(events(firestore)[0].metadata).toMatchObject({ count: 2 });
+  });
+
+  it('автора нет: это не действие человека', async () => {
+    const { firestore, service } = ready();
+
+    await service.markForOrganization(ORG, WORK_DATE);
+
+    expect(events(firestore)[0].actorId).toBeNull();
+    expect(events(firestore)[0].action).toBe('attendance.auto_absence');
+  });
+
+  it('перечисляет, кому поставлен прогул', async () => {
+    const { firestore, service } = ready();
+
+    await service.markForOrganization(ORG, WORK_DATE);
+
+    const metadata = events(firestore)[0].metadata as { userIds: string[] };
+    expect(metadata.userIds.sort()).toEqual(['mop-1', 'mop-2']);
+  });
+
+  it('помечен организацией', async () => {
+    const { firestore, service } = ready();
+
+    await service.markForOrganization(ORG, WORK_DATE);
+
+    expect(events(firestore)[0].organizationId).toBe(ORG);
+  });
+
+  it('пустой прогон журнал не засоряет', async () => {
+    const { firestore, service } = setup();
+    seedEmployee(firestore, 'mop-1');
+    // Графика нет — ставить некому.
+
+    await service.markForOrganization(ORG, WORK_DATE);
+
+    expect(events(firestore)).toHaveLength(0);
+  });
+});
