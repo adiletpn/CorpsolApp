@@ -80,3 +80,9 @@ export class AdjustAttendanceDto {
   @MaxLength(500)
   reason!: string;
 }
+
+export class MarkAbsencesDto {
+  /** День, за который доставить прогулы, «ГГГГ-ММ-ДД». */
+  @Matches(DATE_KEY, { message: 'workDate должен быть в формате ГГГГ-ММ-ДД' })
+  workDate!: string;
+}

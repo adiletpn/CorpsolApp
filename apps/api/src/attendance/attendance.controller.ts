@@ -14,8 +14,9 @@ import { Public } from '../common/decorators/public.decorator';
 import { RequirePermissions } from '../common/decorators/require-permissions.decorator';
 import { AttendanceService } from './attendance.service';
 import { AttendanceAdjustmentService } from './adjustment.service';
+import { AbsenceService } from './absence.service';
 import { TerminalService } from './terminal.service';
-import { AdjustAttendanceDto, CheckInDto, CheckOutDto } from './dto';
+import { AdjustAttendanceDto, CheckInDto, CheckOutDto, MarkAbsencesDto } from './dto';
 
 @Controller('attendance')
 export class AttendanceController {
@@ -23,7 +24,25 @@ export class AttendanceController {
     private readonly attendance: AttendanceService,
     private readonly terminals: TerminalService,
     private readonly adjustments: AttendanceAdjustmentService,
+    private readonly absences: AbsenceService,
   ) {}
+
+  /**
+   * Догнать прогулы за день вручную.
+   *
+   * Ночная задача может не отработать — сервер перезапускали, база была
+   * недоступна. Без ручного запуска такой день пришлось бы закрывать
+   * правкой по каждому сотруднику отдельно.
+   */
+  @Post('mark-absences')
+  @HttpCode(200)
+  @RequirePermissions('attendance.adjust')
+  markAbsences(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: MarkAbsencesDto,
+  ) {
+    return this.absences.markForOrganization(user.organizationId, dto.workDate);
+  }
 
   @Post('check-in')
   @HttpCode(200)
