@@ -435,3 +435,32 @@ describe('след прогона в журнале', () => {
     expect(events(firestore)).toHaveLength(0);
   });
 });
+
+describe('прогул доходит до расчёта зарплаты', () => {
+  it('записывается со статусом, который понимает расчёт', async () => {
+    const { firestore, service } = setup();
+    seedEmployee(firestore, 'mop-1');
+    seedSchedule(firestore);
+
+    await service.markForOrganization(ORG, WORK_DATE);
+
+    // Ради этого всё и затевалось: день без отметки должен попасть
+    // в удержания, а не остаться дырой в табеле.
+    const record = recordOf(firestore, 'mop-1');
+    expect(record?.status).toBe('ABSENT');
+    expect(record?.workDate).toBe(WORK_DATE);
+    expect(record?.organizationId).toBe(ORG);
+  });
+
+  it('ключ записи тот же, что у обычной отметки', async () => {
+    const { firestore, service } = setup();
+    seedEmployee(firestore, 'mop-1');
+    seedSchedule(firestore);
+
+    await service.markForOrganization(ORG, WORK_DATE);
+
+    // Иначе на один день у сотрудника появились бы две записи:
+    // прогул от задачи и отметка, сделанная задним числом.
+    expect(firestore.read(COLLECTIONS.attendance, 'mop-1_2026-09-15')).toBeDefined();
+  });
+});
