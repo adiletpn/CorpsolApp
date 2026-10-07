@@ -89,3 +89,23 @@ describe('устройства: открепление снимает досту
     expect(auth.record('uid-1')?.tokensRevokedAt).not.toBeNull();
   });
 });
+
+describe('устройства: след в журнале', () => {
+  it('открепление записывается в журнал событий организации', async () => {
+    const { firestore, auth, service } = setup();
+    await seedUser(firestore, auth, 'uid-1');
+    await service.bind('uid-1', { deviceId: 'phone-1', platform: 'android' });
+
+    await service.unbind('uid-1', HR);
+
+    const events = firestore.all(COLLECTIONS.auditEvents);
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      organizationId: ORG,
+      actorId: HR,
+      action: 'device.unbind',
+      targetId: 'uid-1',
+      metadata: { deviceId: 'phone-1' },
+    });
+  });
+});
