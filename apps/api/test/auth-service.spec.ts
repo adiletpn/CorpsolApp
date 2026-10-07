@@ -72,3 +72,28 @@ describe('вход: профиль сотрудника', () => {
     });
   });
 });
+
+describe('вход: роль в претензиях токена', () => {
+  it('роль из карточки попадает в претензии токена', async () => {
+    const { firestore, auth, service } = setup();
+    await seedUser(firestore, auth, 'uid-1', { role: 'HR' });
+
+    await service.openSession('uid-1');
+
+    expect(auth.record('uid-1')?.claims).toEqual({ role: 'HR' });
+  });
+
+  it('смена роли в карточке доезжает до претензий на следующем входе', async () => {
+    const { firestore, auth, service } = setup();
+    await seedUser(firestore, auth, 'uid-1', { role: 'HR' });
+    await service.openSession('uid-1');
+
+    firestore.seed(COLLECTIONS.users, 'uid-1', {
+      ...firestore.read(COLLECTIONS.users, 'uid-1'),
+      role: 'DIRECTOR',
+    });
+    await service.openSession('uid-1');
+
+    expect(auth.record('uid-1')?.claims).toEqual({ role: 'DIRECTOR' });
+  });
+});
