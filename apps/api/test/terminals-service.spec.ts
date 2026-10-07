@@ -1,3 +1,4 @@
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Timestamp } from 'firebase-admin/firestore';
 
 import { TerminalsService } from '../src/attendance/terminals.service';
@@ -67,5 +68,16 @@ describe('терминалы: создание', () => {
     expect(view.isActive).toBe(true);
     expect(view.hasAccessToken).toBe(false);
     expect(view.tokenIssuedAt).toBeNull();
+  });
+});
+
+describe('терминалы: секрет подписи', () => {
+  it('секрет не попадает в представление для администратора', async () => {
+    const { firestore, service } = setup();
+    seedOffice(firestore, 'office-1');
+
+    const view = await service.create(director(), 'office-1', 'Вход');
+
+    expect(view).not.toHaveProperty('secret');
   });
 });
