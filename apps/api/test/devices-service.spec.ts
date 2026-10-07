@@ -286,3 +286,21 @@ describe('очередь заявок: порядок', () => {
     expect(queue.map((item) => item.id)).toEqual(['req-old', 'req-new']);
   });
 });
+
+describe('счётчик заявок для значка в панели', () => {
+  it('считает только необработанные заявки', async () => {
+    const { firestore, auth, service } = setup();
+    await seedUser(firestore, auth, 'uid-1');
+    seedRequest(firestore, 'req-1');
+    seedRequest(firestore, 'req-2');
+    seedRequest(firestore, 'req-3', { status: 'APPROVED' });
+
+    expect(await service.countPendingRequests()).toBe(2);
+  });
+
+  it('пустая очередь даёт ноль, а не ошибку', async () => {
+    const { service } = setup();
+
+    expect(await service.countPendingRequests()).toBe(0);
+  });
+});
