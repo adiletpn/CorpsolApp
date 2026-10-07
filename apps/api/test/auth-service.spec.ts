@@ -170,3 +170,29 @@ describe('вход: телефон коллеги', () => {
     });
   });
 });
+
+describe('вход: смена телефона сотрудником', () => {
+  it('вход с нового телефона отклоняется и требует аппрува', async () => {
+    const { firestore, auth, service } = setup();
+    await seedUser(firestore, auth, 'uid-1');
+    await service.openSession('uid-1', phone);
+
+    await expect(
+      service.openSession('uid-1', { deviceId: 'phone-2', platform: 'ios' }),
+    ).rejects.toMatchObject({ response: { code: AUTH_ERRORS.DEVICE_MISMATCH } });
+  });
+
+  it('по отказу создаётся заявка на перепривязку', async () => {
+    const { firestore, auth, service } = setup();
+    await seedUser(firestore, auth, 'uid-1');
+    await service.openSession('uid-1', phone);
+
+    await expect(
+      service.openSession('uid-1', { deviceId: 'phone-2', platform: 'ios' }),
+    ).rejects.toThrow(ForbiddenException);
+
+    const requests = firestore.all(COLLECTIONS.deviceRequests);
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toMatchObject({ userId: 'uid-1', status: 'PENDING' });
+  });
+});
