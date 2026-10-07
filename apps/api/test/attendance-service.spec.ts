@@ -258,3 +258,22 @@ describe('отметка прихода: повторный скан', () => {
     expect(firestore.all(COLLECTIONS.attendance)).toHaveLength(1);
   });
 });
+
+describe('отметка прихода: баллы', () => {
+  it('приход вовремя начисляет баллы один раз', async () => {
+    const { firestore, terminals, service } = setup();
+    seedEmployee(firestore);
+
+    const result = await service.checkIn(actor(), dtoAt(await freshQr(terminals)) as never);
+
+    const points = firestore.all(COLLECTIONS.points);
+    expect(points).toHaveLength(1);
+    expect(points[0]).toMatchObject({
+      userId: 'uid-1',
+      reason: 'CHECK_IN_ON_TIME',
+      points: 10,
+      refType: 'Attendance',
+      refId: result.id,
+    });
+  });
+});
