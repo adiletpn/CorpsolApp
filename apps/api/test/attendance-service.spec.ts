@@ -99,3 +99,24 @@ describe('отметка прихода: телефон', () => {
     ).rejects.toMatchObject({ response: { code: 'device_not_bound' } });
   });
 });
+
+describe('отметка прихода: статус сотрудника', () => {
+  it('уволенный сотрудник отметиться не может', async () => {
+    const { firestore, terminals, service } = setup();
+    seedEmployee(firestore, { status: 'TERMINATED' });
+    const qr = await freshQr(terminals);
+
+    await expect(service.checkIn(actor(), dtoAt(qr) as never)).rejects.toMatchObject({
+      response: { code: 'employee_inactive' },
+    });
+  });
+
+  it('отметка от несуществующей карточки отклоняется', async () => {
+    const { terminals, service } = setup();
+    const qr = await freshQr(terminals);
+
+    await expect(service.checkIn(actor(), dtoAt(qr) as never)).rejects.toMatchObject({
+      response: { code: 'employee_inactive' },
+    });
+  });
+});
