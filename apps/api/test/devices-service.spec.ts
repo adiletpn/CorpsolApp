@@ -190,3 +190,31 @@ describe('заявки: повторная обработка', () => {
     await expect(service.approveRequest('req-1', HR)).rejects.toThrow(ConflictException);
   });
 });
+
+describe('заявки: отклонение', () => {
+  it('отклонение сохраняет причину и автора решения', async () => {
+    const { firestore, auth, service } = setup();
+    await seedUser(firestore, auth, 'uid-1');
+    seedRequest(firestore, 'req-1');
+
+    await service.rejectRequest('req-1', HR, 'не подтвердил личность');
+
+    expect(firestore.read(COLLECTIONS.deviceRequests, 'req-1')).toMatchObject({
+      status: 'REJECTED',
+      resolvedBy: HR,
+      resolveNote: 'не подтвердил личность',
+    });
+  });
+
+  it('отклонение не трогает текущую привязку сотрудника', async () => {
+    const { firestore, auth, service } = setup();
+    await seedUser(firestore, auth, 'uid-1');
+    await service.bind('uid-1', { deviceId: 'phone-1', platform: 'android' });
+    seedRequest(firestore, 'req-1');
+
+    await service.rejectRequest('req-1', HR);
+
+    expect(firestore.read(COLLECTIONS.devices, 'phone-1')?.isActive).toBe(true);
+    expect(firestore.read(COLLECTIONS.devices, 'phone-2')).toBeUndefined();
+  });
+});
