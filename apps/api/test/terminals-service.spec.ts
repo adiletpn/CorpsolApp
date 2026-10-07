@@ -113,3 +113,26 @@ describe('терминалы: чужой офис', () => {
     );
   });
 });
+
+describe('терминалы: включение и выключение', () => {
+  it('выключенный терминал остаётся выключенным в базе', async () => {
+    const { firestore, service } = setup();
+    seedOffice(firestore, 'office-1');
+    seedTerminal(firestore, 'term-1');
+
+    const view = await service.setActive(director(), 'term-1', false);
+
+    expect(view.isActive).toBe(false);
+    expect(firestore.read(COLLECTIONS.terminals, 'term-1')?.isActive).toBe(false);
+  });
+
+  it('выключенный терминал можно включить обратно', async () => {
+    const { firestore, service } = setup();
+    seedOffice(firestore, 'office-1');
+    seedTerminal(firestore, 'term-1', { isActive: false });
+
+    const view = await service.setActive(director(), 'term-1', true);
+
+    expect(view.isActive).toBe(true);
+  });
+});
