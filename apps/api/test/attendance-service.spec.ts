@@ -120,3 +120,26 @@ describe('отметка прихода: статус сотрудника', () 
     });
   });
 });
+
+describe('отметка прихода: код терминала', () => {
+  it('мусор вместо кода не проходит разбор', async () => {
+    const { firestore, service } = setup();
+    seedEmployee(firestore);
+
+    await expect(
+      service.checkIn(actor(), dtoAt('не-код-вовсе') as never),
+    ).rejects.toMatchObject({ response: { code: 'qr_invalid' } });
+  });
+
+  it('код с подменённой подписью не принимается', async () => {
+    const { firestore, terminals, service } = setup();
+    seedEmployee(firestore);
+    const qr = await freshQr(terminals);
+    const parsed = parseQrPayload(qr)!;
+    const forged = JSON.stringify({ ...parsed, s: 'подделка' });
+
+    await expect(service.checkIn(actor(), dtoAt(forged) as never)).rejects.toMatchObject({
+      response: { code: 'qr_invalid' },
+    });
+  });
+});
