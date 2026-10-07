@@ -170,3 +170,24 @@ describe('терминалы: список', () => {
     expect(list.map((item) => item.id)).toEqual(['term-1']);
   });
 });
+
+describe('терминалы: фильтр по офису', () => {
+  it('фильтр оставляет терминалы только указанного офиса', async () => {
+    const { firestore, service } = setup();
+    seedOffice(firestore, 'office-1');
+    seedOffice(firestore, 'office-3');
+    seedTerminal(firestore, 'term-1');
+    seedTerminal(firestore, 'term-3', { officeId: 'office-3' });
+
+    const list = await service.list(director(), 'office-3');
+
+    expect(list.map((item) => item.id)).toEqual(['term-3']);
+  });
+
+  it('фильтр по офису другой организации отвечает «не найдено»', async () => {
+    const { firestore, service } = setup();
+    seedOffice(firestore, 'office-2', OTHER_ORG);
+
+    await expect(service.list(director(), 'office-2')).rejects.toThrow(NotFoundException);
+  });
+});
