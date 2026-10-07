@@ -81,3 +81,16 @@ describe('терминалы: секрет подписи', () => {
     expect(view).not.toHaveProperty('secret');
   });
 });
+
+describe('терминалы: секрет у каждого свой', () => {
+  it('два терминала одного офиса получают разные секреты', async () => {
+    const { firestore, service } = setup();
+    seedOffice(firestore, 'office-1');
+
+    await service.create(director(), 'office-1', 'Вход');
+    await service.create(director(), 'office-1', 'Склад');
+
+    const secrets = firestore.all(COLLECTIONS.terminals).map((doc) => doc.secret);
+    expect(new Set(secrets).size).toBe(2);
+  });
+});
