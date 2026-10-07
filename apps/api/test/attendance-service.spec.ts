@@ -201,3 +201,18 @@ describe('отметка прихода: офисный Wi-Fi', () => {
     expect(result.status).toBe('ON_TIME');
   });
 });
+
+describe('отметка прихода: запись сетей в разном виде', () => {
+  it('роутер и телефон пишут адрес по-разному, но сеть та же', async () => {
+    const { firestore, terminals, service } = setup({ wifiBssids: ['A1:B2:C3:D4:E5:F6'] });
+    seedEmployee(firestore);
+    const qr = await freshQr(terminals);
+
+    const result = await service.checkIn(
+      actor(),
+      dtoAt(qr, { wifiBssid: 'a1-b2-c3-d4-e5-f6' }) as never,
+    );
+
+    expect(result.status).toBe('ON_TIME');
+  });
+});
