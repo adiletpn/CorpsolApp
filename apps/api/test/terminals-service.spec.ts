@@ -94,3 +94,22 @@ describe('терминалы: секрет у каждого свой', () => {
     expect(new Set(secrets).size).toBe(2);
   });
 });
+
+describe('терминалы: чужой офис', () => {
+  it('создать терминал в офисе другой организации нельзя', async () => {
+    const { firestore, service } = setup();
+    seedOffice(firestore, 'office-2', OTHER_ORG);
+
+    await expect(service.create(director(), 'office-2', 'Вход')).rejects.toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('создать терминал в несуществующем офисе нельзя', async () => {
+    const { service } = setup();
+
+    await expect(service.create(director(), 'office-404', 'Вход')).rejects.toThrow(
+      BadRequestException,
+    );
+  });
+});
