@@ -136,3 +136,32 @@ describe('устройства: активная привязка', () => {
     });
   });
 });
+
+describe('заявки: одобрение', () => {
+  it('новый телефон встаёт на место старого', async () => {
+    const { firestore, auth, service } = setup();
+    await seedUser(firestore, auth, 'uid-1');
+    await service.bind('uid-1', { deviceId: 'phone-1', platform: 'android' });
+    seedRequest(firestore, 'req-1');
+
+    const device = await service.approveRequest('req-1', HR);
+
+    expect(device.deviceId).toBe('phone-2');
+    expect(firestore.read(COLLECTIONS.devices, 'phone-1')?.isActive).toBe(false);
+    expect(firestore.read(COLLECTIONS.devices, 'phone-2')?.isActive).toBe(true);
+  });
+
+  it('заявка помечается обработанной с автором решения', async () => {
+    const { firestore, auth, service } = setup();
+    await seedUser(firestore, auth, 'uid-1');
+    seedRequest(firestore, 'req-1');
+
+    await service.approveRequest('req-1', HR, 'телефон сменил');
+
+    expect(firestore.read(COLLECTIONS.deviceRequests, 'req-1')).toMatchObject({
+      status: 'APPROVED',
+      resolvedBy: HR,
+      resolveNote: 'телефон сменил',
+    });
+  });
+});
