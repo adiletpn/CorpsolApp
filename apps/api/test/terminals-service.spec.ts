@@ -205,3 +205,29 @@ describe('терминалы: порядок в списке', () => {
     expect(list.map((item) => item.name)).toEqual(['Авто', 'Ёлка', 'Ящик']);
   });
 });
+
+describe('терминалы: признак выпущенного токена', () => {
+  it('терминал с хешем токена показан как уже выпущенный', async () => {
+    const { firestore, service } = setup();
+    seedOffice(firestore, 'office-1');
+    seedTerminal(firestore, 'term-1', {
+      accessTokenHash: 'hash-value',
+      tokenIssuedAt: Timestamp.fromDate(new Date('2026-09-20T10:00:00Z')),
+    });
+
+    const [view] = await service.list(director());
+
+    expect(view.hasAccessToken).toBe(true);
+    expect(view.tokenIssuedAt).toBe('2026-09-20T10:00:00.000Z');
+  });
+
+  it('хеш токена наружу не отдаётся', async () => {
+    const { firestore, service } = setup();
+    seedOffice(firestore, 'office-1');
+    seedTerminal(firestore, 'term-1', { accessTokenHash: 'hash-value' });
+
+    const [view] = await service.list(director());
+
+    expect(view).not.toHaveProperty('accessTokenHash');
+  });
+});
