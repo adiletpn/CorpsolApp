@@ -179,3 +179,25 @@ describe('отметка прихода: подменённая геолокац
     ).rejects.toThrow();
   });
 });
+
+describe('отметка прихода: офисный Wi-Fi', () => {
+  it('без офисной сети отметка не проходит, если сеть задана', async () => {
+    const { firestore, terminals, service } = setup({ wifiBssids: ['A1:B2:C3:D4:E5:F6'] });
+    seedEmployee(firestore);
+    const qr = await freshQr(terminals);
+
+    await expect(
+      service.checkIn(actor(), dtoAt(qr, { wifiBssid: 'FF:FF:FF:FF:FF:FF' }) as never),
+    ).rejects.toMatchObject({ response: { code: 'outside_fence' } });
+  });
+
+  it('пустой список сетей проверку по Wi-Fi отключает', async () => {
+    const { firestore, terminals, service } = setup({ wifiBssids: [] });
+    seedEmployee(firestore);
+    const qr = await freshQr(terminals);
+
+    const result = await service.checkIn(actor(), dtoAt(qr) as never);
+
+    expect(result.status).toBe('ON_TIME');
+  });
+});
