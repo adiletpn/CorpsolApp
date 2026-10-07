@@ -167,3 +167,15 @@ describe('отметка прихода: геозона', () => {
     ).rejects.toThrow();
   });
 });
+
+describe('отметка прихода: подменённая геолокация', () => {
+  it('флаг подмены координат отменяет отметку, даже если точка верная', async () => {
+    const { firestore, terminals, service } = setup();
+    seedEmployee(firestore);
+    const qr = await freshQr(terminals);
+
+    await expect(
+      service.checkIn(actor(), dtoAt(qr, { isMocked: true }) as never),
+    ).rejects.toThrow();
+  });
+});
