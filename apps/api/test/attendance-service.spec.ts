@@ -235,3 +235,26 @@ describe('отметка прихода: засчитанная отметка',
     });
   });
 });
+
+describe('отметка прихода: повторный скан', () => {
+  it('второй скан за тот же день отвергается самой базой', async () => {
+    const { firestore, terminals, service } = setup();
+    seedEmployee(firestore);
+    await service.checkIn(actor(), dtoAt(await freshQr(terminals)) as never);
+
+    await expect(
+      service.checkIn(actor(), dtoAt(await freshQr(terminals)) as never),
+    ).rejects.toMatchObject({ response: { code: 'already_checked_in' } });
+  });
+
+  it('повторный скан не плодит вторую запись за день', async () => {
+    const { firestore, terminals, service } = setup();
+    seedEmployee(firestore);
+    await service.checkIn(actor(), dtoAt(await freshQr(terminals)) as never);
+    await expect(
+      service.checkIn(actor(), dtoAt(await freshQr(terminals)) as never),
+    ).rejects.toThrow();
+
+    expect(firestore.all(COLLECTIONS.attendance)).toHaveLength(1);
+  });
+});
