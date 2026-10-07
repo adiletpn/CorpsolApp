@@ -109,3 +109,30 @@ describe('устройства: след в журнале', () => {
     });
   });
 });
+
+describe('устройства: активная привязка', () => {
+  it('открепление снимает сотрудника с поиска активной привязки', async () => {
+    const { firestore, auth, service } = setup();
+    await seedUser(firestore, auth, 'uid-1');
+    await service.bind('uid-1', { deviceId: 'phone-1', platform: 'android' });
+    await service.unbind('uid-1', HR);
+
+    expect(await service.findActiveBinding('uid-1')).toBeNull();
+  });
+
+  it('откреплённый телефон можно выдать другому сотруднику', async () => {
+    const { firestore, auth, service } = setup();
+    await seedUser(firestore, auth, 'uid-1');
+    await seedUser(firestore, auth, 'uid-2');
+    await service.bind('uid-1', { deviceId: 'phone-1', platform: 'android' });
+    await service.unbind('uid-1', HR);
+
+    const device = await service.bind('uid-2', { deviceId: 'phone-1', platform: 'android' });
+
+    expect(device.userId).toBe('uid-2');
+    expect(firestore.read(COLLECTIONS.devices, 'phone-1')).toMatchObject({
+      userId: 'uid-2',
+      revokedBy: null,
+    });
+  });
+});
