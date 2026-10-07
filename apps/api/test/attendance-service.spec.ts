@@ -216,3 +216,22 @@ describe('отметка прихода: запись сетей в разном
     expect(result.status).toBe('ON_TIME');
   });
 });
+
+describe('отметка прихода: засчитанная отметка', () => {
+  it('запись содержит офис, терминал и способ отметки', async () => {
+    const { firestore, terminals, service } = setup();
+    seedEmployee(firestore);
+    const qr = await freshQr(terminals);
+
+    const result = await service.checkIn(actor(), dtoAt(qr) as never);
+
+    expect(result.office).toEqual({ id: OFFICE, name: 'Главный офис' });
+    expect(firestore.read(COLLECTIONS.attendance, result.id)).toMatchObject({
+      userId: 'uid-1',
+      officeId: OFFICE,
+      terminalId: TERMINAL,
+      method: 'QR',
+      checkOutAt: null,
+    });
+  });
+});
