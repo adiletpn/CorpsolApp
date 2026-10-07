@@ -191,3 +191,17 @@ describe('терминалы: фильтр по офису', () => {
     await expect(service.list(director(), 'office-2')).rejects.toThrow(NotFoundException);
   });
 });
+
+describe('терминалы: порядок в списке', () => {
+  it('список отсортирован по названию по-русски', async () => {
+    const { firestore, service } = setup();
+    seedOffice(firestore, 'office-1');
+    seedTerminal(firestore, 'term-1', { name: 'Ящик' });
+    seedTerminal(firestore, 'term-2', { name: 'Авто' });
+    seedTerminal(firestore, 'term-3', { name: 'Ёлка' });
+
+    const list = await service.list(director());
+
+    expect(list.map((item) => item.name)).toEqual(['Авто', 'Ёлка', 'Ящик']);
+  });
+});
