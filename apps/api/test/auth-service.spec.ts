@@ -97,3 +97,23 @@ describe('вход: роль в претензиях токена', () => {
     expect(auth.record('uid-1')?.claims).toEqual({ role: 'DIRECTOR' });
   });
 });
+
+describe('вход: телефон обязателен для МОПа', () => {
+  it('МОП без предъявленного телефона получает отказ device_required', async () => {
+    const { firestore, auth, service } = setup();
+    await seedUser(firestore, auth, 'uid-1', { role: 'MOP' });
+
+    await expect(service.openSession('uid-1')).rejects.toMatchObject({
+      response: { code: AUTH_ERRORS.DEVICE_REQUIRED },
+    });
+  });
+
+  it('директору телефон не нужен, привязка остаётся пустой', async () => {
+    const { firestore, auth, service } = setup();
+    await seedUser(firestore, auth, 'uid-1', { role: 'DIRECTOR' });
+
+    const profile = await service.openSession('uid-1');
+
+    expect(profile.boundDeviceId).toBeNull();
+  });
+});
