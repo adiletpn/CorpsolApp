@@ -196,3 +196,14 @@ describe('вход: смена телефона сотрудником', () => {
     expect(requests[0]).toMatchObject({ userId: 'uid-1', status: 'PENDING' });
   });
 });
+
+describe('выход', () => {
+  it('выход гасит токены обновления на устройстве', async () => {
+    const { firestore, auth, service } = setup();
+    await seedUser(firestore, auth, 'uid-1');
+
+    await service.closeSession('uid-1');
+
+    expect(auth.record('uid-1')?.tokensRevokedAt).not.toBeNull();
+  });
+});
