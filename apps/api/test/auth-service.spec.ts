@@ -117,3 +117,29 @@ describe('вход: телефон обязателен для МОПа', () => 
     expect(profile.boundDeviceId).toBeNull();
   });
 });
+
+describe('вход: первая привязка телефона', () => {
+  it('первый вход закрепляет телефон за аккаунтом', async () => {
+    const { firestore, auth, service } = setup();
+    await seedUser(firestore, auth, 'uid-1');
+
+    const profile = await service.openSession('uid-1', phone);
+
+    expect(profile.boundDeviceId).toBe('phone-1');
+    expect(firestore.read(COLLECTIONS.devices, 'phone-1')).toMatchObject({
+      userId: 'uid-1',
+      isActive: true,
+    });
+  });
+
+  it('повторный вход с того же телефона проходит без новой привязки', async () => {
+    const { firestore, auth, service } = setup();
+    await seedUser(firestore, auth, 'uid-1');
+    await service.openSession('uid-1', phone);
+
+    const profile = await service.openSession('uid-1', phone);
+
+    expect(profile.boundDeviceId).toBe('phone-1');
+    expect(firestore.all(COLLECTIONS.devices)).toHaveLength(1);
+  });
+});
