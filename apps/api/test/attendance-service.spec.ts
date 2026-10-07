@@ -143,3 +143,27 @@ describe('отметка прихода: код терминала', () => {
     });
   });
 });
+
+describe('отметка прихода: геозона', () => {
+  it('из дома отметиться нельзя, в ответе расстояние до офиса', async () => {
+    const { firestore, terminals, service } = setup();
+    seedEmployee(firestore);
+    const qr = await freshQr(terminals);
+
+    await expect(
+      service.checkIn(actor(), dtoAt(qr, { lat: 43.26, lng: 76.95 }) as never),
+    ).rejects.toMatchObject({
+      response: { code: 'outside_fence', radiusMeters: 150 },
+    });
+  });
+
+  it('недостоверная точность трактуется не в пользу сотрудника', async () => {
+    const { firestore, terminals, service } = setup();
+    seedEmployee(firestore);
+    const qr = await freshQr(terminals);
+
+    await expect(
+      service.checkIn(actor(), dtoAt(qr, { accuracyMeters: 500 }) as never),
+    ).rejects.toThrow();
+  });
+});
