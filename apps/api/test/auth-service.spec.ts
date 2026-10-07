@@ -143,3 +143,30 @@ describe('вход: первая привязка телефона', () => {
     expect(firestore.all(COLLECTIONS.devices)).toHaveLength(1);
   });
 });
+
+describe('вход: телефон коллеги', () => {
+  it('вход с телефона, закреплённого за другим сотрудником, отклоняется', async () => {
+    const { firestore, auth, service } = setup();
+    await seedUser(firestore, auth, 'uid-1');
+    await seedUser(firestore, auth, 'uid-2');
+    await service.openSession('uid-1', phone);
+
+    await expect(service.openSession('uid-2', phone)).rejects.toMatchObject({
+      response: { code: AUTH_ERRORS.DEVICE_TAKEN },
+    });
+  });
+
+  it('отказ не отбирает телефон у исходного владельца', async () => {
+    const { firestore, auth, service } = setup();
+    await seedUser(firestore, auth, 'uid-1');
+    await seedUser(firestore, auth, 'uid-2');
+    await service.openSession('uid-1', phone);
+
+    await expect(service.openSession('uid-2', phone)).rejects.toThrow();
+
+    expect(firestore.read(COLLECTIONS.devices, 'phone-1')).toMatchObject({
+      userId: 'uid-1',
+      isActive: true,
+    });
+  });
+});
