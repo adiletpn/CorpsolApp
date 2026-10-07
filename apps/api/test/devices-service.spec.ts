@@ -243,3 +243,29 @@ describe('очередь заявок: чужие организации', () =>
     expect(queue.map((item) => item.id)).toEqual(['req-1']);
   });
 });
+
+describe('очередь заявок: что видит ЧР', () => {
+  it('к заявке приложены имя, адрес и роль сотрудника', async () => {
+    const { firestore, auth, service } = setup();
+    await seedUser(firestore, auth, 'uid-1', { fullName: 'Асель Ким', role: 'MOP' });
+    seedRequest(firestore, 'req-1');
+
+    const [item] = await service.listPendingRequests(ORG);
+
+    expect(item.user).toEqual({
+      id: 'uid-1',
+      fullName: 'Асель Ким',
+      email: 'uid-1@corpsol.kz',
+      role: 'MOP',
+    });
+  });
+
+  it('обработанные заявки в очереди не висят', async () => {
+    const { firestore, auth, service } = setup();
+    await seedUser(firestore, auth, 'uid-1');
+    seedRequest(firestore, 'req-1', { status: 'APPROVED' });
+    seedRequest(firestore, 'req-2', { status: 'REJECTED' });
+
+    expect(await service.listPendingRequests(ORG)).toEqual([]);
+  });
+});
