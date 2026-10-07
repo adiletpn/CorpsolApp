@@ -311,6 +311,15 @@ export class FakeAuth {
     return { uid };
   }
 
+  /**
+   * Admin SDK отдаёт претензии в поле customClaims, а не claims, и сервисы
+   * читают именно его — иначе роль в токене всегда выглядела бы несвежей.
+   */
+  async getUser(uid: string): Promise<AuthRecord & { customClaims: Record<string, unknown> }> {
+    const user = this.require(uid);
+    return { ...user, customClaims: user.claims };
+  }
+
   /** Настоящий Admin SDK бросает ошибку, когда адрес свободен. */
   async getUserByEmail(email: string): Promise<AuthRecord> {
     const found = [...this.users.values()].find((user) => user.email === email);
