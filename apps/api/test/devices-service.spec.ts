@@ -165,3 +165,28 @@ describe('заявки: одобрение', () => {
     });
   });
 });
+
+describe('заявки: повторная обработка', () => {
+  it('неизвестную заявку одобрить нельзя', async () => {
+    const { service } = setup();
+
+    await expect(service.approveRequest('req-404', HR)).rejects.toThrow(NotFoundException);
+  });
+
+  it('уже одобренную заявку второй раз не обработать', async () => {
+    const { firestore, auth, service } = setup();
+    await seedUser(firestore, auth, 'uid-1');
+    seedRequest(firestore, 'req-1');
+    await service.approveRequest('req-1', HR);
+
+    await expect(service.approveRequest('req-1', HR)).rejects.toThrow(ConflictException);
+  });
+
+  it('отклонённую заявку одобрить нельзя', async () => {
+    const { firestore, auth, service } = setup();
+    await seedUser(firestore, auth, 'uid-1');
+    seedRequest(firestore, 'req-1', { status: 'REJECTED' });
+
+    await expect(service.approveRequest('req-1', HR)).rejects.toThrow(ConflictException);
+  });
+});
