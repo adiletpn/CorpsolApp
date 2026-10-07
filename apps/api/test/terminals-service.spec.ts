@@ -156,3 +156,17 @@ describe('терминалы: доступ к чужому терминалу', 
     );
   });
 });
+
+describe('терминалы: список', () => {
+  it('терминалы чужой организации в список не попадают', async () => {
+    const { firestore, service } = setup();
+    seedOffice(firestore, 'office-1');
+    seedOffice(firestore, 'office-2', OTHER_ORG);
+    seedTerminal(firestore, 'term-1');
+    seedTerminal(firestore, 'term-2', { officeId: 'office-2' });
+
+    const list = await service.list(director());
+
+    expect(list.map((item) => item.id)).toEqual(['term-1']);
+  });
+});
