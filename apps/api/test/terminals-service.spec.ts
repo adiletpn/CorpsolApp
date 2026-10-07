@@ -136,3 +136,23 @@ describe('терминалы: включение и выключение', () =>
     expect(view.isActive).toBe(true);
   });
 });
+
+describe('терминалы: доступ к чужому терминалу', () => {
+  it('неизвестный терминал переключить нельзя', async () => {
+    const { service } = setup();
+
+    await expect(service.setActive(director(), 'term-404', false)).rejects.toThrow(
+      NotFoundException,
+    );
+  });
+
+  it('терминал в офисе другой организации переключить нельзя', async () => {
+    const { firestore, service } = setup();
+    seedOffice(firestore, 'office-2', OTHER_ORG);
+    seedTerminal(firestore, 'term-2', { officeId: 'office-2' });
+
+    await expect(service.setActive(director(), 'term-2', false)).rejects.toThrow(
+      BadRequestException,
+    );
+  });
+});
