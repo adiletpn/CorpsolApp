@@ -218,3 +218,28 @@ describe('заявки: отклонение', () => {
     expect(firestore.read(COLLECTIONS.devices, 'phone-2')).toBeUndefined();
   });
 });
+
+describe('очередь заявок: чужие организации', () => {
+  it('заявка сотрудника другой организации в очередь не попадает', async () => {
+    const { firestore, auth, service } = setup();
+    await seedUser(firestore, auth, 'uid-1');
+    await seedUser(firestore, auth, 'uid-9', { organizationId: 'org-2' });
+    seedRequest(firestore, 'req-1');
+    seedRequest(firestore, 'req-9', { userId: 'uid-9' });
+
+    const queue = await service.listPendingRequests(ORG);
+
+    expect(queue.map((item) => item.id)).toEqual(['req-1']);
+  });
+
+  it('заявка от удалённого сотрудника очередь не ломает', async () => {
+    const { firestore, auth, service } = setup();
+    await seedUser(firestore, auth, 'uid-1');
+    seedRequest(firestore, 'req-1');
+    seedRequest(firestore, 'req-ghost', { userId: 'uid-404' });
+
+    const queue = await service.listPendingRequests(ORG);
+
+    expect(queue.map((item) => item.id)).toEqual(['req-1']);
+  });
+});
