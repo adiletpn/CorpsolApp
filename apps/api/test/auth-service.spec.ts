@@ -55,3 +55,20 @@ describe('вход: сотрудник не заведён', () => {
     await expect(service.openSession('uid-1', phone)).rejects.toThrow(UnauthorizedException);
   });
 });
+
+describe('вход: профиль сотрудника', () => {
+  it('возвращает отдел, офис и роль из карточки', async () => {
+    const { firestore, auth, service } = setup();
+    await seedUser(firestore, auth, 'uid-1');
+
+    const profile = await service.openSession('uid-1', phone);
+
+    expect(profile).toMatchObject({
+      id: 'uid-1',
+      fullName: 'Асель Ким',
+      role: 'MOP',
+      departmentId: 'dep-1',
+      officeId: 'office-1',
+    });
+  });
+});
