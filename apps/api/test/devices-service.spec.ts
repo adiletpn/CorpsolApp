@@ -269,3 +269,20 @@ describe('очередь заявок: что видит ЧР', () => {
     expect(await service.listPendingRequests(ORG)).toEqual([]);
   });
 });
+
+describe('очередь заявок: порядок', () => {
+  it('заявки идут от самой давней — её ждут дольше всех', async () => {
+    const { firestore, auth, service } = setup();
+    await seedUser(firestore, auth, 'uid-1');
+    seedRequest(firestore, 'req-new', {
+      createdAt: Timestamp.fromDate(new Date('2026-09-25T10:00:00Z')),
+    });
+    seedRequest(firestore, 'req-old', {
+      createdAt: Timestamp.fromDate(new Date('2026-09-18T10:00:00Z')),
+    });
+
+    const queue = await service.listPendingRequests(ORG);
+
+    expect(queue.map((item) => item.id)).toEqual(['req-old', 'req-new']);
+  });
+});
