@@ -64,3 +64,28 @@ describe('устройства: открепление', () => {
     await expect(service.unbind('uid-1', HR)).rejects.toThrow(NotFoundException);
   });
 });
+
+describe('устройства: открепление снимает доступ', () => {
+  it('привязка гасится с отметкой, кто открепил', async () => {
+    const { firestore, auth, service } = setup();
+    await seedUser(firestore, auth, 'uid-1');
+    await service.bind('uid-1', { deviceId: 'phone-1', platform: 'android' });
+
+    await service.unbind('uid-1', HR);
+
+    expect(firestore.read(COLLECTIONS.devices, 'phone-1')).toMatchObject({
+      isActive: false,
+      revokedBy: HR,
+    });
+  });
+
+  it('открепление гасит токены, иначе старый токен работал бы ещё час', async () => {
+    const { firestore, auth, service } = setup();
+    await seedUser(firestore, auth, 'uid-1');
+    await service.bind('uid-1', { deviceId: 'phone-1', platform: 'android' });
+
+    await service.unbind('uid-1', HR);
+
+    expect(auth.record('uid-1')?.tokensRevokedAt).not.toBeNull();
+  });
+});
