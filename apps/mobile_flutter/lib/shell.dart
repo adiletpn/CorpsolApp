@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'screens/home_screen.dart';
+import 'screens/scan_screen.dart';
 import 'theme.dart';
 
 /// Вкладки нижней навигации. Порядок повторяет прежнее приложение,
@@ -56,9 +57,17 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
-  void _openScanner() {
-    // Скан открывается поверх вкладок: во время отметки сотруднику
-    // некуда переключаться, пока камера не вернёт результат.
+  /// Скан открывается поверх вкладок: во время отметки сотруднику
+  /// некуда переключаться, пока камера не вернёт результат.
+  Future<void> _openScanner() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => ScanScreen(onDone: () => Navigator.of(context).pop()),
+      ),
+    );
+    // Табель на главной мог измениться — перестраиваем вкладку.
+    if (mounted) setState(() {});
   }
 
   Widget _buildTab(TabKey tab) => switch (tab) {
