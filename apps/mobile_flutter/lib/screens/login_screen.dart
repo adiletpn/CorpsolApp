@@ -6,6 +6,7 @@ import '../core/firebase_session.dart';
 import '../state/auth_controller.dart';
 import '../palette.dart';
 import '../theme.dart';
+import '../widgets/ambient.dart';
 
 /// Коды отказа при входе. Сотруднику показываем, что делать дальше,
 /// а не техническую причину.
@@ -63,104 +64,106 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.all(gap(3)),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'CorpSol',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                SizedBox(height: gap(0.5)),
-                Text(
-                  'Вход для менеджера',
-                  style: TextStyle(
-                    color: context.palette.textMuted,
-                    fontSize: 15,
+      body: AmbientBackground(
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.all(gap(3)),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'CorpSol',
+                    style: Theme.of(context).textTheme.headlineSmall,
                   ),
-                ),
-                SizedBox(height: gap(4)),
-                TextField(
-                  controller: _email,
-                  enabled: !_busy,
-                  keyboardType: TextInputType.emailAddress,
-                  autocorrect: false,
-                  textInputAction: TextInputAction.next,
-                  style: TextStyle(color: context.palette.text),
-                  decoration: _fieldDecoration('Рабочая почта'),
-                ),
-                SizedBox(height: gap(1.5)),
-                TextField(
-                  controller: _password,
-                  enabled: !_busy,
-                  obscureText: true,
-                  textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => _submit(),
-                  style: TextStyle(color: context.palette.text),
-                  decoration: _fieldDecoration('Пароль'),
-                ),
-                if (_error != null) ...[
+                  SizedBox(height: gap(0.5)),
+                  Text(
+                    'Вход для менеджера',
+                    style: TextStyle(
+                      color: context.palette.textMuted,
+                      fontSize: 15,
+                    ),
+                  ),
+                  SizedBox(height: gap(4)),
+                  TextField(
+                    controller: _email,
+                    enabled: !_busy,
+                    keyboardType: TextInputType.emailAddress,
+                    autocorrect: false,
+                    textInputAction: TextInputAction.next,
+                    style: TextStyle(color: context.palette.text),
+                    decoration: _fieldDecoration('Рабочая почта'),
+                  ),
+                  SizedBox(height: gap(1.5)),
+                  TextField(
+                    controller: _password,
+                    enabled: !_busy,
+                    obscureText: true,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _submit(),
+                    style: TextStyle(color: context.palette.text),
+                    decoration: _fieldDecoration('Пароль'),
+                  ),
+                  if (_error != null) ...[
+                    SizedBox(height: gap(2)),
+                    Text(
+                      _error!,
+                      style: TextStyle(
+                        color: context.palette.danger,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                  SizedBox(height: gap(3)),
+                  // Кнопка на градиенте — главное действие экрана.
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: _busy ? null : appGradient,
+                      color: _busy ? context.palette.surfaceRaised : null,
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                    ),
+                    child: FilledButton(
+                      onPressed: _busy ? null : _submit,
+                      style: FilledButton.styleFrom(
+                        padding: EdgeInsets.symmetric(vertical: gap(2.25)),
+                        backgroundColor: Colors.transparent,
+                        disabledBackgroundColor: Colors.transparent,
+                        foregroundColor: Colors.white,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                        ),
+                      ),
+                      child: _busy
+                          ? SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: context.palette.accent,
+                              ),
+                            )
+                          : const Text(
+                              'Войти',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                    ),
+                  ),
                   SizedBox(height: gap(2)),
                   Text(
-                    _error!,
+                    'Войти можно только с закреплённого телефона.',
+                    textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: context.palette.danger,
-                      fontSize: 14,
+                      color: context.palette.textMuted,
+                      fontSize: 13,
                     ),
                   ),
                 ],
-                SizedBox(height: gap(3)),
-                // Кнопка на градиенте — главное действие экрана.
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: _busy ? null : appGradient,
-                    color: _busy ? context.palette.surfaceRaised : null,
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
-                  ),
-                  child: FilledButton(
-                    onPressed: _busy ? null : _submit,
-                    style: FilledButton.styleFrom(
-                      padding: EdgeInsets.symmetric(vertical: gap(2.25)),
-                      backgroundColor: Colors.transparent,
-                      disabledBackgroundColor: Colors.transparent,
-                      foregroundColor: Colors.white,
-                      shadowColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.sm),
-                      ),
-                    ),
-                    child: _busy
-                        ? SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: context.palette.accent,
-                            ),
-                          )
-                        : const Text(
-                            'Войти',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                  ),
-                ),
-                SizedBox(height: gap(2)),
-                Text(
-                  'Войти можно только с закреплённого телефона.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: context.palette.textMuted,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),

@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 import 'screens/achievements_screen.dart';
@@ -8,6 +10,7 @@ import 'screens/payroll_screen.dart';
 import 'screens/scan_screen.dart';
 import 'palette.dart';
 import 'theme.dart';
+import 'widgets/ambient.dart';
 
 /// Вкладки нижней навигации. Порядок повторяет прежнее приложение,
 /// чтобы сотрудникам не пришлось переучиваться.
@@ -37,25 +40,37 @@ class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(bottom: false, child: _buildTab(_active)),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: context.palette.background,
-          border: Border(top: BorderSide(color: context.palette.border)),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Row(
-            children: [
-              for (final tab in TabKey.values)
-                Expanded(
-                  child: _TabButton(
-                    tab: tab,
-                    active: tab == _active,
-                    onTap: () => setState(() => _active = tab),
-                  ),
-                ),
-            ],
+      // Фон рисуется один раз под всеми вкладками: пятна не должны
+      // перескакивать при переключении.
+      body: AmbientBackground(
+        child: SafeArea(bottom: false, child: _buildTab(_active)),
+      ),
+      extendBody: true,
+      bottomNavigationBar: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          child: Container(
+            decoration: BoxDecoration(
+              color: context.palette.background.withValues(alpha: 0.72),
+              border: Border(
+                top: BorderSide(color: context.palette.glassBorder),
+              ),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Row(
+                children: [
+                  for (final tab in TabKey.values)
+                    Expanded(
+                      child: _TabButton(
+                        tab: tab,
+                        active: tab == _active,
+                        onTap: () => setState(() => _active = tab),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
