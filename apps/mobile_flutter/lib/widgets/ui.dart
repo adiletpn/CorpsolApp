@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../palette.dart';
 import '../theme.dart';
 
 /// Обычная карточка: приподнятая поверхность с тонкой рамкой.
@@ -12,13 +13,15 @@ class AppCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
+
     final body = Container(
       width: double.infinity,
       padding: padding ?? EdgeInsets.all(gap(2)),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: palette.surface,
         borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: palette.border),
       ),
       child: child,
     );
@@ -57,7 +60,7 @@ class GradientCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.lg),
         boxShadow: [
           BoxShadow(
-            color: AppColors.accent.withValues(alpha: 0.28),
+            color: context.palette.accent.withValues(alpha: 0.28),
             blurRadius: 28,
             offset: const Offset(0, 10),
           ),
@@ -144,9 +147,9 @@ class StatTile extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: EdgeInsets.symmetric(horizontal: gap(1.75), vertical: gap(2)),
     decoration: BoxDecoration(
-      color: AppColors.surface,
+      color: context.palette.surface,
       borderRadius: BorderRadius.circular(AppRadius.md),
-      border: Border.all(color: AppColors.border),
+      border: Border.all(color: context.palette.border),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -163,7 +166,7 @@ class StatTile extends StatelessWidget {
         SizedBox(height: gap(0.375)),
         Text(
           label,
-          style: const TextStyle(color: AppColors.textMuted, fontSize: 12.5),
+          style: TextStyle(color: context.palette.textMuted, fontSize: 12.5),
         ),
       ],
     ),
@@ -220,14 +223,14 @@ class EmptyState extends StatelessWidget {
         children: [
           IconChip(
             icon: icon ?? Icons.inbox_outlined,
-            color: AppColors.textFaint,
+            color: context.palette.textFaint,
             size: 64,
           ),
           SizedBox(height: gap(2)),
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 15),
+            style: TextStyle(color: context.palette.textMuted, fontSize: 15),
           ),
         ],
       ),
@@ -249,22 +252,22 @@ class ErrorRetry extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const IconChip(
+          IconChip(
             icon: Icons.cloud_off_outlined,
-            color: AppColors.danger,
+            color: context.palette.danger,
             size: 64,
           ),
           SizedBox(height: gap(2)),
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 15),
+            style: TextStyle(color: context.palette.textMuted, fontSize: 15),
           ),
           SizedBox(height: gap(2.5)),
           FilledButton(
             onPressed: onRetry,
             style: FilledButton.styleFrom(
-              backgroundColor: AppColors.accent,
+              backgroundColor: context.palette.accent,
               padding: EdgeInsets.symmetric(
                 horizontal: gap(3),
                 vertical: gap(1.5),
