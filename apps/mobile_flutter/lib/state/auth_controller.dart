@@ -16,7 +16,7 @@ class AuthController extends ChangeNotifier {
     _subscription = _session.changes.listen(_onFirebaseUserChanged);
   }
 
-  final FirebaseSession _session;
+  final SessionSource _session;
   final CorpsolApi _api;
   late final StreamSubscription<dynamic> _subscription;
 

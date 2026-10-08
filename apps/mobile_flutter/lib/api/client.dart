@@ -24,7 +24,7 @@ class ApiClient {
       : _http = httpClient ?? http.Client(),
         _baseUrl = baseUrl ?? Env.apiUrl;
 
-  final FirebaseSession _session;
+  final SessionSource _session;
   final http.Client _http;
   final String _baseUrl;
 

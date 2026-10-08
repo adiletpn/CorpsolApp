@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'screens/home_screen.dart';
 import 'theme.dart';
 
 /// Вкладки нижней навигации. Порядок повторяет прежнее приложение,
@@ -55,8 +56,13 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
+  void _openScanner() {
+    // Скан открывается поверх вкладок: во время отметки сотруднику
+    // некуда переключаться, пока камера не вернёт результат.
+  }
+
   Widget _buildTab(TabKey tab) => switch (tab) {
-        TabKey.home => const _Pending('Приход'),
+        TabKey.home => HomeScreen(onScan: _openScanner),
         TabKey.offers => const _Pending('Сделки'),
         TabKey.payroll => const _Pending('Зарплата'),
         TabKey.rating => const _Pending('Рейтинг'),
