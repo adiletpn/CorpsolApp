@@ -4,6 +4,7 @@ import 'package:corpsol_mobile/api/endpoints.dart';
 import 'package:corpsol_mobile/api/models.dart';
 import 'package:corpsol_mobile/core/firebase_session.dart';
 import 'package:corpsol_mobile/state/auth_controller.dart';
+import 'package:corpsol_mobile/state/theme_controller.dart';
 import 'package:corpsol_mobile/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -167,6 +168,9 @@ Widget harness(
     providers: [
       Provider<CorpsolApi>.value(value: fakeApi),
       ChangeNotifierProvider<AuthController>.value(value: auth),
+      ChangeNotifierProvider<ThemeController>.value(
+        value: ThemeController(null),
+      ),
     ],
     // Material нужен так же, как Scaffold в приложении: без него InkWell падает.
     child: MaterialApp(

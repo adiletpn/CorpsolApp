@@ -6,6 +6,7 @@ import '../api/models.dart';
 import '../core/labels.dart';
 import '../core/period.dart';
 import '../state/auth_controller.dart';
+import '../state/theme_controller.dart';
 import '../palette.dart';
 import '../theme.dart';
 import '../widgets/ui.dart';
@@ -116,6 +117,16 @@ class _Header extends StatelessWidget {
         child: ScreenHeader(
           title: fullName,
           subtitle: 'Менеджер отдела продаж',
+        ),
+      ),
+      // Переключатель темы: светлая, тёмная, как в системе.
+      IconButton(
+        tooltip: context.watch<ThemeController>().label,
+        onPressed: () => context.read<ThemeController>().cycle(),
+        icon: Icon(
+          context.watch<ThemeController>().icon,
+          color: context.palette.textMuted,
+          size: 22,
         ),
       ),
       TextButton(
