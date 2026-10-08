@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'screens/home_screen.dart';
+import 'screens/payroll_screen.dart';
 import 'screens/scan_screen.dart';
 import 'theme.dart';
 
@@ -73,7 +74,7 @@ class _AppShellState extends State<AppShell> {
   Widget _buildTab(TabKey tab) => switch (tab) {
         TabKey.home => HomeScreen(onScan: _openScanner),
         TabKey.offers => const _Pending('Сделки'),
-        TabKey.payroll => const _Pending('Зарплата'),
+        TabKey.payroll => const PayrollScreen(),
         TabKey.rating => const _Pending('Рейтинг'),
         TabKey.awards => const _Pending('Награды'),
       };
