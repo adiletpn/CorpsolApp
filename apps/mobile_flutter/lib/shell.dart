@@ -6,6 +6,7 @@ import 'screens/leaderboard_screen.dart';
 import 'screens/offers_screen.dart';
 import 'screens/payroll_screen.dart';
 import 'screens/scan_screen.dart';
+import 'palette.dart';
 import 'theme.dart';
 
 /// Вкладки нижней навигации. Порядок повторяет прежнее приложение,
@@ -38,9 +39,9 @@ class _AppShellState extends State<AppShell> {
     return Scaffold(
       body: SafeArea(bottom: false, child: _buildTab(_active)),
       bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: AppColors.background,
-          border: Border(top: BorderSide(color: AppColors.border)),
+        decoration: BoxDecoration(
+          color: context.palette.background,
+          border: Border(top: BorderSide(color: context.palette.border)),
         ),
         child: SafeArea(
           top: false,
@@ -96,7 +97,7 @@ class _TabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? AppColors.accent : AppColors.textFaint;
+    final color = active ? context.palette.accent : context.palette.textFaint;
 
     return InkWell(
       onTap: onTap,
@@ -115,7 +116,7 @@ class _TabButton extends StatelessWidget {
               ),
               decoration: BoxDecoration(
                 color: active
-                    ? AppColors.accent.withValues(alpha: 0.16)
+                    ? context.palette.accent.withValues(alpha: 0.16)
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(999),
               ),
