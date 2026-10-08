@@ -238,3 +238,145 @@ class Offer {
         sentDate: json['sentDate'] as String,
       );
 }
+
+enum PlanMetric { calls, talkMinutes, offers, revenue }
+
+PlanMetric planMetricFromJson(String value) => switch (value) {
+      'TALK_MINUTES' => PlanMetric.talkMinutes,
+      'OFFERS' => PlanMetric.offers,
+      'REVENUE' => PlanMetric.revenue,
+      _ => PlanMetric.calls,
+    };
+
+class PlanProgress {
+  const PlanProgress({
+    required this.metric,
+    required this.target,
+    required this.achieved,
+    required this.ratio,
+    required this.remaining,
+    required this.isComplete,
+  });
+
+  final PlanMetric metric;
+  final num target;
+  final num achieved;
+
+  /// Доля выполнения: 0.0–1.0 и выше при перевыполнении.
+  final double ratio;
+  final num remaining;
+  final bool isComplete;
+
+  factory PlanProgress.fromJson(Map<String, dynamic> json) => PlanProgress(
+        metric: planMetricFromJson(json['metric'] as String),
+        target: json['target'] as num,
+        achieved: json['achieved'] as num,
+        ratio: (json['ratio'] as num).toDouble(),
+        remaining: json['remaining'] as num,
+        isComplete: json['isComplete'] as bool,
+      );
+}
+
+enum PlanScope { department, user }
+
+class Plan {
+  const Plan({required this.id, required this.scope, required this.progress});
+
+  final String id;
+  final PlanScope scope;
+  final PlanProgress progress;
+
+  factory Plan.fromJson(Map<String, dynamic> json) => Plan(
+        id: json['id'] as String,
+        scope: json['scope'] == 'USER' ? PlanScope.user : PlanScope.department,
+        progress: PlanProgress.fromJson(json['progress'] as Map<String, dynamic>),
+      );
+}
+
+class RankedEntry {
+  const RankedEntry({
+    required this.userId,
+    required this.fullName,
+    required this.points,
+    required this.rank,
+    required this.pointsBehindLeader,
+  });
+
+  final String userId;
+  final String fullName;
+  final int points;
+  final int rank;
+  final int pointsBehindLeader;
+
+  factory RankedEntry.fromJson(Map<String, dynamic> json) => RankedEntry(
+        userId: json['userId'] as String,
+        fullName: json['fullName'] as String,
+        points: (json['points'] as num).toInt(),
+        rank: (json['rank'] as num).toInt(),
+        pointsBehindLeader: (json['pointsBehindLeader'] as num).toInt(),
+      );
+}
+
+class LeaderboardResult {
+  const LeaderboardResult({required this.entries, required this.self});
+
+  final List<RankedEntry> entries;
+
+  /// Своя строка приходит отдельно: сотрудник может не попасть в видимую часть.
+  final RankedEntry? self;
+
+  factory LeaderboardResult.fromJson(Map<String, dynamic> json) => LeaderboardResult(
+        entries: (json['entries'] as List<dynamic>? ?? const [])
+            .map((item) => RankedEntry.fromJson(item as Map<String, dynamic>))
+            .toList(),
+        self: json['self'] == null
+            ? null
+            : RankedEntry.fromJson(json['self'] as Map<String, dynamic>),
+      );
+}
+
+class CallsSummary {
+  const CallsSummary({
+    required this.total,
+    required this.answered,
+    required this.talkMinutes,
+  });
+
+  final int total;
+  final int answered;
+  final num talkMinutes;
+
+  factory CallsSummary.fromJson(Map<String, dynamic> json) => CallsSummary(
+        total: (json['total'] as num).toInt(),
+        answered: (json['answered'] as num).toInt(),
+        talkMinutes: json['talkMinutes'] as num,
+      );
+}
+
+class Achievement {
+  const Achievement({
+    required this.code,
+    required this.title,
+    required this.description,
+    required this.points,
+    required this.unlockedAt,
+  });
+
+  final String code;
+  final String title;
+  final String description;
+  final int points;
+
+  /// Дата получения, либо null — тогда это цель, а не достижение.
+  final DateTime? unlockedAt;
+
+  bool get isUnlocked => unlockedAt != null;
+
+  factory Achievement.fromJson(Map<String, dynamic> json) => Achievement(
+        code: json['code'] as String,
+        title: json['title'] as String,
+        description: json['description'] as String,
+        points: (json['points'] as num).toInt(),
+        unlockedAt: _parseOrNull(json['unlockedAt']),
+      );
+}
