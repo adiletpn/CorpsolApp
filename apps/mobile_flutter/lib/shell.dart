@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'screens/home_screen.dart';
+import 'screens/leaderboard_screen.dart';
 import 'screens/offers_screen.dart';
 import 'screens/payroll_screen.dart';
 import 'screens/scan_screen.dart';
@@ -76,7 +77,7 @@ class _AppShellState extends State<AppShell> {
         TabKey.home => HomeScreen(onScan: _openScanner),
         TabKey.offers => const OffersScreen(),
         TabKey.payroll => const PayrollScreen(),
-        TabKey.rating => const _Pending('Рейтинг'),
+        TabKey.rating => const LeaderboardScreen(),
         TabKey.awards => const _Pending('Награды'),
       };
 }
