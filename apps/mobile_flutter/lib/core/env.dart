@@ -12,6 +12,7 @@ abstract final class Env {
   static const firebaseAuthDomain = String.fromEnvironment('FIREBASE_AUTH_DOMAIN');
   static const firebaseProjectId = String.fromEnvironment('FIREBASE_PROJECT_ID');
   static const firebaseAppId = String.fromEnvironment('FIREBASE_APP_ID');
+  static const firebaseSenderId = String.fromEnvironment('FIREBASE_SENDER_ID');
 
   /// Хост эмулятора Firebase Auth для локальной разработки.
   static const authEmulatorHost = String.fromEnvironment('FIREBASE_AUTH_EMULATOR_HOST');
