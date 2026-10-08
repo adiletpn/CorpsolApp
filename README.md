@@ -159,8 +159,30 @@ npm test -w @corpsol/api
 
 ## Мобильное приложение
 
-`apps/mobile` вынесено из npm workspaces намеренно: Metro-бандлер плохо
-переносит поднятие зависимостей на уровень корня.
+Приложение МОПа переписывается на Flutter — `apps/mobile_flutter`. Прежняя
+версия на Expo React Native (`apps/mobile`) пока оставлена рядом: она рабочая,
+и снимать её можно будет, когда Flutter-сборка проедет на живом телефоне.
+
+```bash
+cd apps/mobile_flutter
+flutter pub get
+flutter run --dart-define=API_URL=http://<IP-машины>:3001/api \
+            --dart-define=FIREBASE_API_KEY=... \
+            --dart-define=FIREBASE_PROJECT_ID=... \
+            --dart-define=FIREBASE_APP_ID=... \
+            --dart-define=FIREBASE_AUTH_DOMAIN=... \
+            --dart-define=FIREBASE_SENDER_ID=...
+```
+
+Нужен именно адрес машины в локальной сети: `localhost` с телефона ведёт
+в сам телефон. Для эмулятора Firebase Auth добавьте
+`--dart-define=FIREBASE_AUTH_EMULATOR_HOST=<IP>:9099`.
+
+Настройки передаются через `--dart-define`, а не через файл: ключи Firebase
+публичны по своей природе, но так одна и та же сборка собирается под эмулятор
+и под облако без правки кода.
+
+### Прежняя версия на Expo
 
 ```bash
 cd apps/mobile
