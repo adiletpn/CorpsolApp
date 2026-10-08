@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../palette.dart';
 import '../theme.dart';
 import 'ui.dart';
 
@@ -68,8 +69,8 @@ class _PeriodScreenState<T> extends State<PeriodScreen<T>> {
 
     return RefreshIndicator(
       onRefresh: _load,
-      color: AppColors.accent,
-      backgroundColor: AppColors.surface,
+      color: context.palette.accent,
+      backgroundColor: context.palette.surface,
       child: ListView(
         padding: EdgeInsets.all(gap(2)),
         children: [
@@ -80,8 +81,8 @@ class _PeriodScreenState<T> extends State<PeriodScreen<T>> {
           else if (_loading)
             Padding(
               padding: EdgeInsets.only(top: gap(8)),
-              child: const Center(
-                child: CircularProgressIndicator(color: AppColors.accent),
+              child: Center(
+                child: CircularProgressIndicator(color: context.palette.accent),
               ),
             )
           else if (_failed)
