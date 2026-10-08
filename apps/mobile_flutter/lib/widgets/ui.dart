@@ -52,7 +52,7 @@ class GlassCard extends StatelessWidget {
           end: Alignment.bottomCenter,
           colors: [
             palette.glassHighlight.withValues(
-              alpha: palette.glassHighlight.a * 0.22,
+              alpha: palette.glassHighlight.a * 0.1,
             ),
             palette.glassFill,
           ],
@@ -63,7 +63,7 @@ class GlassCard extends StatelessWidget {
 
     if (blur) {
       surface = BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+        filter: ImageFilter.blur(sigmaX: 32, sigmaY: 32),
         child: surface,
       );
     }

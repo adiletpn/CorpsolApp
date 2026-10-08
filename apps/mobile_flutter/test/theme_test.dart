@@ -28,10 +28,27 @@ void main() {
       expect(AppPalette.dark.background.computeLuminance(), greaterThan(0.0));
     });
 
-    test('у стекла есть заливка и светлая грань', () {
+    test('заливка стекла плотная — иначе текст не читается над пятном', () {
       for (final palette in [AppPalette.light, AppPalette.dark]) {
-        expect(palette.glassFill.a, greaterThan(0));
-        expect(palette.glassBorder.a, greaterThan(palette.glassFill.a));
+        expect(
+          palette.glassFill.a,
+          greaterThan(0.85),
+          reason: 'сквозь карточку не должен просвечивать фон',
+        );
+      }
+    });
+
+    test('текст на стекле контрастен в обеих темах', () {
+      for (final palette in [AppPalette.light, AppPalette.dark]) {
+        final onGlass = _contrast(palette.text, palette.glassFill);
+        expect(
+          onGlass,
+          greaterThan(7),
+          reason: 'основной текст на карточке должен читаться уверенно',
+        );
+
+        final muted = _contrast(palette.textMuted, palette.glassFill);
+        expect(muted, greaterThan(4.5), reason: 'подписи тоже должны читаться');
       }
     });
 
@@ -97,4 +114,13 @@ void main() {
       expect(notified, 1);
     });
   });
+}
+
+/// Контраст по WCAG: отношение относительных яркостей.
+double _contrast(Color a, Color b) {
+  final first = a.computeLuminance();
+  final second = b.computeLuminance();
+  final lighter = first > second ? first : second;
+  final darker = first > second ? second : first;
+  return (lighter + 0.05) / (darker + 0.05);
 }

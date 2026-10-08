@@ -37,7 +37,8 @@ class AppPalette extends ThemeExtension<AppPalette> {
   final Color warning;
   final Color danger;
 
-  /// Заливка матового стекла поверх размытия.
+  /// Заливка матового стекла поверх размытия. Плотная намеренно: текст
+  /// должен читаться там, где под карточкой проходит цветное пятно.
   final Color glassFill;
 
   /// Волосяная грань стекла: светлая линия по краю даёт толщину.
@@ -67,9 +68,9 @@ class AppPalette extends ThemeExtension<AppPalette> {
     success: Color(0xFF30D158),
     warning: Color(0xFFFF9F0A),
     danger: Color(0xFFFF453A),
-    glassFill: Color(0x14FFFFFF),
-    glassBorder: Color(0x24FFFFFF),
-    glassHighlight: Color(0x3DFFFFFF),
+    glassFill: Color(0xE617171D),
+    glassBorder: Color(0x2EFFFFFF),
+    glassHighlight: Color(0x47FFFFFF),
     ambientA: Color(0xFF3B5BFF),
     ambientB: Color(0xFF7C4DFF),
   );
@@ -89,9 +90,9 @@ class AppPalette extends ThemeExtension<AppPalette> {
     success: Color(0xFF12A150),
     warning: Color(0xFFC77700),
     danger: Color(0xFFE5484D),
-    glassFill: Color(0xB8FFFFFF),
-    glassBorder: Color(0xCCFFFFFF),
-    glassHighlight: Color(0xF0FFFFFF),
+    glassFill: Color(0xF2FFFFFF),
+    glassBorder: Color(0x1F101828),
+    glassHighlight: Color(0xFFFFFFFF),
     ambientA: Color(0xFF6E8BFF),
     ambientB: Color(0xFFB08BFF),
   );
