@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../api/client.dart';
+import '../core/firebase_session.dart';
 import '../state/auth_controller.dart';
 import '../theme.dart';
 
@@ -48,8 +49,11 @@ class _LoginScreenState extends State<LoginScreen> {
       await context.read<AuthController>().signIn(_email.text, _password.text);
     } on ApiError catch (error) {
       setState(() => _error = _rejectionMessages[error.code] ?? error.message);
-    } catch (_) {
-      setState(() => _error = 'Неверная почта или пароль');
+    } on AuthFailure catch (failure) {
+      setState(() => _error = failure.message);
+    } catch (error) {
+      // Причина неизвестна — показываем её, а не выдаём за неверный пароль.
+      setState(() => _error = 'Не удалось войти. $error');
     } finally {
       if (mounted) setState(() => _busy = false);
     }

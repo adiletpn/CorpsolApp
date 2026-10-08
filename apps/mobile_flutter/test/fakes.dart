@@ -22,6 +22,9 @@ class FakeSession implements SessionSource {
   /// Позволяет проверить поведение без сессии.
   String? tokenOverride = 'test-token';
 
+  /// Если задано, вход падает с этой причиной.
+  Object? signInFailure;
+
   @override
   Stream<Object?> get changes => _controller.stream;
 
@@ -30,7 +33,10 @@ class FakeSession implements SessionSource {
   void emitSignedOut() => _controller.add(null);
 
   @override
-  Future<void> signIn(String email, String password) async => emitSignedIn();
+  Future<void> signIn(String email, String password) async {
+    if (signInFailure != null) throw signInFailure!;
+    emitSignedIn();
+  }
 
   @override
   Future<void> signOut() async {
