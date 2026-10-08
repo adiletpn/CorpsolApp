@@ -95,22 +95,25 @@ class FakeApi implements CorpsolApi {
   Future<List<AttendanceRecord>> myAttendance({
     required String from,
     required String to,
-  }) async =>
-      _answer(attendance);
+  }) async => _answer(attendance);
 
   @override
   Future<LeaderboardResult> leaderboard({
     required String from,
     required String to,
-  }) async =>
-      _answer(leaderboardResult ?? const LeaderboardResult(entries: [], self: null));
+  }) async => _answer(
+    leaderboardResult ?? const LeaderboardResult(entries: [], self: null),
+  );
 
   @override
-  Future<List<Payroll>> payroll(String periodStart) async => _answer(payrollList);
+  Future<List<Payroll>> payroll(String periodStart) async =>
+      _answer(payrollList);
 
   @override
-  Future<List<Offer>> offers({required String from, required String to}) async =>
-      _answer(offersList);
+  Future<List<Offer>> offers({
+    required String from,
+    required String to,
+  }) async => _answer(offersList);
 
   @override
   Future<List<Plan>> plans(String periodStart) async => _answer(plansList);
@@ -126,21 +129,25 @@ class FakeApi implements CorpsolApi {
     required double accuracyMeters,
     required bool isMocked,
     String? wifiBssid,
-  }) async =>
-      _answer(
-        CheckInResponse(
-          id: 'uid-1_2026-10-08',
-          status: AttendanceStatus.onTime,
-          lateMinutes: 0,
-          checkInAt: DateTime(2026, 10, 8, 9, 0),
-          office: const OfficeRef(id: 'office-1', name: 'Главный офис'),
-          distanceMeters: 12,
-        ),
-      );
+  }) async => _answer(
+    CheckInResponse(
+      id: 'uid-1_2026-10-08',
+      status: AttendanceStatus.onTime,
+      lateMinutes: 0,
+      checkInAt: DateTime(2026, 10, 8, 9, 0),
+      office: const OfficeRef(id: 'office-1', name: 'Главный офис'),
+      distanceMeters: 12,
+    ),
+  );
 }
 
 /// Оборачивает экран в те же провайдеры, что и настоящее приложение.
-Widget harness(Widget child, {FakeApi? api, FakeSession? session, bool signedIn = true}) {
+Widget harness(
+  Widget child, {
+  FakeApi? api,
+  FakeSession? session,
+  bool signedIn = true,
+}) {
   final fakeApi = api ?? FakeApi();
   final fakeSession = session ?? FakeSession();
   final auth = AuthController(fakeSession, fakeApi);
@@ -153,6 +160,9 @@ Widget harness(Widget child, {FakeApi? api, FakeSession? session, bool signedIn 
       ChangeNotifierProvider<AuthController>.value(value: auth),
     ],
     // Material нужен так же, как Scaffold в приложении: без него InkWell падает.
-    child: MaterialApp(theme: buildTheme(), home: Material(child: child)),
+    child: MaterialApp(
+      theme: buildTheme(),
+      home: Material(child: child),
+    ),
   );
 }

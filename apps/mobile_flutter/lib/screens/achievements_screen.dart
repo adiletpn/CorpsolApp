@@ -33,7 +33,11 @@ class AchievementsScreen extends StatelessWidget {
             AppCard(
               child: Row(
                 children: [
-                  const Icon(Icons.emoji_events, color: AppColors.warning, size: 36),
+                  const Icon(
+                    Icons.emoji_events,
+                    color: AppColors.warning,
+                    size: 36,
+                  ),
                   SizedBox(width: gap(2)),
                   Expanded(
                     child: Column(
@@ -68,7 +72,10 @@ class AchievementsScreen extends StatelessWidget {
             ],
             if (goals.isNotEmpty) ...[
               SizedBox(height: gap(2)),
-              Text('Ещё не получены', style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                'Ещё не получены',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               SizedBox(height: gap(1.5)),
               for (final item in goals) ...[
                 _AchievementCard(achievement: item),
@@ -108,7 +115,10 @@ class _AchievementCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(achievement.title, style: Theme.of(context).textTheme.bodyMedium),
+                  Text(
+                    achievement.title,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
                   SizedBox(height: gap(0.25)),
                   Text(
                     achievement.description,
@@ -118,7 +128,10 @@ class _AchievementCard extends StatelessWidget {
                     SizedBox(height: gap(0.5)),
                     Text(
                       'Получено ${formatDate(achievement.unlockedAt!.toIso8601String())}',
-                      style: const TextStyle(color: AppColors.success, fontSize: 13),
+                      style: const TextStyle(
+                        color: AppColors.success,
+                        fontSize: 13,
+                      ),
                     ),
                   ],
                 ],

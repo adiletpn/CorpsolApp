@@ -75,7 +75,11 @@ class _PayrollCard extends StatelessWidget {
           ),
           SizedBox(height: gap(2)),
           _Row(label: 'Оклад', amount: payroll.baseSalaryMinor),
-          _Row(label: 'Бонусы', amount: payroll.bonusMinor, color: AppColors.success),
+          _Row(
+            label: 'Бонусы',
+            amount: payroll.bonusMinor,
+            color: AppColors.success,
+          ),
           if (payroll.penaltyMinor != 0)
             _Row(
               label: 'Удержания',
@@ -87,7 +91,10 @@ class _PayrollCard extends StatelessWidget {
               padding: EdgeInsets.symmetric(vertical: gap(1.5)),
               child: const Divider(color: AppColors.border, height: 1),
             ),
-            Text('Из чего сложилось', style: Theme.of(context).textTheme.bodySmall),
+            Text(
+              'Из чего сложилось',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
             SizedBox(height: gap(1)),
             for (final line in payroll.lines)
               _Row(
@@ -111,24 +118,24 @@ class _Row extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: EdgeInsets.symmetric(vertical: gap(0.5)),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(color: AppColors.textMuted, fontSize: 14),
-              ),
-            ),
-            Text(
-              formatMoney(amount),
-              style: TextStyle(
-                color: color ?? AppColors.text,
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
+    padding: EdgeInsets.symmetric(vertical: gap(0.5)),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 14),
+          ),
         ),
-      );
+        Text(
+          formatMoney(amount),
+          style: TextStyle(
+            color: color ?? AppColors.text,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    ),
+  );
 }

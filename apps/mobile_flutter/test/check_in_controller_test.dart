@@ -17,11 +17,10 @@ LocationReading reading({bool isMocked = false, double accuracy = 10}) =>
 CheckInController controllerFor(
   FakeApi api, {
   Future<LocationReading> Function()? location,
-}) =>
-    CheckInController(
-      api,
-      readLocationOverride: location ?? () async => reading(),
-    );
+}) => CheckInController(
+  api,
+  readLocationOverride: location ?? () async => reading(),
+);
 
 void main() {
   group('отметка прихода: успех', () {
@@ -61,17 +60,20 @@ void main() {
   });
 
   group('отметка прихода: отказы сервера', () {
-    test('истёкший код объясняет, что он обновляется каждые 30 секунд', () async {
-      final controller = controllerFor(
-        FakeApi(failWith: const ApiError(400, 'qr_expired', 'Код истёк')),
-      );
+    test(
+      'истёкший код объясняет, что он обновляется каждые 30 секунд',
+      () async {
+        final controller = controllerFor(
+          FakeApi(failWith: const ApiError(400, 'qr_expired', 'Код истёк')),
+        );
 
-      await controller.submit('qr-payload');
+        await controller.submit('qr-payload');
 
-      expect(controller.phase, CheckInPhase.failure);
-      expect(controller.code, 'qr_expired');
-      expect(controller.hint, contains('30 секунд'));
-    });
+        expect(controller.phase, CheckInPhase.failure);
+        expect(controller.code, 'qr_expired');
+        expect(controller.hint, contains('30 секунд'));
+      },
+    );
 
     test('отметка вне геозоны подсказывает подойти ближе', () async {
       final controller = controllerFor(
@@ -85,7 +87,9 @@ void main() {
 
     test('чужой телефон объясняет, что отметка только со своего', () async {
       final controller = controllerFor(
-        FakeApi(failWith: const ApiError(403, 'device_mismatch', 'Другое устройство')),
+        FakeApi(
+          failWith: const ApiError(403, 'device_mismatch', 'Другое устройство'),
+        ),
       );
 
       await controller.submit('qr-payload');
@@ -93,16 +97,21 @@ void main() {
       expect(controller.hint, contains('закреплённого за вашим аккаунтом'));
     });
 
-    test('неизвестный код показывает сообщение сервера без подсказки', () async {
-      final controller = controllerFor(
-        FakeApi(failWith: const ApiError(400, 'что_то_новое', 'Непонятно что')),
-      );
+    test(
+      'неизвестный код показывает сообщение сервера без подсказки',
+      () async {
+        final controller = controllerFor(
+          FakeApi(
+            failWith: const ApiError(400, 'что_то_новое', 'Непонятно что'),
+          ),
+        );
 
-      await controller.submit('qr-payload');
+        await controller.submit('qr-payload');
 
-      expect(controller.message, 'Непонятно что');
-      expect(controller.hint, isNull);
-    });
+        expect(controller.message, 'Непонятно что');
+        expect(controller.hint, isNull);
+      },
+    );
   });
 
   group('отметка прихода: геолокация', () {

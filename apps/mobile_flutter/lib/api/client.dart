@@ -8,7 +8,12 @@ import '../core/firebase_session.dart';
 
 /// Ошибка API с машинным кодом — экран решает по коду, что показать.
 class ApiError implements Exception {
-  const ApiError(this.status, this.code, this.message, [this.details = const {}]);
+  const ApiError(
+    this.status,
+    this.code,
+    this.message, [
+    this.details = const {},
+  ]);
 
   final int status;
   final String? code;
@@ -21,8 +26,8 @@ class ApiError implements Exception {
 
 class ApiClient {
   ApiClient(this._session, {http.Client? httpClient, String? baseUrl})
-      : _http = httpClient ?? http.Client(),
-        _baseUrl = baseUrl ?? Env.apiUrl;
+    : _http = httpClient ?? http.Client(),
+      _baseUrl = baseUrl ?? Env.apiUrl;
 
   final SessionSource _session;
   final http.Client _http;
@@ -77,7 +82,11 @@ class ApiClient {
     if (needsAuth) {
       final token = await _session.idToken();
       if (token == null) {
-        throw const ApiError(401, 'no_session', 'Сессия не найдена, войдите заново');
+        throw const ApiError(
+          401,
+          'no_session',
+          'Сессия не найдена, войдите заново',
+        );
       }
 
       headers['Authorization'] = 'Bearer $token';

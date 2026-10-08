@@ -11,8 +11,9 @@ void main() {
   setUpAll(initLocale);
 
   group('пустые состояния', () {
-    testWidgets('зарплата без расчёта всё равно показывает заголовок',
-        (tester) async {
+    testWidgets('зарплата без расчёта всё равно показывает заголовок', (
+      tester,
+    ) async {
       await tester.pumpWidget(harness(const PayrollScreen()));
       await tester.pumpAndSettle();
 
@@ -20,8 +21,9 @@ void main() {
       expect(find.text('Расчёт за этот месяц ещё не готов'), findsOneWidget);
     });
 
-    testWidgets('сделок нет — объясняем, а не показываем пустоту',
-        (tester) async {
+    testWidgets('сделок нет — объясняем, а не показываем пустоту', (
+      tester,
+    ) async {
       await tester.pumpWidget(harness(const OffersScreen()));
       await tester.pumpAndSettle();
 
@@ -32,26 +34,28 @@ void main() {
 
   group('зарплата', () {
     testWidgets('показывает итог и разбор начислений', (tester) async {
-      final api = FakeApi(payrollList: [
-        Payroll(
-          id: 'pay-1',
-          periodStart: '2026-10-01',
-          periodEnd: '2026-10-31',
-          baseSalaryMinor: 30000000,
-          bonusMinor: 5000000,
-          penaltyMinor: 500000,
-          totalMinor: 34500000,
-          status: PayrollStatus.approved,
-          lines: const [
-            PayrollLine(
-              ruleId: 'r1',
-              kind: 'BONUS',
-              title: 'Перевыполнение плана',
-              amountMinor: 5000000,
-            ),
-          ],
-        ),
-      ]);
+      final api = FakeApi(
+        payrollList: [
+          Payroll(
+            id: 'pay-1',
+            periodStart: '2026-10-01',
+            periodEnd: '2026-10-31',
+            baseSalaryMinor: 30000000,
+            bonusMinor: 5000000,
+            penaltyMinor: 500000,
+            totalMinor: 34500000,
+            status: PayrollStatus.approved,
+            lines: const [
+              PayrollLine(
+                ruleId: 'r1',
+                kind: 'BONUS',
+                title: 'Перевыполнение плана',
+                amountMinor: 5000000,
+              ),
+            ],
+          ),
+        ],
+      );
 
       await tester.pumpWidget(harness(const PayrollScreen(), api: api));
       await tester.pumpAndSettle();
@@ -63,8 +67,9 @@ void main() {
   });
 
   group('рейтинг', () {
-    testWidgets('показывает своё место и отставание от первого',
-        (tester) async {
+    testWidgets('показывает своё место и отставание от первого', (
+      tester,
+    ) async {
       final api = FakeApi(
         leaderboardResult: const LeaderboardResult(
           entries: [
@@ -103,22 +108,24 @@ void main() {
 
   group('награды', () {
     testWidgets('разделяет полученные и те, что ещё цель', (tester) async {
-      final api = FakeApi(achievementsList: [
-        Achievement(
-          code: 'first_week',
-          title: 'Неделя без опозданий',
-          description: 'Пять смен подряд вовремя',
-          points: 50,
-          unlockedAt: DateTime(2026, 10, 3),
-        ),
-        const Achievement(
-          code: 'hundred_calls',
-          title: 'Сто звонков',
-          description: 'Сто звонков за месяц',
-          points: 30,
-          unlockedAt: null,
-        ),
-      ]);
+      final api = FakeApi(
+        achievementsList: [
+          Achievement(
+            code: 'first_week',
+            title: 'Неделя без опозданий',
+            description: 'Пять смен подряд вовремя',
+            points: 50,
+            unlockedAt: DateTime(2026, 10, 3),
+          ),
+          const Achievement(
+            code: 'hundred_calls',
+            title: 'Сто звонков',
+            description: 'Сто звонков за месяц',
+            points: 30,
+            unlockedAt: null,
+          ),
+        ],
+      );
 
       await tester.pumpWidget(harness(const AchievementsScreen(), api: api));
       await tester.pumpAndSettle();

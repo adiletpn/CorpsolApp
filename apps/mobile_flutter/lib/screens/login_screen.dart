@@ -66,7 +66,10 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('CorpSol', style: Theme.of(context).textTheme.headlineSmall),
+                Text(
+                  'CorpSol',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
                 SizedBox(height: gap(0.5)),
                 const Text(
                   'Вход для менеджера',
@@ -96,7 +99,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   SizedBox(height: gap(2)),
                   Text(
                     _error!,
-                    style: const TextStyle(color: AppColors.danger, fontSize: 14),
+                    style: const TextStyle(
+                      color: AppColors.danger,
+                      fontSize: 14,
+                    ),
                   ),
                 ],
                 SizedBox(height: gap(3)),
@@ -130,17 +136,17 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   InputDecoration _fieldDecoration(String label) => InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: AppColors.textMuted),
-        filled: true,
-        fillColor: AppColors.surface,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-      );
+    labelText: label,
+    labelStyle: const TextStyle(color: AppColors.textMuted),
+    filled: true,
+    fillColor: AppColors.surface,
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      borderSide: const BorderSide(color: AppColors.border),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      borderSide: const BorderSide(color: AppColors.border),
+    ),
+  );
 }

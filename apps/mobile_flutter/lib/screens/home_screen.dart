@@ -35,9 +35,9 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final period = currentMonth();
       final data = await context.read<CorpsolApi>().myAttendance(
-            from: period.from,
-            to: period.to,
-          );
+        from: period.from,
+        to: period.to,
+      );
       if (!mounted) return;
       setState(() {
         _records = data;
@@ -78,12 +78,17 @@ class _HomeScreenState extends State<HomeScreen> {
           SizedBox(height: gap(2.5)),
           _MonthSummary(records: _records),
           SizedBox(height: gap(2.5)),
-          Text('Табель за месяц', style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            'Табель за месяц',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           SizedBox(height: gap(1.5)),
           if (_failed && _records.isEmpty)
             ErrorRetry(message: 'Не удалось загрузить табель', onRetry: _load)
           else if (_loading && _records.isEmpty)
-            const Center(child: CircularProgressIndicator(color: AppColors.accent))
+            const Center(
+              child: CircularProgressIndicator(color: AppColors.accent),
+            )
           else if (sorted.isEmpty)
             const EmptyState(message: 'За этот месяц отметок пока нет')
           else
@@ -104,23 +109,23 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: ScreenHeader(
-              title: fullName,
-              subtitle: 'Менеджер отдела продаж',
-            ),
-          ),
-          TextButton(
-            onPressed: () => context.read<AuthController>().signOut(),
-            child: const Text(
-              'Выйти',
-              style: TextStyle(color: AppColors.textMuted),
-            ),
-          ),
-        ],
-      );
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Expanded(
+        child: ScreenHeader(
+          title: fullName,
+          subtitle: 'Менеджер отдела продаж',
+        ),
+      ),
+      TextButton(
+        onPressed: () => context.read<AuthController>().signOut(),
+        child: const Text(
+          'Выйти',
+          style: TextStyle(color: AppColors.textMuted),
+        ),
+      ),
+    ],
+  );
 }
 
 class _CheckInCard extends StatelessWidget {
@@ -190,32 +195,32 @@ class _MonthSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        children: [
-          Expanded(
-            child: _Tile(
-              value: _count(AttendanceStatus.onTime),
-              label: 'вовремя',
-              color: AppColors.success,
-            ),
-          ),
-          SizedBox(width: gap(1.5)),
-          Expanded(
-            child: _Tile(
-              value: _count(AttendanceStatus.late),
-              label: 'опозданий',
-              color: AppColors.warning,
-            ),
-          ),
-          SizedBox(width: gap(1.5)),
-          Expanded(
-            child: _Tile(
-              value: _count(AttendanceStatus.absent),
-              label: 'прогулов',
-              color: AppColors.danger,
-            ),
-          ),
-        ],
-      );
+    children: [
+      Expanded(
+        child: _Tile(
+          value: _count(AttendanceStatus.onTime),
+          label: 'вовремя',
+          color: AppColors.success,
+        ),
+      ),
+      SizedBox(width: gap(1.5)),
+      Expanded(
+        child: _Tile(
+          value: _count(AttendanceStatus.late),
+          label: 'опозданий',
+          color: AppColors.warning,
+        ),
+      ),
+      SizedBox(width: gap(1.5)),
+      Expanded(
+        child: _Tile(
+          value: _count(AttendanceStatus.absent),
+          label: 'прогулов',
+          color: AppColors.danger,
+        ),
+      ),
+    ],
+  );
 }
 
 class _Tile extends StatelessWidget {
@@ -227,18 +232,22 @@ class _Tile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AppCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '$value',
-              style: TextStyle(color: color, fontSize: 28, fontWeight: FontWeight.w700),
-            ),
-            SizedBox(height: gap(0.25)),
-            Text(label, style: Theme.of(context).textTheme.bodySmall),
-          ],
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '$value',
+          style: TextStyle(
+            color: color,
+            fontSize: 28,
+            fontWeight: FontWeight.w700,
+          ),
         ),
-      );
+        SizedBox(height: gap(0.25)),
+        Text(label, style: Theme.of(context).textTheme.bodySmall),
+      ],
+    ),
+  );
 }
 
 class _AttendanceRow extends StatelessWidget {
@@ -272,7 +281,8 @@ class _AttendanceRow extends StatelessWidget {
             ),
           ),
           StatusChip(
-            label: record.status == AttendanceStatus.late && record.lateMinutes > 0
+            label:
+                record.status == AttendanceStatus.late && record.lateMinutes > 0
                 ? '${attendanceStatusLabel(record.status)} ${record.lateMinutes} мин'
                 : attendanceStatusLabel(record.status),
             color: attendanceStatusColor(record.status),

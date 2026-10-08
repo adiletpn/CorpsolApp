@@ -31,7 +31,8 @@ class CorpsolApi {
   }
 
   /// Выход: бэкенд гасит токены, чтобы на устройстве не осталось доступа.
-  Future<void> closeSession() => _client.request('/auth/logout', method: 'POST');
+  Future<void> closeSession() =>
+      _client.request('/auth/logout', method: 'POST');
 
   Future<CheckInResponse> checkIn({
     required String qr,
@@ -74,7 +75,9 @@ class CorpsolApi {
     required String from,
     required String to,
   }) async {
-    final json = await _client.request('/gamification/leaderboard?from=$from&to=$to');
+    final json = await _client.request(
+      '/gamification/leaderboard?from=$from&to=$to',
+    );
     return LeaderboardResult.fromJson(json as Map<String, dynamic>);
   }
 

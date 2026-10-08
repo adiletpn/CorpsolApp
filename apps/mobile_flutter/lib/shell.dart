@@ -75,16 +75,20 @@ class _AppShellState extends State<AppShell> {
   }
 
   Widget _buildTab(TabKey tab) => switch (tab) {
-        TabKey.home => HomeScreen(onScan: _openScanner),
-        TabKey.offers => const OffersScreen(),
-        TabKey.payroll => const PayrollScreen(),
-        TabKey.rating => const LeaderboardScreen(),
-        TabKey.awards => const AchievementsScreen(),
-      };
+    TabKey.home => HomeScreen(onScan: _openScanner),
+    TabKey.offers => const OffersScreen(),
+    TabKey.payroll => const PayrollScreen(),
+    TabKey.rating => const LeaderboardScreen(),
+    TabKey.awards => const AchievementsScreen(),
+  };
 }
 
 class _TabButton extends StatelessWidget {
-  const _TabButton({required this.tab, required this.active, required this.onTap});
+  const _TabButton({
+    required this.tab,
+    required this.active,
+    required this.onTap,
+  });
 
   final TabKey tab;
   final bool active;

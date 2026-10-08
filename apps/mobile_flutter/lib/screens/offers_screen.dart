@@ -26,7 +26,10 @@ class OffersScreen extends StatelessWidget {
       emptyIcon: Icons.handshake_outlined,
       builder: (context, offers) {
         final accepted = offers.where((o) => o.status == OfferStatus.accepted);
-        final acceptedSum = accepted.fold<int>(0, (sum, o) => sum + o.amountMinor);
+        final acceptedSum = accepted.fold<int>(
+          0,
+          (sum, o) => sum + o.amountMinor,
+        );
 
         // Свежие сверху: вчерашняя сделка нужна чаще, чем первое число месяца.
         final sorted = [...offers]
@@ -59,7 +62,10 @@ class OffersScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Сумма принятых', style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    'Сумма принятых',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                   SizedBox(height: gap(0.5)),
                   Text(
                     formatMoney(acceptedSum),
@@ -93,18 +99,22 @@ class _Tile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AppCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              value,
-              style: TextStyle(color: color, fontSize: 28, fontWeight: FontWeight.w700),
-            ),
-            SizedBox(height: gap(0.25)),
-            Text(label, style: Theme.of(context).textTheme.bodySmall),
-          ],
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            color: color,
+            fontSize: 28,
+            fontWeight: FontWeight.w700,
+          ),
         ),
-      );
+        SizedBox(height: gap(0.25)),
+        Text(label, style: Theme.of(context).textTheme.bodySmall),
+      ],
+    ),
+  );
 }
 
 class _OfferRow extends StatelessWidget {
@@ -114,26 +124,29 @@ class _OfferRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AppCard(
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(offer.clientName, style: Theme.of(context).textTheme.bodyMedium),
-                  SizedBox(height: gap(0.25)),
-                  Text(
-                    '${formatDate(offer.sentDate)} · ${formatMoney(offer.amountMinor)}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
+    child: Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                offer.clientName,
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
-            ),
-            StatusChip(
-              label: offerStatusLabel(offer.status),
-              color: offerStatusColor(offer.status),
-            ),
-          ],
+              SizedBox(height: gap(0.25)),
+              Text(
+                '${formatDate(offer.sentDate)} · ${formatMoney(offer.amountMinor)}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
         ),
-      );
+        StatusChip(
+          label: offerStatusLabel(offer.status),
+          color: offerStatusColor(offer.status),
+        ),
+      ],
+    ),
+  );
 }

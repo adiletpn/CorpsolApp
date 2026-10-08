@@ -104,38 +104,38 @@ class _EntryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AppCard(
-        child: Row(
-          children: [
-            SizedBox(
-              width: 36,
-              child: Text(
-                '${entry.rank}',
-                style: TextStyle(
-                  color: entry.rank <= 3 ? AppColors.warning : AppColors.textMuted,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
+    child: Row(
+      children: [
+        SizedBox(
+          width: 36,
+          child: Text(
+            '${entry.rank}',
+            style: TextStyle(
+              color: entry.rank <= 3 ? AppColors.warning : AppColors.textMuted,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
             ),
-            Expanded(
-              child: Text(
-                entry.fullName,
-                style: TextStyle(
-                  color: AppColors.text,
-                  fontSize: 15,
-                  fontWeight: isSelf ? FontWeight.w700 : FontWeight.w400,
-                ),
-              ),
-            ),
-            Text(
-              '${entry.points}',
-              style: const TextStyle(
-                color: AppColors.text,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
+          ),
         ),
-      );
+        Expanded(
+          child: Text(
+            entry.fullName,
+            style: TextStyle(
+              color: AppColors.text,
+              fontSize: 15,
+              fontWeight: isSelf ? FontWeight.w700 : FontWeight.w400,
+            ),
+          ),
+        ),
+        Text(
+          '${entry.points}',
+          style: const TextStyle(
+            color: AppColors.text,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    ),
+  );
 }

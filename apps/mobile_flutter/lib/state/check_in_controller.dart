@@ -11,7 +11,8 @@ const checkInActionHints = <String, String>{
   'accuracy_too_low':
       'Выйдите ближе к окну или на улицу — сигнал GPS слишком слабый.',
   'mocked_location': 'Отключите приложения подмены геолокации.',
-  'qr_expired': 'Код на экране обновляется каждые 30 секунд — отсканируйте заново.',
+  'qr_expired':
+      'Код на экране обновляется каждые 30 секунд — отсканируйте заново.',
   'qr_invalid': 'Это не код терминала. Сканируйте код с экрана в офисе.',
   'already_checked_in': 'Приход на сегодня уже отмечен.',
   'device_not_bound': 'Телефон не закреплён за аккаунтом. Обратитесь к ЧР.',
@@ -27,7 +28,7 @@ typedef LocationReader = Future<LocationReading> Function();
 
 class CheckInController extends ChangeNotifier {
   CheckInController(this._api, {LocationReader? readLocationOverride})
-      : _readLocation = readLocationOverride ?? readLocation;
+    : _readLocation = readLocationOverride ?? readLocation;
 
   final CorpsolApi _api;
   final LocationReader _readLocation;
@@ -73,8 +74,10 @@ class CheckInController extends ChangeNotifier {
       _message = null;
       _code = null;
     } on LocationDenied {
-      _fail('Без доступа к геолокации отметка невозможна. '
-          'Разрешите доступ в настройках.');
+      _fail(
+        'Без доступа к геолокации отметка невозможна. '
+        'Разрешите доступ в настройках.',
+      );
     } on LocationServiceOff {
       _fail('Включите геолокацию в настройках телефона.');
     } on ApiError catch (error) {

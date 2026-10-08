@@ -95,7 +95,10 @@ class _PeriodScreenState<T> extends State<PeriodScreen<T>> {
           else
             Padding(
               padding: EdgeInsets.only(top: gap(6)),
-              child: EmptyState(message: widget.emptyMessage, icon: widget.emptyIcon),
+              child: EmptyState(
+                message: widget.emptyMessage,
+                icon: widget.emptyIcon,
+              ),
             ),
         ],
       ),

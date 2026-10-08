@@ -19,7 +19,9 @@ class ScanScreen extends StatefulWidget {
 
 class _ScanScreenState extends State<ScanScreen> {
   late final CheckInController _controller;
-  final _camera = MobileScannerController(detectionSpeed: DetectionSpeed.noDuplicates);
+  final _camera = MobileScannerController(
+    detectionSpeed: DetectionSpeed.noDuplicates,
+  );
 
   @override
   void initState() {
@@ -62,57 +64,57 @@ class _ScanScreenState extends State<ScanScreen> {
   }
 
   Widget _body() => switch (_controller.phase) {
-        CheckInPhase.scanning => _scanning(),
-        CheckInPhase.submitting => _submitting(),
-        CheckInPhase.success => _success(_controller.result!),
-        CheckInPhase.failure => _failure(),
-      };
+    CheckInPhase.scanning => _scanning(),
+    CheckInPhase.submitting => _submitting(),
+    CheckInPhase.success => _success(_controller.result!),
+    CheckInPhase.failure => _failure(),
+  };
 
   Widget _scanning() => Stack(
-        fit: StackFit.expand,
-        children: [
-          MobileScanner(controller: _camera, onDetect: _onDetect),
-          Center(
-            child: Container(
-              width: 240,
-              height: 240,
-              decoration: BoxDecoration(
-                border: Border.all(color: AppColors.accent, width: 3),
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-              ),
+    fit: StackFit.expand,
+    children: [
+      MobileScanner(controller: _camera, onDetect: _onDetect),
+      Center(
+        child: Container(
+          width: 240,
+          height: 240,
+          decoration: BoxDecoration(
+            border: Border.all(color: AppColors.accent, width: 3),
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+          ),
+        ),
+      ),
+      Positioned(
+        left: 0,
+        right: 0,
+        bottom: gap(4),
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: gap(3)),
+          child: Text(
+            'Наведите камеру на QR-код терминала в офисе',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppColors.text,
+              fontSize: 16,
+              shadows: const [Shadow(blurRadius: 8, color: Colors.black)],
             ),
           ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: gap(4),
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: gap(3)),
-              child: Text(
-                'Наведите камеру на QR-код терминала в офисе',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppColors.text,
-                  fontSize: 16,
-                  shadows: const [Shadow(blurRadius: 8, color: Colors.black)],
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
+        ),
+      ),
+    ],
+  );
 
   Widget _submitting() => _Centered(
-        children: [
-          const CircularProgressIndicator(color: AppColors.accent),
-          SizedBox(height: gap(2.5)),
-          Text(
-            _controller.step,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.text, fontSize: 16),
-          ),
-        ],
-      );
+    children: [
+      const CircularProgressIndicator(color: AppColors.accent),
+      SizedBox(height: gap(2.5)),
+      Text(
+        _controller.step,
+        textAlign: TextAlign.center,
+        style: const TextStyle(color: AppColors.text, fontSize: 16),
+      ),
+    ],
+  );
 
   Widget _success(CheckInResponse result) {
     final late = result.status == AttendanceStatus.late;
@@ -149,7 +151,10 @@ class _ScanScreenState extends State<ScanScreen> {
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.accent,
             foregroundColor: AppColors.background,
-            padding: EdgeInsets.symmetric(horizontal: gap(5), vertical: gap(1.75)),
+            padding: EdgeInsets.symmetric(
+              horizontal: gap(5),
+              vertical: gap(1.75),
+            ),
           ),
           child: const Text('Готово'),
         ),
@@ -158,43 +163,43 @@ class _ScanScreenState extends State<ScanScreen> {
   }
 
   Widget _failure() => _Centered(
+    children: [
+      const Icon(Icons.error_outline, color: AppColors.danger, size: 72),
+      SizedBox(height: gap(2.5)),
+      Text(
+        _controller.message ?? 'Отметка не прошла',
+        textAlign: TextAlign.center,
+        style: const TextStyle(color: AppColors.text, fontSize: 18),
+      ),
+      if (_controller.hint != null) ...[
+        SizedBox(height: gap(1.5)),
+        Text(
+          _controller.hint!,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: AppColors.textMuted, fontSize: 15),
+        ),
+      ],
+      SizedBox(height: gap(4)),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.error_outline, color: AppColors.danger, size: 72),
-          SizedBox(height: gap(2.5)),
-          Text(
-            _controller.message ?? 'Отметка не прошла',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.text, fontSize: 18),
+          OutlinedButton(
+            onPressed: widget.onDone,
+            child: const Text('Закрыть'),
           ),
-          if (_controller.hint != null) ...[
-            SizedBox(height: gap(1.5)),
-            Text(
-              _controller.hint!,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 15),
+          SizedBox(width: gap(1.5)),
+          FilledButton(
+            onPressed: _controller.retry,
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.accent,
+              foregroundColor: AppColors.background,
             ),
-          ],
-          SizedBox(height: gap(4)),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              OutlinedButton(
-                onPressed: widget.onDone,
-                child: const Text('Закрыть'),
-              ),
-              SizedBox(width: gap(1.5)),
-              FilledButton(
-                onPressed: _controller.retry,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.accent,
-                  foregroundColor: AppColors.background,
-                ),
-                child: const Text('Попробовать ещё раз'),
-              ),
-            ],
+            child: const Text('Попробовать ещё раз'),
           ),
         ],
-      );
+      ),
+    ],
+  );
 }
 
 class _Centered extends StatelessWidget {
@@ -204,12 +209,9 @@ class _Centered extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: EdgeInsets.all(gap(4)),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: children,
-          ),
-        ),
-      );
+    child: Padding(
+      padding: EdgeInsets.all(gap(4)),
+      child: Column(mainAxisSize: MainAxisSize.min, children: children),
+    ),
+  );
 }
