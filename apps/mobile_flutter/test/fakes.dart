@@ -19,6 +19,9 @@ class FakeSession implements SessionSource {
 
   bool signedOut = false;
 
+  /// Позволяет проверить поведение без сессии.
+  String? tokenOverride = 'test-token';
+
   @override
   Stream<Object?> get changes => _controller.stream;
 
@@ -36,7 +39,7 @@ class FakeSession implements SessionSource {
   }
 
   @override
-  Future<String?> idToken() async => 'test-token';
+  Future<String?> idToken() async => tokenOverride;
 
   void dispose() => _controller.close();
 }

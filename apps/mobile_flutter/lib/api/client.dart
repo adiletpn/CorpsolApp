@@ -48,10 +48,21 @@ class ApiClient {
     };
   }
 
+  /// Тело читаем из байтов как UTF-8: package:http без charset
+  /// в заголовке падает на latin1, и русские сообщения сервера портятся.
+  String _utf8Body(http.Response response) {
+    if (response.bodyBytes.isEmpty) return '';
+    try {
+      return utf8.decode(response.bodyBytes);
+    } catch (_) {
+      return response.body;
+    }
+  }
+
   ApiError _parseError(http.Response response) {
     Map<String, dynamic> body = const {};
     try {
-      final decoded = jsonDecode(response.body);
+      final decoded = jsonDecode(_utf8Body(response));
       if (decoded is Map<String, dynamic>) {
         final nested = decoded['message'];
         body = nested is Map<String, dynamic> ? nested : decoded;
@@ -111,8 +122,10 @@ class ApiClient {
     }
 
     if (response.statusCode >= 400) throw _parseError(response);
-    if (response.statusCode == 204 || response.body.isEmpty) return null;
 
-    return jsonDecode(response.body);
+    final text = _utf8Body(response);
+    if (response.statusCode == 204 || text.isEmpty) return null;
+
+    return jsonDecode(text);
   }
 }
