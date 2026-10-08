@@ -101,4 +101,42 @@ void main() {
       expect(board.self, isNull);
     });
   });
+
+  group('разбор ответа: часовой пояс', () {
+    test('момент в UTC переводится в местное время телефона', () {
+      final record = AttendanceRecord.fromJson(const {
+        'id': 'uid-1_2026-10-07',
+        'workDate': '2026-10-07',
+        'checkInAt': '2026-10-07T04:00:00.000Z',
+        'checkOutAt': null,
+        'status': 'ON_TIME',
+        'lateMinutes': 0,
+        'method': 'QR',
+      });
+
+      expect(
+        record.checkInAt!.isUtc,
+        isFalse,
+        reason: 'время должно быть местным, иначе печатается смещённым',
+      );
+      expect(
+        record.checkInAt!.toUtc(),
+        DateTime.utc(2026, 10, 7, 4),
+        reason: 'сам момент меняться не должен',
+      );
+    });
+
+    test('отметка прихода тоже переводится в местное', () {
+      final response = CheckInResponse.fromJson(const {
+        'id': 'uid-1_2026-10-07',
+        'status': 'ON_TIME',
+        'lateMinutes': 0,
+        'checkInAt': '2026-10-07T04:00:00.000Z',
+        'office': {'id': 'office-1', 'name': 'Главный офис'},
+        'distanceMeters': 12,
+      });
+
+      expect(response.checkInAt.isUtc, isFalse);
+    });
+  });
 }

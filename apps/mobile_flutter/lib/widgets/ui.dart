@@ -2,27 +2,107 @@ import 'package:flutter/material.dart';
 
 import '../theme.dart';
 
-/// Карточка — основной контейнер на всех экранах.
+/// Обычная карточка: приподнятая поверхность с тонкой рамкой.
 class AppCard extends StatelessWidget {
-  const AppCard({super.key, required this.child, this.padding});
+  const AppCard({super.key, required this.child, this.padding, this.onTap});
 
   final Widget child;
   final EdgeInsetsGeometry? padding;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final body = Container(
+      width: double.infinity,
+      padding: padding ?? EdgeInsets.all(gap(2)),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: child,
+    );
+
+    if (onTap == null) return body;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: body,
+    );
+  }
+}
+
+/// Главная карточка экрана: градиент плюс мягкое свечение под ним.
+/// Используется по одной на экран — иначе перестаёт выделять главное.
+class GradientCard extends StatelessWidget {
+  const GradientCard({
+    super.key,
+    required this.child,
+    this.padding,
+    this.onTap,
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry? padding;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final body = Container(
+      width: double.infinity,
+      padding: padding ?? EdgeInsets.all(gap(2.5)),
+      decoration: BoxDecoration(
+        gradient: appGradient,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.accent.withValues(alpha: 0.28),
+            blurRadius: 28,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: child,
+    );
+
+    if (onTap == null) return body;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: body,
+    );
+  }
+}
+
+/// Иконка в цветной плашке. Цвет кодирует смысл строки и держит
+/// списки читаемыми без лишних подписей.
+class IconChip extends StatelessWidget {
+  const IconChip({
+    super.key,
+    required this.icon,
+    required this.color,
+    this.size = 44,
+  });
+
+  final IconData icon;
+  final Color color;
+  final double size;
 
   @override
   Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    padding: padding ?? EdgeInsets.all(gap(2)),
+    width: size,
+    height: size,
     decoration: BoxDecoration(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(AppRadius.md),
-      border: Border.all(color: AppColors.border),
+      color: color.withValues(alpha: 0.16),
+      borderRadius: BorderRadius.circular(AppRadius.sm),
     ),
-    child: child,
+    child: Icon(icon, color: color, size: size * 0.5),
   );
 }
 
-/// Цветная плашка статуса: опоздание, прогул, принятый оффер.
+/// Плашка статуса: опоздание, прогул, принятая сделка.
 class StatusChip extends StatelessWidget {
   const StatusChip({super.key, required this.label, required this.color});
 
@@ -31,34 +111,95 @@ class StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: EdgeInsets.symmetric(horizontal: gap(1.25), vertical: gap(0.5)),
+    padding: EdgeInsets.symmetric(horizontal: gap(1.25), vertical: gap(0.625)),
     decoration: BoxDecoration(
       color: color.withValues(alpha: 0.16),
-      borderRadius: BorderRadius.circular(AppRadius.sm),
+      borderRadius: BorderRadius.circular(999),
     ),
     child: Text(
       label,
-      style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w600),
+      style: TextStyle(
+        color: color,
+        fontSize: 12.5,
+        fontWeight: FontWeight.w700,
+      ),
     ),
   );
 }
 
-/// Заголовок с подписью — шапка каждого экрана.
+/// Плитка с числом: три в ряд под главной карточкой.
+class StatTile extends StatelessWidget {
+  const StatTile({
+    super.key,
+    required this.value,
+    required this.label,
+    required this.color,
+  });
+
+  final String value;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: EdgeInsets.symmetric(horizontal: gap(1.75), vertical: gap(2)),
+    decoration: BoxDecoration(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      border: Border.all(color: AppColors.border),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            color: color,
+            fontSize: 26,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.5,
+          ),
+        ),
+        SizedBox(height: gap(0.375)),
+        Text(
+          label,
+          style: const TextStyle(color: AppColors.textMuted, fontSize: 12.5),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Заголовок экрана.
 class ScreenHeader extends StatelessWidget {
-  const ScreenHeader({super.key, required this.title, this.subtitle});
+  const ScreenHeader({
+    super.key,
+    required this.title,
+    this.subtitle,
+    this.trailing,
+  });
 
   final String title;
   final String? subtitle;
+  final Widget? trailing;
 
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context) => Row(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(title, style: Theme.of(context).textTheme.headlineSmall),
-      if (subtitle != null) ...[
-        SizedBox(height: gap(0.5)),
-        Text(subtitle!, style: Theme.of(context).textTheme.bodySmall),
-      ],
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: Theme.of(context).textTheme.displaySmall),
+            if (subtitle != null) ...[
+              SizedBox(height: gap(0.5)),
+              Text(subtitle!, style: Theme.of(context).textTheme.bodySmall),
+            ],
+          ],
+        ),
+      ),
+      if (trailing != null) trailing!,
     ],
   );
 }
@@ -77,12 +218,12 @@ class EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon ?? Icons.inbox_outlined,
-            color: AppColors.textMuted,
-            size: 44,
+          IconChip(
+            icon: icon ?? Icons.inbox_outlined,
+            color: AppColors.textFaint,
+            size: 64,
           ),
-          SizedBox(height: gap(1.5)),
+          SizedBox(height: gap(2)),
           Text(
             message,
             textAlign: TextAlign.center,
@@ -108,19 +249,32 @@ class ErrorRetry extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
-            Icons.cloud_off_outlined,
+          const IconChip(
+            icon: Icons.cloud_off_outlined,
             color: AppColors.danger,
-            size: 44,
+            size: 64,
           ),
-          SizedBox(height: gap(1.5)),
+          SizedBox(height: gap(2)),
           Text(
             message,
             textAlign: TextAlign.center,
             style: const TextStyle(color: AppColors.textMuted, fontSize: 15),
           ),
-          SizedBox(height: gap(2)),
-          FilledButton(onPressed: onRetry, child: const Text('Повторить')),
+          SizedBox(height: gap(2.5)),
+          FilledButton(
+            onPressed: onRetry,
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.accent,
+              padding: EdgeInsets.symmetric(
+                horizontal: gap(3),
+                vertical: gap(1.5),
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+              ),
+            ),
+            child: const Text('Повторить'),
+          ),
         ],
       ),
     ),

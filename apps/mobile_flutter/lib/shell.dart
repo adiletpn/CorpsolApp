@@ -39,7 +39,7 @@ class _AppShellState extends State<AppShell> {
       body: SafeArea(bottom: false, child: _buildTab(_active)),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
-          color: AppColors.surface,
+          color: AppColors.background,
           border: Border(top: BorderSide(color: AppColors.border)),
         ),
         child: SafeArea(
@@ -96,23 +96,38 @@ class _TabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? AppColors.accent : AppColors.textMuted;
+    final color = active ? AppColors.accent : AppColors.textFaint;
 
     return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.sm),
       child: Padding(
         padding: EdgeInsets.symmetric(vertical: gap(1)),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(tab.icon, color: color, size: 22),
+            // Плашка под иконкой: активная вкладка видна и без цвета текста.
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: EdgeInsets.symmetric(
+                horizontal: gap(2),
+                vertical: gap(0.625),
+              ),
+              decoration: BoxDecoration(
+                color: active
+                    ? AppColors.accent.withValues(alpha: 0.16)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Icon(tab.icon, color: color, size: 21),
+            ),
             SizedBox(height: gap(0.5)),
             Text(
               tab.label,
               style: TextStyle(
                 color: color,
-                fontSize: 12,
-                fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                fontSize: 11.5,
+                fontWeight: active ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
           ],

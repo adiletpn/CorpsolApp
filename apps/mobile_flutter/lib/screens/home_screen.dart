@@ -136,50 +136,89 @@ class _CheckInCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: done ? null : onScan,
-      borderRadius: BorderRadius.circular(AppRadius.lg),
-      child: Container(
-        width: double.infinity,
-        padding: EdgeInsets.all(gap(3)),
-        decoration: BoxDecoration(
-          color: done ? AppColors.surface : AppColors.accent,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          border: Border.all(color: done ? AppColors.border : AppColors.accent),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    // Отмеченный день не зовёт нажимать — градиент уходит, остаётся карточка.
+    if (done) {
+      return AppCard(
+        padding: EdgeInsets.all(gap(2.5)),
+        child: Row(
           children: [
-            Row(
-              children: [
-                Icon(
-                  done ? Icons.check_circle_outline : Icons.qr_code_scanner,
-                  color: done ? AppColors.success : AppColors.background,
-                  size: 26,
-                ),
-                SizedBox(width: gap(1.5)),
-                Text(
-                  done ? 'Приход отмечен' : 'Отметить приход',
-                  style: TextStyle(
-                    color: done ? AppColors.text : AppColors.background,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
+            const IconChip(
+              icon: Icons.check_rounded,
+              color: AppColors.success,
+              size: 52,
             ),
-            SizedBox(height: gap(1)),
-            Text(
-              done
-                  ? 'На сегодня всё, хорошего дня'
-                  : 'Отсканируйте QR-код на терминале в офисе',
-              style: TextStyle(
-                color: done ? AppColors.textMuted : AppColors.background,
-                fontSize: 14,
+            SizedBox(width: gap(2)),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Приход отмечен',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  SizedBox(height: gap(0.375)),
+                  Text(
+                    'На сегодня всё, хорошего дня',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
               ),
             ),
           ],
         ),
+      );
+    }
+
+    return GradientCard(
+      onTap: onScan,
+      padding: EdgeInsets.all(gap(3)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
+                child: const Icon(
+                  Icons.qr_code_scanner_rounded,
+                  color: Colors.white,
+                  size: 28,
+                ),
+              ),
+              SizedBox(width: gap(2)),
+              const Expanded(
+                child: Text(
+                  'Отметить приход',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.4,
+                  ),
+                ),
+              ),
+              const Icon(
+                Icons.arrow_forward_rounded,
+                color: Colors.white,
+                size: 22,
+              ),
+            ],
+          ),
+          SizedBox(height: gap(1.75)),
+          Text(
+            'Отсканируйте QR-код на терминале в офисе',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.82),
+              fontSize: 14.5,
+              height: 1.4,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -197,24 +236,24 @@ class _MonthSummary extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     children: [
       Expanded(
-        child: _Tile(
-          value: _count(AttendanceStatus.onTime),
+        child: StatTile(
+          value: '${_count(AttendanceStatus.onTime)}',
           label: 'вовремя',
           color: AppColors.success,
         ),
       ),
-      SizedBox(width: gap(1.5)),
+      SizedBox(width: gap(1.25)),
       Expanded(
-        child: _Tile(
-          value: _count(AttendanceStatus.late),
+        child: StatTile(
+          value: '${_count(AttendanceStatus.late)}',
           label: 'опозданий',
           color: AppColors.warning,
         ),
       ),
-      SizedBox(width: gap(1.5)),
+      SizedBox(width: gap(1.25)),
       Expanded(
-        child: _Tile(
-          value: _count(AttendanceStatus.absent),
+        child: StatTile(
+          value: '${_count(AttendanceStatus.absent)}',
           label: 'прогулов',
           color: AppColors.danger,
         ),
@@ -223,45 +262,31 @@ class _MonthSummary extends StatelessWidget {
   );
 }
 
-class _Tile extends StatelessWidget {
-  const _Tile({required this.value, required this.label, required this.color});
-
-  final int value;
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) => AppCard(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '$value',
-          style: TextStyle(
-            color: color,
-            fontSize: 28,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        SizedBox(height: gap(0.25)),
-        Text(label, style: Theme.of(context).textTheme.bodySmall),
-      ],
-    ),
-  );
-}
-
 class _AttendanceRow extends StatelessWidget {
   const _AttendanceRow({required this.record});
 
   final AttendanceRecord record;
 
+  /// Иконка повторяет статус: день виден до чтения подписи.
+  IconData get _icon => switch (record.status) {
+    AttendanceStatus.onTime => Icons.check_rounded,
+    AttendanceStatus.late => Icons.schedule_rounded,
+    AttendanceStatus.absent => Icons.close_rounded,
+    AttendanceStatus.dayOff => Icons.weekend_outlined,
+    AttendanceStatus.excused => Icons.event_available_outlined,
+  };
+
   @override
   Widget build(BuildContext context) {
     final checkIn = record.checkInAt;
+    final color = attendanceStatusColor(record.status);
 
     return AppCard(
+      padding: EdgeInsets.all(gap(1.75)),
       child: Row(
         children: [
+          IconChip(icon: _icon, color: color),
+          SizedBox(width: gap(1.75)),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -283,9 +308,9 @@ class _AttendanceRow extends StatelessWidget {
           StatusChip(
             label:
                 record.status == AttendanceStatus.late && record.lateMinutes > 0
-                ? '${attendanceStatusLabel(record.status)} ${record.lateMinutes} мин'
+                ? '+${record.lateMinutes} мин'
                 : attendanceStatusLabel(record.status),
-            color: attendanceStatusColor(record.status),
+            color: color,
           ),
         ],
       ),

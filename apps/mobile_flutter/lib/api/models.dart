@@ -85,7 +85,7 @@ class CheckInResponse {
         id: json['id'] as String,
         status: attendanceStatusFromJson(json['status'] as String),
         lateMinutes: (json['lateMinutes'] as num).toInt(),
-        checkInAt: DateTime.parse(json['checkInAt'] as String),
+        checkInAt: DateTime.parse(json['checkInAt'] as String).toLocal(),
         office: OfficeRef.fromJson(json['office'] as Map<String, dynamic>),
         distanceMeters: (json['distanceMeters'] as num).toDouble(),
       );
@@ -133,8 +133,11 @@ class AttendanceRecord {
       );
 }
 
+/// Бэкенд отдаёт моменты в UTC. Переводим в часовой пояс телефона сразу
+/// при разборе: иначе время прихода печатается как UTC и выглядит смещённым
+/// на несколько часов — а по нему считается опоздание.
 DateTime? _parseOrNull(Object? value) =>
-    value is String ? DateTime.parse(value) : null;
+    value is String ? DateTime.parse(value).toLocal() : null;
 
 class PayrollLine {
   const PayrollLine({
