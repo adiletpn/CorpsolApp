@@ -11,9 +11,28 @@ void main() {
       expect(AppPalette.light.text, isNot(AppPalette.dark.text));
     });
 
-    test('фирменный цвет один и тот же — он и есть подпись', () {
-      expect(AppPalette.light.accent, AppPalette.dark.accent);
-      expect(AppPalette.light.violet, AppPalette.dark.violet);
+    test('акцент на тёмном фоне поднят, иначе выглядит тусклым', () {
+      expect(
+        AppPalette.dark.accent.computeLuminance(),
+        greaterThan(AppPalette.light.accent.computeLuminance()),
+      );
+      expect(
+        AppPalette.dark.violet.computeLuminance(),
+        greaterThan(AppPalette.light.violet.computeLuminance()),
+      );
+    });
+
+    test('тёмная тема не доводит контраст до предела', () {
+      // Чистый белый на чистом чёрном даёт свечение вокруг букв на OLED.
+      expect(AppPalette.dark.text.computeLuminance(), lessThan(0.88));
+      expect(AppPalette.dark.background.computeLuminance(), greaterThan(0.0));
+    });
+
+    test('у стекла есть заливка и светлая грань', () {
+      for (final palette in [AppPalette.light, AppPalette.dark]) {
+        expect(palette.glassFill.a, greaterThan(0));
+        expect(palette.glassBorder.a, greaterThan(palette.glassFill.a));
+      }
     });
 
     test('в светлой теме текст тёмный, в тёмной светлый', () {
@@ -25,7 +44,7 @@ void main() {
       final mid = AppPalette.light.lerp(AppPalette.dark, 0.5);
 
       expect(mid.background, isNot(AppPalette.light.background));
-      expect(mid.accent, AppPalette.light.accent);
+      expect(mid.glassFill, isNot(AppPalette.light.glassFill));
     });
   });
 

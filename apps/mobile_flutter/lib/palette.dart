@@ -17,6 +17,11 @@ class AppPalette extends ThemeExtension<AppPalette> {
     required this.success,
     required this.warning,
     required this.danger,
+    required this.glassFill,
+    required this.glassBorder,
+    required this.glassHighlight,
+    required this.ambientA,
+    required this.ambientB,
   });
 
   final Color background;
@@ -32,37 +37,63 @@ class AppPalette extends ThemeExtension<AppPalette> {
   final Color warning;
   final Color danger;
 
-  /// Тёмная: фон почти чёрный, градиент — единственное яркое пятно.
+  /// Заливка матового стекла поверх размытия.
+  final Color glassFill;
+
+  /// Волосяная грань стекла: светлая линия по краю даёт толщину.
+  final Color glassBorder;
+
+  /// Блик по верхней кромке — от него стекло читается выпуклым.
+  final Color glassHighlight;
+
+  /// Цветные пятна фона. Без них размывать нечего и стекло выглядит
+  /// просто полупрозрачной заливкой.
+  final Color ambientA;
+  final Color ambientB;
+
+  /// Тёмная. Фон не чистый чёрный, текст не чистый белый: на OLED такая
+  /// пара даёт свечение вокруг букв и утомляет. Слои различаются светлотой,
+  /// а не рамками. Статусные цвета — системные Apple для тёмного фона.
   static const dark = AppPalette(
-    background: Color(0xFF07070D),
-    surface: Color(0xFF12121C),
-    surfaceRaised: Color(0xFF1A1A27),
-    border: Color(0xFF23233A),
-    text: Color(0xFFF7F7FB),
-    textMuted: Color(0xFF8E8EA8),
-    textFaint: Color(0xFF5C5C78),
-    accent: Color(0xFF3B5BFF),
-    violet: Color(0xFF7C4DFF),
-    success: Color(0xFF2FD98B),
-    warning: Color(0xFFFFB020),
-    danger: Color(0xFFFF5C5C),
+    background: Color(0xFF0B0B0F),
+    surface: Color(0xFF17171D),
+    surfaceRaised: Color(0xFF212129),
+    border: Color(0xFF2B2B35),
+    text: Color(0xFFECECF1),
+    textMuted: Color(0xFF9A9AAE),
+    textFaint: Color(0xFF6B6B80),
+    accent: Color(0xFF4C6BFF),
+    violet: Color(0xFF8B5CFF),
+    success: Color(0xFF30D158),
+    warning: Color(0xFFFF9F0A),
+    danger: Color(0xFFFF453A),
+    glassFill: Color(0x14FFFFFF),
+    glassBorder: Color(0x24FFFFFF),
+    glassHighlight: Color(0x3DFFFFFF),
+    ambientA: Color(0xFF3B5BFF),
+    ambientB: Color(0xFF7C4DFF),
   );
 
   /// Светлая: фон холодно-серый, карточки белые. Статусные цвета темнее
   /// тёмных — на белом иначе не хватает контраста.
   static const light = AppPalette(
-    background: Color(0xFFF5F6FB),
+    background: Color(0xFFF2F3F9),
     surface: Color(0xFFFFFFFF),
-    surfaceRaised: Color(0xFFEDEFF7),
-    border: Color(0xFFE2E6F2),
-    text: Color(0xFF0E1020),
+    surfaceRaised: Color(0xFFEBEDF6),
+    border: Color(0xFFE0E4F0),
+    text: Color(0xFF14151F),
     textMuted: Color(0xFF5C6180),
     textFaint: Color(0xFF9AA0BC),
     accent: Color(0xFF3B5BFF),
     violet: Color(0xFF7C4DFF),
-    success: Color(0xFF12B76A),
-    warning: Color(0xFFDC8400),
+    success: Color(0xFF12A150),
+    warning: Color(0xFFC77700),
     danger: Color(0xFFE5484D),
+    glassFill: Color(0xB8FFFFFF),
+    glassBorder: Color(0xCCFFFFFF),
+    glassHighlight: Color(0xF0FFFFFF),
+    ambientA: Color(0xFF6E8BFF),
+    ambientB: Color(0xFFB08BFF),
   );
 
   @override
@@ -79,6 +110,11 @@ class AppPalette extends ThemeExtension<AppPalette> {
     Color? success,
     Color? warning,
     Color? danger,
+    Color? glassFill,
+    Color? glassBorder,
+    Color? glassHighlight,
+    Color? ambientA,
+    Color? ambientB,
   }) => AppPalette(
     background: background ?? this.background,
     surface: surface ?? this.surface,
@@ -92,6 +128,11 @@ class AppPalette extends ThemeExtension<AppPalette> {
     success: success ?? this.success,
     warning: warning ?? this.warning,
     danger: danger ?? this.danger,
+    glassFill: glassFill ?? this.glassFill,
+    glassBorder: glassBorder ?? this.glassBorder,
+    glassHighlight: glassHighlight ?? this.glassHighlight,
+    ambientA: ambientA ?? this.ambientA,
+    ambientB: ambientB ?? this.ambientB,
   );
 
   @override
@@ -111,6 +152,11 @@ class AppPalette extends ThemeExtension<AppPalette> {
       success: Color.lerp(success, other.success, t)!,
       warning: Color.lerp(warning, other.warning, t)!,
       danger: Color.lerp(danger, other.danger, t)!,
+      glassFill: Color.lerp(glassFill, other.glassFill, t)!,
+      glassBorder: Color.lerp(glassBorder, other.glassBorder, t)!,
+      glassHighlight: Color.lerp(glassHighlight, other.glassHighlight, t)!,
+      ambientA: Color.lerp(ambientA, other.ambientA, t)!,
+      ambientB: Color.lerp(ambientB, other.ambientB, t)!,
     );
   }
 }
