@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Камера нужна, чтобы отсканировать QR-код терминала при отметке прихода.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Местоположение нужно, чтобы подтвердить, что вы отмечаетесь из офиса.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
