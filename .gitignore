@@ -12,3 +12,13 @@ coverage/
 prisma/*.db
 apps/mobile/node_modules/
 *.tsbuildinfo
+
+# Flutter
+apps/mobile_flutter/.dart_tool/
+apps/mobile_flutter/build/
+apps/mobile_flutter/.flutter-plugins
+apps/mobile_flutter/.flutter-plugins-dependencies
+apps/mobile_flutter/*.iml
+apps/mobile_flutter/ios/Pods/
+apps/mobile_flutter/ios/.symlinks/
+apps/mobile_flutter/ios/Flutter/Flutter.podspec
