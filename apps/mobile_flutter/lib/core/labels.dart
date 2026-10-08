@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../api/models.dart';
-import '../theme.dart';
+import '../palette.dart';
 
 String attendanceStatusLabel(AttendanceStatus status) => switch (status) {
   AttendanceStatus.onTime => 'Вовремя',
@@ -11,13 +11,14 @@ String attendanceStatusLabel(AttendanceStatus status) => switch (status) {
   AttendanceStatus.excused => 'Уважительная',
 };
 
-Color attendanceStatusColor(AttendanceStatus status) => switch (status) {
-  AttendanceStatus.onTime => AppColors.success,
-  AttendanceStatus.late => AppColors.warning,
-  AttendanceStatus.absent => AppColors.danger,
-  AttendanceStatus.dayOff => AppColors.textMuted,
-  AttendanceStatus.excused => AppColors.accent,
-};
+Color attendanceStatusColor(AttendanceStatus status, AppPalette palette) =>
+    switch (status) {
+      AttendanceStatus.onTime => palette.success,
+      AttendanceStatus.late => palette.warning,
+      AttendanceStatus.absent => palette.danger,
+      AttendanceStatus.dayOff => palette.textMuted,
+      AttendanceStatus.excused => palette.accent,
+    };
 
 /// Приписка к статусу для дней, которые сотрудник не отмечал сам.
 String attendanceMethodNote(AttendanceMethod method) => switch (method) {
@@ -33,12 +34,13 @@ String offerStatusLabel(OfferStatus status) => switch (status) {
   OfferStatus.expired => 'Истёк',
 };
 
-Color offerStatusColor(OfferStatus status) => switch (status) {
-  OfferStatus.accepted => AppColors.success,
-  OfferStatus.rejected => AppColors.danger,
-  OfferStatus.expired => AppColors.textMuted,
-  OfferStatus.sent => AppColors.accent,
-};
+Color offerStatusColor(OfferStatus status, AppPalette palette) =>
+    switch (status) {
+      OfferStatus.accepted => palette.success,
+      OfferStatus.rejected => palette.danger,
+      OfferStatus.expired => palette.textMuted,
+      OfferStatus.sent => palette.accent,
+    };
 
 String planMetricLabel(PlanMetric metric) => switch (metric) {
   PlanMetric.calls => 'Звонки',
