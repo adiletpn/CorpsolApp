@@ -43,96 +43,164 @@ class _PayrollCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      padding: EdgeInsets.all(gap(2.5)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GradientCard(
+          padding: EdgeInsets.all(gap(3)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Text(
-                  '${formatDate(payroll.periodStart)} — ${formatDate(payroll.periodEnd)}',
-                  style: Theme.of(context).textTheme.bodySmall,
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${formatDate(payroll.periodStart)} — ${formatDate(payroll.periodEnd)}',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.78),
+                        fontSize: 13.5,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: gap(1.25),
+                      vertical: gap(0.5),
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.22),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      payrollStatusLabel(payroll.status),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: gap(2)),
+              Text(
+                formatMoney(payroll.totalMinor),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 42,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -1.2,
                 ),
               ),
-              StatusChip(
-                label: payrollStatusLabel(payroll.status),
-                color: payroll.status == PayrollStatus.paid
-                    ? AppColors.success
-                    : AppColors.textMuted,
+              SizedBox(height: gap(0.5)),
+              Text(
+                'к выплате за месяц',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.78),
+                  fontSize: 14,
+                ),
               ),
             ],
           ),
-          SizedBox(height: gap(1.5)),
+        ),
+        SizedBox(height: gap(1.5)),
+        AppCard(
+          padding: EdgeInsets.all(gap(2.25)),
+          child: Column(
+            children: [
+              _Row(
+                icon: Icons.account_balance_wallet_outlined,
+                color: AppColors.accent,
+                label: 'Оклад',
+                amount: payroll.baseSalaryMinor,
+              ),
+              _Row(
+                icon: Icons.trending_up_rounded,
+                color: AppColors.success,
+                label: 'Бонусы',
+                amount: payroll.bonusMinor,
+              ),
+              if (payroll.penaltyMinor != 0)
+                _Row(
+                  icon: Icons.trending_down_rounded,
+                  color: AppColors.danger,
+                  label: 'Удержания',
+                  amount: -payroll.penaltyMinor.abs(),
+                ),
+            ],
+          ),
+        ),
+        if (payroll.lines.isNotEmpty) ...[
+          SizedBox(height: gap(2.5)),
           Text(
-            formatMoney(payroll.totalMinor),
-            style: const TextStyle(
-              color: AppColors.text,
-              fontSize: 34,
-              fontWeight: FontWeight.w700,
-            ),
+            'Из чего сложилось',
+            style: Theme.of(context).textTheme.titleMedium,
           ),
-          SizedBox(height: gap(2)),
-          _Row(label: 'Оклад', amount: payroll.baseSalaryMinor),
-          _Row(
-            label: 'Бонусы',
-            amount: payroll.bonusMinor,
-            color: AppColors.success,
-          ),
-          if (payroll.penaltyMinor != 0)
-            _Row(
-              label: 'Удержания',
-              amount: -payroll.penaltyMinor.abs(),
-              color: AppColors.danger,
-            ),
-          if (payroll.lines.isNotEmpty) ...[
-            Padding(
-              padding: EdgeInsets.symmetric(vertical: gap(1.5)),
-              child: const Divider(color: AppColors.border, height: 1),
-            ),
-            Text(
-              'Из чего сложилось',
-              style: Theme.of(context).textTheme.bodySmall,
+          SizedBox(height: gap(1.5)),
+          for (final line in payroll.lines) ...[
+            AppCard(
+              padding: EdgeInsets.all(gap(1.75)),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      line.title,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ),
+                  Text(
+                    formatMoney(line.amountMinor),
+                    style: TextStyle(
+                      color: line.amountMinor < 0
+                          ? AppColors.danger
+                          : AppColors.success,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
             ),
             SizedBox(height: gap(1)),
-            for (final line in payroll.lines)
-              _Row(
-                label: line.title,
-                amount: line.amountMinor,
-                color: line.amountMinor < 0 ? AppColors.danger : null,
-              ),
           ],
         ],
-      ),
+      ],
     );
   }
 }
 
 class _Row extends StatelessWidget {
-  const _Row({required this.label, required this.amount, this.color});
+  const _Row({
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.amount,
+  });
 
+  final IconData icon;
+  final Color color;
   final String label;
   final int amount;
-  final Color? color;
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: EdgeInsets.symmetric(vertical: gap(0.5)),
+    padding: EdgeInsets.symmetric(vertical: gap(0.75)),
     child: Row(
       children: [
+        IconChip(icon: icon, color: color, size: 38),
+        SizedBox(width: gap(1.5)),
         Expanded(
           child: Text(
             label,
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 14),
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 14.5),
           ),
         ),
         Text(
           formatMoney(amount),
-          style: TextStyle(
-            color: color ?? AppColors.text,
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
+          style: const TextStyle(
+            color: AppColors.text,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ],

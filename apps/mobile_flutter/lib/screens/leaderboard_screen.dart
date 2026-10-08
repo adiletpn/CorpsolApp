@@ -51,44 +51,59 @@ class _SelfCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final leading = entry.pointsBehindLeader == 0;
 
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(gap(2.5)),
-      decoration: BoxDecoration(
-        color: AppColors.accent.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.accent),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return GradientCard(
+      padding: EdgeInsets.all(gap(3)),
+      child: Row(
         children: [
-          Text('Ваше место', style: Theme.of(context).textTheme.bodySmall),
-          SizedBox(height: gap(0.5)),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Text(
+                'Ваше место',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.78),
+                  fontSize: 14,
+                ),
+              ),
+              SizedBox(height: gap(0.5)),
               Text(
                 '${entry.rank}',
                 style: const TextStyle(
-                  color: AppColors.accent,
-                  fontSize: 44,
-                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  fontSize: 56,
+                  fontWeight: FontWeight.w800,
+                  height: 1,
+                  letterSpacing: -2,
                 ),
-              ),
-              SizedBox(width: gap(1.5)),
-              Text(
-                '${entry.points} баллов',
-                style: const TextStyle(color: AppColors.text, fontSize: 17),
               ),
             ],
           ),
-          SizedBox(height: gap(1)),
-          Text(
-            leading
-                ? 'Вы впереди всех'
-                : 'До первого места ${entry.pointsBehindLeader} баллов',
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 14),
+          SizedBox(width: gap(3)),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${entry.points} баллов',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                SizedBox(height: gap(0.75)),
+                Text(
+                  leading
+                      ? 'Вы впереди всех'
+                      : 'До первого места ${entry.pointsBehindLeader} баллов',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.82),
+                    fontSize: 14,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -102,28 +117,44 @@ class _EntryRow extends StatelessWidget {
   final RankedEntry entry;
   final bool isSelf;
 
+  /// Первая тройка выделена золотом, серебром и бронзой.
+  Color get _rankColor => switch (entry.rank) {
+    1 => const Color(0xFFFFC53D),
+    2 => const Color(0xFFC9CDD6),
+    3 => const Color(0xFFCD7F32),
+    _ => AppColors.textFaint,
+  };
+
   @override
-  Widget build(BuildContext context) => AppCard(
+  Widget build(BuildContext context) => Container(
+    padding: EdgeInsets.all(gap(1.75)),
+    decoration: BoxDecoration(
+      color: isSelf ? AppColors.surfaceRaised : AppColors.surface,
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      border: Border.all(color: isSelf ? AppColors.accent : AppColors.border),
+    ),
     child: Row(
       children: [
         SizedBox(
-          width: 36,
+          width: 34,
           child: Text(
             '${entry.rank}',
             style: TextStyle(
-              color: entry.rank <= 3 ? AppColors.warning : AppColors.textMuted,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
+              color: _rankColor,
+              fontSize: 19,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ),
         Expanded(
           child: Text(
             entry.fullName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: AppColors.text,
               fontSize: 15,
-              fontWeight: isSelf ? FontWeight.w700 : FontWeight.w400,
+              fontWeight: isSelf ? FontWeight.w700 : FontWeight.w500,
             ),
           ),
         ),
@@ -132,7 +163,7 @@ class _EntryRow extends StatelessWidget {
           style: const TextStyle(
             color: AppColors.text,
             fontSize: 16,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ],

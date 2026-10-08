@@ -97,57 +97,62 @@ class _AchievementCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final unlocked = achievement.isUnlocked;
+    final color = unlocked ? AppColors.warning : AppColors.textFaint;
 
-    return Opacity(
-      // Неполученные показываем приглушённо: это цель, а не достижение.
-      opacity: unlocked ? 1 : 0.55,
-      child: AppCard(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              unlocked ? Icons.military_tech : Icons.lock_outline,
-              color: unlocked ? AppColors.warning : AppColors.textMuted,
-              size: 28,
-            ),
-            SizedBox(width: gap(2)),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    achievement.title,
-                    style: Theme.of(context).textTheme.bodyMedium,
+    return AppCard(
+      padding: EdgeInsets.all(gap(1.75)),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          IconChip(
+            icon: unlocked
+                ? Icons.military_tech_rounded
+                : Icons.lock_outline_rounded,
+            color: color,
+          ),
+          SizedBox(width: gap(1.75)),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  achievement.title,
+                  style: TextStyle(
+                    // Неполученные приглушены: это цель, а не достижение.
+                    color: unlocked ? AppColors.text : AppColors.textMuted,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
                   ),
-                  SizedBox(height: gap(0.25)),
+                ),
+                SizedBox(height: gap(0.25)),
+                Text(
+                  achievement.description,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                if (unlocked) ...[
+                  SizedBox(height: gap(0.625)),
                   Text(
-                    achievement.description,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  if (unlocked) ...[
-                    SizedBox(height: gap(0.5)),
-                    Text(
-                      'Получено ${formatDate(achievement.unlockedAt!.toIso8601String())}',
-                      style: const TextStyle(
-                        color: AppColors.success,
-                        fontSize: 13,
-                      ),
+                    'Получено ${formatDate(achievement.unlockedAt!.toIso8601String())}',
+                    style: const TextStyle(
+                      color: AppColors.success,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
                     ),
-                  ],
+                  ),
                 ],
-              ),
+              ],
             ),
-            SizedBox(width: gap(1)),
-            Text(
-              '+${achievement.points}',
-              style: TextStyle(
-                color: unlocked ? AppColors.warning : AppColors.textMuted,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
+          ),
+          SizedBox(width: gap(1)),
+          Text(
+            '+${achievement.points}',
+            style: TextStyle(
+              color: color,
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

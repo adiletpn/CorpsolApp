@@ -110,20 +110,42 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ],
                 SizedBox(height: gap(3)),
-                FilledButton(
-                  onPressed: _busy ? null : _submit,
-                  style: FilledButton.styleFrom(
-                    padding: EdgeInsets.symmetric(vertical: gap(2)),
-                    backgroundColor: AppColors.accent,
-                    foregroundColor: AppColors.background,
+                // Кнопка на градиенте — главное действие экрана.
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: _busy ? null : appGradient,
+                    color: _busy ? AppColors.surfaceRaised : null,
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
                   ),
-                  child: _busy
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Войти'),
+                  child: FilledButton(
+                    onPressed: _busy ? null : _submit,
+                    style: FilledButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: gap(2.25)),
+                      backgroundColor: Colors.transparent,
+                      disabledBackgroundColor: Colors.transparent,
+                      foregroundColor: Colors.white,
+                      shadowColor: Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                      ),
+                    ),
+                    child: _busy
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.accent,
+                            ),
+                          )
+                        : const Text(
+                            'Войти',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                  ),
                 ),
                 SizedBox(height: gap(2)),
                 const Text(
