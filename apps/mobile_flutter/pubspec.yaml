@@ -15,7 +15,7 @@ dependencies:
   firebase_auth: ^5.3.3
 
   # Скан QR с экрана терминала.
-  mobile_scanner: ^5.2.3
+  mobile_scanner: ^7.4.2
 
   # Координаты для геозоны. На Android сообщает о подмене положения.
   geolocator: ^13.0.2
