@@ -8,6 +8,7 @@ import 'core/firebase_session.dart';
 import 'screens/login_screen.dart';
 import 'shell.dart';
 import 'state/auth_controller.dart';
+import 'state/theme_controller.dart';
 import 'palette.dart';
 import 'theme.dart';
 
@@ -19,15 +20,24 @@ Future<void> main() async {
 
   final session = await FirebaseSession.initialize();
   final api = CorpsolApi(ApiClient(session));
+  final theme = await ThemeController.load();
 
-  runApp(CorpsolApp(session: session, api: api));
+  runApp(CorpsolApp(session: session, api: api, theme: theme));
 }
 
 class CorpsolApp extends StatelessWidget {
-  const CorpsolApp({super.key, required this.session, required this.api});
+  const CorpsolApp({
+    super.key,
+    required this.session,
+    required this.api,
+    this.theme,
+  });
 
   final FirebaseSession session;
   final CorpsolApi api;
+
+  /// Тема может не передаваться в тестах — тогда берётся системная.
+  final ThemeController? theme;
 
   @override
   Widget build(BuildContext context) {
@@ -35,12 +45,19 @@ class CorpsolApp extends StatelessWidget {
       providers: [
         Provider<CorpsolApi>.value(value: api),
         ChangeNotifierProvider(create: (_) => AuthController(session, api)),
+        ChangeNotifierProvider<ThemeController>.value(
+          value: theme ?? ThemeController(null),
+        ),
       ],
-      child: MaterialApp(
-        title: 'CorpSol',
-        debugShowCheckedModeBanner: false,
-        theme: buildTheme(),
-        home: const _Root(),
+      child: Consumer<ThemeController>(
+        builder: (context, themeController, _) => MaterialApp(
+          title: 'CorpSol',
+          debugShowCheckedModeBanner: false,
+          theme: buildLightTheme(),
+          darkTheme: buildDarkTheme(),
+          themeMode: themeController.mode,
+          home: const _Root(),
+        ),
       ),
     );
   }
