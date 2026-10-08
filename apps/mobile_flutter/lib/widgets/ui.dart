@@ -1,9 +1,82 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 import '../palette.dart';
 import '../theme.dart';
 
-/// Обычная карточка: приподнятая поверхность с тонкой рамкой.
+/// Матовое стекло: размытие фона, полупрозрачная заливка и светлая грань
+/// по краю. Грань важнее заливки — именно она читается как толщина стекла.
+///
+/// Размытие стоит дорого, поэтому в длинных списках оно отключается
+/// параметром [blur]: там хватает полупрозрачной заливки поверх пятен фона.
+class GlassCard extends StatelessWidget {
+  const GlassCard({
+    super.key,
+    required this.child,
+    this.padding,
+    this.onTap,
+    this.radius = AppRadius.md,
+    this.blur = true,
+    this.highlighted = false,
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry? padding;
+  final VoidCallback? onTap;
+  final double radius;
+  final bool blur;
+
+  /// Выделенная карточка: грань ярче, видно, что строка про тебя.
+  final bool highlighted;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    final corners = BorderRadius.circular(radius);
+
+    Widget surface = Container(
+      width: double.infinity,
+      padding: padding ?? EdgeInsets.all(gap(2)),
+      decoration: BoxDecoration(
+        color: palette.glassFill,
+        borderRadius: corners,
+        border: Border.all(
+          color: highlighted ? palette.accent : palette.glassBorder,
+          width: highlighted ? 1.4 : 1,
+        ),
+        // Блик по верхней кромке: от него край выглядит скруглённым,
+        // а не просто обведённым.
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            palette.glassHighlight.withValues(
+              alpha: palette.glassHighlight.a * 0.22,
+            ),
+            palette.glassFill,
+          ],
+        ),
+      ),
+      child: child,
+    );
+
+    if (blur) {
+      surface = BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+        child: surface,
+      );
+    }
+
+    final clipped = ClipRRect(borderRadius: corners, child: surface);
+
+    if (onTap == null) return clipped;
+
+    return InkWell(onTap: onTap, borderRadius: corners, child: clipped);
+  }
+}
+
+/// Карточка списка. Стеклянная, но без размытия — строк много.
 class AppCard extends StatelessWidget {
   const AppCard({super.key, required this.child, this.padding, this.onTap});
 
@@ -12,28 +85,8 @@ class AppCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) {
-    final palette = context.palette;
-
-    final body = Container(
-      width: double.infinity,
-      padding: padding ?? EdgeInsets.all(gap(2)),
-      decoration: BoxDecoration(
-        color: palette.surface,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: palette.border),
-      ),
-      child: child,
-    );
-
-    if (onTap == null) return body;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.md),
-      child: body,
-    );
-  }
+  Widget build(BuildContext context) =>
+      GlassCard(padding: padding, onTap: onTap, blur: false, child: child);
 }
 
 /// Главная карточка экрана: градиент плюс мягкое свечение под ним.
@@ -144,13 +197,8 @@ class StatTile extends StatelessWidget {
   final Color color;
 
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) => GlassCard(
     padding: EdgeInsets.symmetric(horizontal: gap(1.75), vertical: gap(2)),
-    decoration: BoxDecoration(
-      color: context.palette.surface,
-      borderRadius: BorderRadius.circular(AppRadius.md),
-      border: Border.all(color: context.palette.border),
-    ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
