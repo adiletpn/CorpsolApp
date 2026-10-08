@@ -147,6 +147,7 @@ Widget harness(Widget child, {FakeApi? api, FakeSession? session, bool signedIn 
       Provider<CorpsolApi>.value(value: fakeApi),
       ChangeNotifierProvider<AuthController>.value(value: auth),
     ],
-    child: MaterialApp(theme: buildTheme(), home: child),
+    // Material нужен так же, как Scaffold в приложении: без него InkWell падает.
+    child: MaterialApp(theme: buildTheme(), home: Material(child: child)),
   );
 }
