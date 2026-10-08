@@ -8,6 +8,7 @@ import 'core/firebase_session.dart';
 import 'screens/login_screen.dart';
 import 'shell.dart';
 import 'state/auth_controller.dart';
+import 'palette.dart';
 import 'theme.dart';
 
 Future<void> main() async {
@@ -55,8 +56,10 @@ class _Root extends StatelessWidget {
     // Firebase восстанавливает сессию из хранилища, и пока он этого не сделал,
     // показывать экран входа нельзя — он мигнул бы у вошедшего сотрудника.
     if (auth.initializing) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: AppColors.accent)),
+      return Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(color: context.palette.accent),
+        ),
       );
     }
 

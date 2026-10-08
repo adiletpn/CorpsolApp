@@ -5,6 +5,7 @@ import '../api/endpoints.dart';
 import '../api/models.dart';
 import '../core/labels.dart';
 import '../core/period.dart';
+import '../palette.dart';
 import '../theme.dart';
 import '../widgets/period_screen.dart';
 import '../widgets/ui.dart';
@@ -110,20 +111,20 @@ class _PayrollCard extends StatelessWidget {
             children: [
               _Row(
                 icon: Icons.account_balance_wallet_outlined,
-                color: AppColors.accent,
+                color: context.palette.accent,
                 label: 'Оклад',
                 amount: payroll.baseSalaryMinor,
               ),
               _Row(
                 icon: Icons.trending_up_rounded,
-                color: AppColors.success,
+                color: context.palette.success,
                 label: 'Бонусы',
                 amount: payroll.bonusMinor,
               ),
               if (payroll.penaltyMinor != 0)
                 _Row(
                   icon: Icons.trending_down_rounded,
-                  color: AppColors.danger,
+                  color: context.palette.danger,
                   label: 'Удержания',
                   amount: -payroll.penaltyMinor.abs(),
                 ),
@@ -152,8 +153,8 @@ class _PayrollCard extends StatelessWidget {
                     formatMoney(line.amountMinor),
                     style: TextStyle(
                       color: line.amountMinor < 0
-                          ? AppColors.danger
-                          : AppColors.success,
+                          ? context.palette.danger
+                          : context.palette.success,
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                     ),
@@ -192,13 +193,13 @@ class _Row extends StatelessWidget {
         Expanded(
           child: Text(
             label,
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 14.5),
+            style: TextStyle(color: context.palette.textMuted, fontSize: 14.5),
           ),
         ),
         Text(
           formatMoney(amount),
-          style: const TextStyle(
-            color: AppColors.text,
+          style: TextStyle(
+            color: context.palette.text,
             fontSize: 16,
             fontWeight: FontWeight.w700,
           ),

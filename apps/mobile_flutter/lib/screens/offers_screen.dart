@@ -5,6 +5,7 @@ import '../api/endpoints.dart';
 import '../api/models.dart';
 import '../core/labels.dart';
 import '../core/period.dart';
+import '../palette.dart';
 import '../theme.dart';
 import '../widgets/period_screen.dart';
 import '../widgets/ui.dart';
@@ -70,7 +71,7 @@ class OffersScreen extends StatelessWidget {
                   child: StatTile(
                     value: '${offers.length}',
                     label: 'всего',
-                    color: AppColors.text,
+                    color: context.palette.text,
                   ),
                 ),
                 SizedBox(width: gap(1.25)),
@@ -78,7 +79,7 @@ class OffersScreen extends StatelessWidget {
                   child: StatTile(
                     value: '${accepted.length}',
                     label: 'принято',
-                    color: AppColors.success,
+                    color: context.palette.success,
                   ),
                 ),
                 SizedBox(width: gap(1.25)),
@@ -87,7 +88,7 @@ class OffersScreen extends StatelessWidget {
                     value:
                         '${offers.where((o) => o.status == OfferStatus.sent).length}',
                     label: 'в работе',
-                    color: AppColors.accent,
+                    color: context.palette.accent,
                   ),
                 ),
               ],
@@ -118,7 +119,7 @@ class _OfferRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = offerStatusColor(offer.status);
+    final color = offerStatusColor(offer.status, context.palette);
 
     return AppCard(
       padding: EdgeInsets.all(gap(1.75)),
@@ -150,8 +151,8 @@ class _OfferRow extends StatelessWidget {
             children: [
               Text(
                 formatMoney(offer.amountMinor),
-                style: const TextStyle(
-                  color: AppColors.text,
+                style: TextStyle(
+                  color: context.palette.text,
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
                 ),

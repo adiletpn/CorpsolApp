@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../api/endpoints.dart';
 import '../api/models.dart';
 import '../core/period.dart';
+import '../palette.dart';
 import '../theme.dart';
 import '../widgets/period_screen.dart';
 import '../widgets/ui.dart';
@@ -33,9 +34,9 @@ class AchievementsScreen extends StatelessWidget {
             AppCard(
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.emoji_events,
-                    color: AppColors.warning,
+                    color: context.palette.warning,
                     size: 36,
                   ),
                   SizedBox(width: gap(2)),
@@ -45,8 +46,8 @@ class AchievementsScreen extends StatelessWidget {
                       children: [
                         Text(
                           '${unlocked.length} из ${achievements.length}',
-                          style: const TextStyle(
-                            color: AppColors.text,
+                          style: TextStyle(
+                            color: context.palette.text,
                             fontSize: 22,
                             fontWeight: FontWeight.w700,
                           ),
@@ -97,7 +98,9 @@ class _AchievementCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final unlocked = achievement.isUnlocked;
-    final color = unlocked ? AppColors.warning : AppColors.textFaint;
+    final color = unlocked
+        ? context.palette.warning
+        : context.palette.textFaint;
 
     return AppCard(
       padding: EdgeInsets.all(gap(1.75)),
@@ -119,7 +122,9 @@ class _AchievementCard extends StatelessWidget {
                   achievement.title,
                   style: TextStyle(
                     // Неполученные приглушены: это цель, а не достижение.
-                    color: unlocked ? AppColors.text : AppColors.textMuted,
+                    color: unlocked
+                        ? context.palette.text
+                        : context.palette.textMuted,
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
@@ -133,8 +138,8 @@ class _AchievementCard extends StatelessWidget {
                   SizedBox(height: gap(0.625)),
                   Text(
                     'Получено ${formatDate(achievement.unlockedAt!.toIso8601String())}',
-                    style: const TextStyle(
-                      color: AppColors.success,
+                    style: TextStyle(
+                      color: context.palette.success,
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
                     ),

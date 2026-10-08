@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../api/client.dart';
 import '../core/firebase_session.dart';
 import '../state/auth_controller.dart';
+import '../palette.dart';
 import '../theme.dart';
 
 /// Коды отказа при входе. Сотруднику показываем, что делать дальше,
@@ -75,9 +76,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 SizedBox(height: gap(0.5)),
-                const Text(
+                Text(
                   'Вход для менеджера',
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 15),
+                  style: TextStyle(
+                    color: context.palette.textMuted,
+                    fontSize: 15,
+                  ),
                 ),
                 SizedBox(height: gap(4)),
                 TextField(
@@ -86,7 +90,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   keyboardType: TextInputType.emailAddress,
                   autocorrect: false,
                   textInputAction: TextInputAction.next,
-                  style: const TextStyle(color: AppColors.text),
+                  style: TextStyle(color: context.palette.text),
                   decoration: _fieldDecoration('Рабочая почта'),
                 ),
                 SizedBox(height: gap(1.5)),
@@ -96,15 +100,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   obscureText: true,
                   textInputAction: TextInputAction.done,
                   onSubmitted: (_) => _submit(),
-                  style: const TextStyle(color: AppColors.text),
+                  style: TextStyle(color: context.palette.text),
                   decoration: _fieldDecoration('Пароль'),
                 ),
                 if (_error != null) ...[
                   SizedBox(height: gap(2)),
                   Text(
                     _error!,
-                    style: const TextStyle(
-                      color: AppColors.danger,
+                    style: TextStyle(
+                      color: context.palette.danger,
                       fontSize: 14,
                     ),
                   ),
@@ -114,7 +118,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: _busy ? null : appGradient,
-                    color: _busy ? AppColors.surfaceRaised : null,
+                    color: _busy ? context.palette.surfaceRaised : null,
                     borderRadius: BorderRadius.circular(AppRadius.sm),
                   ),
                   child: FilledButton(
@@ -130,12 +134,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     child: _busy
-                        ? const SizedBox(
+                        ? SizedBox(
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: AppColors.accent,
+                              color: context.palette.accent,
                             ),
                           )
                         : const Text(
@@ -148,10 +152,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 SizedBox(height: gap(2)),
-                const Text(
+                Text(
                   'Войти можно только с закреплённого телефона.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                  style: TextStyle(
+                    color: context.palette.textMuted,
+                    fontSize: 13,
+                  ),
                 ),
               ],
             ),
@@ -163,16 +170,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
   InputDecoration _fieldDecoration(String label) => InputDecoration(
     labelText: label,
-    labelStyle: const TextStyle(color: AppColors.textMuted),
+    labelStyle: TextStyle(color: context.palette.textMuted),
     filled: true,
-    fillColor: AppColors.surface,
+    fillColor: context.palette.surface,
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(AppRadius.md),
-      borderSide: const BorderSide(color: AppColors.border),
+      borderSide: BorderSide(color: context.palette.border),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(AppRadius.md),
-      borderSide: const BorderSide(color: AppColors.border),
+      borderSide: BorderSide(color: context.palette.border),
     ),
   );
 }

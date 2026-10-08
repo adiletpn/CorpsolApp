@@ -5,6 +5,7 @@ import '../api/endpoints.dart';
 import '../api/models.dart';
 import '../core/period.dart';
 import '../state/auth_controller.dart';
+import '../palette.dart';
 import '../theme.dart';
 import '../widgets/period_screen.dart';
 import '../widgets/ui.dart';
@@ -118,20 +119,23 @@ class _EntryRow extends StatelessWidget {
   final bool isSelf;
 
   /// Первая тройка выделена золотом, серебром и бронзой.
-  Color get _rankColor => switch (entry.rank) {
+  /// Медали одинаковы в обеих темах — это не цвет интерфейса, а значок.
+  Color _rankColor(AppPalette palette) => switch (entry.rank) {
     1 => const Color(0xFFFFC53D),
-    2 => const Color(0xFFC9CDD6),
+    2 => const Color(0xFFA8AEBF),
     3 => const Color(0xFFCD7F32),
-    _ => AppColors.textFaint,
+    _ => palette.textFaint,
   };
 
   @override
   Widget build(BuildContext context) => Container(
     padding: EdgeInsets.all(gap(1.75)),
     decoration: BoxDecoration(
-      color: isSelf ? AppColors.surfaceRaised : AppColors.surface,
+      color: isSelf ? context.palette.surfaceRaised : context.palette.surface,
       borderRadius: BorderRadius.circular(AppRadius.md),
-      border: Border.all(color: isSelf ? AppColors.accent : AppColors.border),
+      border: Border.all(
+        color: isSelf ? context.palette.accent : context.palette.border,
+      ),
     ),
     child: Row(
       children: [
@@ -140,7 +144,7 @@ class _EntryRow extends StatelessWidget {
           child: Text(
             '${entry.rank}',
             style: TextStyle(
-              color: _rankColor,
+              color: _rankColor(context.palette),
               fontSize: 19,
               fontWeight: FontWeight.w800,
             ),
@@ -152,7 +156,7 @@ class _EntryRow extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: AppColors.text,
+              color: context.palette.text,
               fontSize: 15,
               fontWeight: isSelf ? FontWeight.w700 : FontWeight.w500,
             ),
@@ -160,8 +164,8 @@ class _EntryRow extends StatelessWidget {
         ),
         Text(
           '${entry.points}',
-          style: const TextStyle(
-            color: AppColors.text,
+          style: TextStyle(
+            color: context.palette.text,
             fontSize: 16,
             fontWeight: FontWeight.w700,
           ),

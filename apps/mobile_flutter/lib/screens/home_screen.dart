@@ -6,6 +6,7 @@ import '../api/models.dart';
 import '../core/labels.dart';
 import '../core/period.dart';
 import '../state/auth_controller.dart';
+import '../palette.dart';
 import '../theme.dart';
 import '../widgets/ui.dart';
 
@@ -67,8 +68,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return RefreshIndicator(
       onRefresh: _load,
-      color: AppColors.accent,
-      backgroundColor: AppColors.surface,
+      color: context.palette.accent,
+      backgroundColor: context.palette.surface,
       child: ListView(
         padding: EdgeInsets.all(gap(2)),
         children: [
@@ -86,8 +87,8 @@ class _HomeScreenState extends State<HomeScreen> {
           if (_failed && _records.isEmpty)
             ErrorRetry(message: 'Не удалось загрузить табель', onRetry: _load)
           else if (_loading && _records.isEmpty)
-            const Center(
-              child: CircularProgressIndicator(color: AppColors.accent),
+            Center(
+              child: CircularProgressIndicator(color: context.palette.accent),
             )
           else if (sorted.isEmpty)
             const EmptyState(message: 'За этот месяц отметок пока нет')
@@ -119,9 +120,9 @@ class _Header extends StatelessWidget {
       ),
       TextButton(
         onPressed: () => context.read<AuthController>().signOut(),
-        child: const Text(
+        child: Text(
           'Выйти',
-          style: TextStyle(color: AppColors.textMuted),
+          style: TextStyle(color: context.palette.textMuted),
         ),
       ),
     ],
@@ -142,9 +143,9 @@ class _CheckInCard extends StatelessWidget {
         padding: EdgeInsets.all(gap(2.5)),
         child: Row(
           children: [
-            const IconChip(
+            IconChip(
               icon: Icons.check_rounded,
-              color: AppColors.success,
+              color: context.palette.success,
               size: 52,
             ),
             SizedBox(width: gap(2)),
@@ -239,7 +240,7 @@ class _MonthSummary extends StatelessWidget {
         child: StatTile(
           value: '${_count(AttendanceStatus.onTime)}',
           label: 'вовремя',
-          color: AppColors.success,
+          color: context.palette.success,
         ),
       ),
       SizedBox(width: gap(1.25)),
@@ -247,7 +248,7 @@ class _MonthSummary extends StatelessWidget {
         child: StatTile(
           value: '${_count(AttendanceStatus.late)}',
           label: 'опозданий',
-          color: AppColors.warning,
+          color: context.palette.warning,
         ),
       ),
       SizedBox(width: gap(1.25)),
@@ -255,7 +256,7 @@ class _MonthSummary extends StatelessWidget {
         child: StatTile(
           value: '${_count(AttendanceStatus.absent)}',
           label: 'прогулов',
-          color: AppColors.danger,
+          color: context.palette.danger,
         ),
       ),
     ],
@@ -279,7 +280,7 @@ class _AttendanceRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final checkIn = record.checkInAt;
-    final color = attendanceStatusColor(record.status);
+    final color = attendanceStatusColor(record.status, context.palette);
 
     return AppCard(
       padding: EdgeInsets.all(gap(1.75)),

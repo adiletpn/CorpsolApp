@@ -6,6 +6,7 @@ import '../api/endpoints.dart';
 import '../api/models.dart';
 import '../core/period.dart';
 import '../state/check_in_controller.dart';
+import '../palette.dart';
 import '../theme.dart';
 
 class ScanScreen extends StatefulWidget {
@@ -48,10 +49,10 @@ class _ScanScreenState extends State<ScanScreen> {
     return ListenableBuilder(
       listenable: _controller,
       builder: (context, _) => Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: context.palette.background,
         appBar: AppBar(
-          backgroundColor: AppColors.background,
-          foregroundColor: AppColors.text,
+          backgroundColor: context.palette.background,
+          foregroundColor: context.palette.text,
           title: const Text('Отметка прихода'),
           leading: IconButton(
             icon: const Icon(Icons.close),
@@ -79,7 +80,7 @@ class _ScanScreenState extends State<ScanScreen> {
           width: 240,
           height: 240,
           decoration: BoxDecoration(
-            border: Border.all(color: AppColors.accent, width: 3),
+            border: Border.all(color: context.palette.accent, width: 3),
             borderRadius: BorderRadius.circular(AppRadius.lg),
           ),
         ),
@@ -94,7 +95,7 @@ class _ScanScreenState extends State<ScanScreen> {
             'Наведите камеру на QR-код терминала в офисе',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: AppColors.text,
+              color: context.palette.text,
               fontSize: 16,
               shadows: const [Shadow(blurRadius: 8, color: Colors.black)],
             ),
@@ -106,12 +107,12 @@ class _ScanScreenState extends State<ScanScreen> {
 
   Widget _submitting() => _Centered(
     children: [
-      const CircularProgressIndicator(color: AppColors.accent),
+      CircularProgressIndicator(color: context.palette.accent),
       SizedBox(height: gap(2.5)),
       Text(
         _controller.step,
         textAlign: TextAlign.center,
-        style: const TextStyle(color: AppColors.text, fontSize: 16),
+        style: TextStyle(color: context.palette.text, fontSize: 16),
       ),
     ],
   );
@@ -123,14 +124,14 @@ class _ScanScreenState extends State<ScanScreen> {
       children: [
         Icon(
           late ? Icons.schedule : Icons.check_circle,
-          color: late ? AppColors.warning : AppColors.success,
+          color: late ? context.palette.warning : context.palette.success,
           size: 72,
         ),
         SizedBox(height: gap(2.5)),
         Text(
           late ? 'Опоздание ${result.lateMinutes} мин' : 'Приход отмечен',
-          style: const TextStyle(
-            color: AppColors.text,
+          style: TextStyle(
+            color: context.palette.text,
             fontSize: 24,
             fontWeight: FontWeight.w700,
           ),
@@ -138,19 +139,19 @@ class _ScanScreenState extends State<ScanScreen> {
         SizedBox(height: gap(1)),
         Text(
           '${result.office.name} · ${formatTime(result.checkInAt)}',
-          style: const TextStyle(color: AppColors.textMuted, fontSize: 15),
+          style: TextStyle(color: context.palette.textMuted, fontSize: 15),
         ),
         SizedBox(height: gap(0.5)),
         Text(
           '${result.distanceMeters.round()} м до офиса',
-          style: const TextStyle(color: AppColors.textMuted, fontSize: 14),
+          style: TextStyle(color: context.palette.textMuted, fontSize: 14),
         ),
         SizedBox(height: gap(4)),
         FilledButton(
           onPressed: widget.onDone,
           style: FilledButton.styleFrom(
-            backgroundColor: AppColors.accent,
-            foregroundColor: AppColors.background,
+            backgroundColor: context.palette.accent,
+            foregroundColor: context.palette.background,
             padding: EdgeInsets.symmetric(
               horizontal: gap(5),
               vertical: gap(1.75),
@@ -164,19 +165,19 @@ class _ScanScreenState extends State<ScanScreen> {
 
   Widget _failure() => _Centered(
     children: [
-      const Icon(Icons.error_outline, color: AppColors.danger, size: 72),
+      Icon(Icons.error_outline, color: context.palette.danger, size: 72),
       SizedBox(height: gap(2.5)),
       Text(
         _controller.message ?? 'Отметка не прошла',
         textAlign: TextAlign.center,
-        style: const TextStyle(color: AppColors.text, fontSize: 18),
+        style: TextStyle(color: context.palette.text, fontSize: 18),
       ),
       if (_controller.hint != null) ...[
         SizedBox(height: gap(1.5)),
         Text(
           _controller.hint!,
           textAlign: TextAlign.center,
-          style: const TextStyle(color: AppColors.textMuted, fontSize: 15),
+          style: TextStyle(color: context.palette.textMuted, fontSize: 15),
         ),
       ],
       SizedBox(height: gap(4)),
@@ -191,8 +192,8 @@ class _ScanScreenState extends State<ScanScreen> {
           FilledButton(
             onPressed: _controller.retry,
             style: FilledButton.styleFrom(
-              backgroundColor: AppColors.accent,
-              foregroundColor: AppColors.background,
+              backgroundColor: context.palette.accent,
+              foregroundColor: context.palette.background,
             ),
             child: const Text('Попробовать ещё раз'),
           ),
