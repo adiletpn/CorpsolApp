@@ -6,7 +6,12 @@ import 'package:corpsol_mobile/core/firebase_session.dart';
 import 'package:corpsol_mobile/state/auth_controller.dart';
 import 'package:corpsol_mobile/theme.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
+
+/// Даты показываются по-русски, и без данных локали DateFormat падает.
+/// В приложении это делает main, в тестах — setUpAll.
+Future<void> initLocale() => initializeDateFormatting('ru');
 
 /// Сессия без Firebase: тесты управляют входом вручную.
 class FakeSession implements SessionSource {
