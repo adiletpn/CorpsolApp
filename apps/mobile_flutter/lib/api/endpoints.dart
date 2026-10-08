@@ -1,3 +1,4 @@
+import '../core/device.dart';
 import 'client.dart';
 import 'models.dart';
 
@@ -11,9 +12,26 @@ class CorpsolApi {
   /// Первый запрос после входа: закрепляет аккаунт за телефоном
   /// и возвращает профиль сотрудника.
   Future<AuthUser> openSession() async {
-    final json = await _client.request('/auth/session', method: 'POST');
+    final device = await getDeviceDescriptor();
+
+    final json = await _client.request(
+      '/auth/session',
+      method: 'POST',
+      body: {
+        'device': {
+          'deviceId': device.deviceId,
+          'platform': device.platform,
+          if (device.model != null) 'model': device.model,
+          if (device.osVersion != null) 'osVersion': device.osVersion,
+          if (device.appVersion != null) 'appVersion': device.appVersion,
+        },
+      },
+    );
     return AuthUser.fromJson(json as Map<String, dynamic>);
   }
+
+  /// Выход: бэкенд гасит токены, чтобы на устройстве не осталось доступа.
+  Future<void> closeSession() => _client.request('/auth/logout', method: 'POST');
 
   Future<CheckInResponse> checkIn({
     required String qr,
