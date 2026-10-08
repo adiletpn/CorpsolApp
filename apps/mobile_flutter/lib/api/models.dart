@@ -133,3 +133,108 @@ class AttendanceRecord {
 
 DateTime? _parseOrNull(Object? value) =>
     value is String ? DateTime.parse(value) : null;
+
+class PayrollLine {
+  const PayrollLine({
+    required this.ruleId,
+    required this.kind,
+    required this.title,
+    required this.amountMinor,
+  });
+
+  final String ruleId;
+  final String kind;
+  final String title;
+
+  /// Сумма в тиынах: деньги везде в минорных единицах, без дробных рублей.
+  final int amountMinor;
+
+  factory PayrollLine.fromJson(Map<String, dynamic> json) => PayrollLine(
+        ruleId: json['ruleId'] as String,
+        kind: json['kind'] as String,
+        title: json['title'] as String,
+        amountMinor: (json['amountMinor'] as num).toInt(),
+      );
+}
+
+enum PayrollStatus { draft, approved, paid }
+
+PayrollStatus payrollStatusFromJson(String value) => switch (value) {
+      'APPROVED' => PayrollStatus.approved,
+      'PAID' => PayrollStatus.paid,
+      _ => PayrollStatus.draft,
+    };
+
+class Payroll {
+  const Payroll({
+    required this.id,
+    required this.periodStart,
+    required this.periodEnd,
+    required this.baseSalaryMinor,
+    required this.bonusMinor,
+    required this.penaltyMinor,
+    required this.totalMinor,
+    required this.lines,
+    required this.status,
+  });
+
+  final String id;
+  final String periodStart;
+  final String periodEnd;
+  final int baseSalaryMinor;
+  final int bonusMinor;
+  final int penaltyMinor;
+  final int totalMinor;
+  final List<PayrollLine> lines;
+  final PayrollStatus status;
+
+  factory Payroll.fromJson(Map<String, dynamic> json) => Payroll(
+        id: json['id'] as String,
+        periodStart: json['periodStart'] as String,
+        periodEnd: json['periodEnd'] as String,
+        baseSalaryMinor: (json['baseSalaryMinor'] as num).toInt(),
+        bonusMinor: (json['bonusMinor'] as num).toInt(),
+        penaltyMinor: (json['penaltyMinor'] as num).toInt(),
+        totalMinor: (json['totalMinor'] as num).toInt(),
+        lines: (json['lines'] as List<dynamic>? ?? const [])
+            .map((item) => PayrollLine.fromJson(item as Map<String, dynamic>))
+            .toList(),
+        status: payrollStatusFromJson(json['status'] as String),
+      );
+}
+
+enum OfferStatus { sent, accepted, rejected, expired }
+
+OfferStatus offerStatusFromJson(String value) => switch (value) {
+      'ACCEPTED' => OfferStatus.accepted,
+      'REJECTED' => OfferStatus.rejected,
+      'EXPIRED' => OfferStatus.expired,
+      _ => OfferStatus.sent,
+    };
+
+class Offer {
+  const Offer({
+    required this.id,
+    required this.clientName,
+    required this.clientPhone,
+    required this.amountMinor,
+    required this.status,
+    required this.sentDate,
+  });
+
+  final String id;
+  final String clientName;
+  final String? clientPhone;
+  final int amountMinor;
+  final OfferStatus status;
+  final String sentDate;
+
+  factory Offer.fromJson(Map<String, dynamic> json) => Offer(
+        id: json['id'] as String,
+        clientName: json['clientName'] as String,
+        clientPhone: json['clientPhone'] as String?,
+        amountMinor: (json['amountMinor'] as num).toInt(),
+        status: offerStatusFromJson(json['status'] as String),
+        sentDate: json['sentDate'] as String,
+      );
+}
