@@ -18,6 +18,8 @@ class OffersScreen extends StatelessWidget {
     final period = currentMonth();
 
     return PeriodScreen<List<Offer>>(
+      title: 'Сделки',
+      subtitle: 'Отправленные офферы за месяц',
       load: () => api.offers(from: period.from, to: period.to),
       isEmpty: (data) => data.isEmpty,
       emptyMessage: 'За этот месяц сделок пока нет',
@@ -30,11 +32,9 @@ class OffersScreen extends StatelessWidget {
         final sorted = [...offers]
           ..sort((a, b) => b.sentDate.compareTo(a.sentDate));
 
-        return ListView(
-          padding: EdgeInsets.all(gap(2)),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const ScreenHeader(title: 'Сделки', subtitle: 'Отправленные офферы за месяц'),
-            SizedBox(height: gap(2.5)),
             Row(
               children: [
                 Expanded(

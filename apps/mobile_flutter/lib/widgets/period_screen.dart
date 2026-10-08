@@ -8,12 +8,18 @@ import 'ui.dart';
 class PeriodScreen<T> extends StatefulWidget {
   const PeriodScreen({
     super.key,
+    required this.title,
+    this.subtitle,
     required this.load,
     required this.builder,
     required this.emptyMessage,
     this.emptyIcon,
     this.isEmpty,
   });
+
+  /// Заголовок рисуется всегда — и когда данных нет, и пока они грузятся.
+  final String title;
+  final String? subtitle;
 
   final Future<T> Function() load;
   final Widget Function(BuildContext context, T data) builder;
@@ -58,34 +64,41 @@ class _PeriodScreenState<T> extends State<PeriodScreen<T>> {
   @override
   Widget build(BuildContext context) {
     final data = _data;
-
-    if (_loading && data == null) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.accent));
-    }
-
-    if (_failed && data == null) {
-      return ErrorRetry(message: 'Не удалось загрузить данные', onRetry: _load);
-    }
-
-    if (data == null || (widget.isEmpty?.call(data) ?? false)) {
-      return RefreshIndicator(
-        onRefresh: _load,
-        color: AppColors.accent,
-        backgroundColor: AppColors.surface,
-        child: ListView(
-          children: [
-            SizedBox(height: gap(10)),
-            EmptyState(message: widget.emptyMessage, icon: widget.emptyIcon),
-          ],
-        ),
-      );
-    }
+    final hasData = data != null && !(widget.isEmpty?.call(data) ?? false);
 
     return RefreshIndicator(
       onRefresh: _load,
       color: AppColors.accent,
       backgroundColor: AppColors.surface,
-      child: widget.builder(context, data),
+      child: ListView(
+        padding: EdgeInsets.all(gap(2)),
+        children: [
+          ScreenHeader(title: widget.title, subtitle: widget.subtitle),
+          SizedBox(height: gap(2.5)),
+          if (hasData)
+            widget.builder(context, data)
+          else if (_loading)
+            Padding(
+              padding: EdgeInsets.only(top: gap(8)),
+              child: const Center(
+                child: CircularProgressIndicator(color: AppColors.accent),
+              ),
+            )
+          else if (_failed)
+            Padding(
+              padding: EdgeInsets.only(top: gap(6)),
+              child: ErrorRetry(
+                message: 'Не удалось загрузить данные',
+                onRetry: _load,
+              ),
+            )
+          else
+            Padding(
+              padding: EdgeInsets.only(top: gap(6)),
+              child: EmptyState(message: widget.emptyMessage, icon: widget.emptyIcon),
+            ),
+        ],
+      ),
     );
   }
 }

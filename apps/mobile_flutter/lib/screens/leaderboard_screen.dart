@@ -19,15 +19,15 @@ class LeaderboardScreen extends StatelessWidget {
     final selfId = context.watch<AuthController>().user?.id;
 
     return PeriodScreen<LeaderboardResult>(
+      title: 'Рейтинг',
+      subtitle: 'Баллы отдела за месяц',
       load: () => api.leaderboard(from: period.from, to: period.to),
       isEmpty: (data) => data.entries.isEmpty,
       emptyMessage: 'За этот месяц баллов ещё никто не набрал',
       emptyIcon: Icons.leaderboard_outlined,
-      builder: (context, board) => ListView(
-        padding: EdgeInsets.all(gap(2)),
+      builder: (context, board) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const ScreenHeader(title: 'Рейтинг', subtitle: 'Баллы отдела за месяц'),
-          SizedBox(height: gap(2.5)),
           if (board.self != null) ...[
             _SelfCard(entry: board.self!),
             SizedBox(height: gap(2.5)),

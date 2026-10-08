@@ -17,15 +17,15 @@ class PayrollScreen extends StatelessWidget {
     final api = context.read<CorpsolApi>();
 
     return PeriodScreen<List<Payroll>>(
+      title: 'Зарплата',
+      subtitle: 'Оклад, бонусы и удержания',
       load: () => api.payroll(currentMonth().from),
       isEmpty: (data) => data.isEmpty,
       emptyMessage: 'Расчёт за этот месяц ещё не готов',
       emptyIcon: Icons.payments_outlined,
-      builder: (context, payrolls) => ListView(
-        padding: EdgeInsets.all(gap(2)),
+      builder: (context, payrolls) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const ScreenHeader(title: 'Зарплата', subtitle: 'Оклад, бонусы и удержания'),
-          SizedBox(height: gap(2.5)),
           for (final payroll in payrolls) ...[
             _PayrollCard(payroll: payroll),
             SizedBox(height: gap(2)),

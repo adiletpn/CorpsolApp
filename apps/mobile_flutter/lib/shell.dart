@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'screens/achievements_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/leaderboard_screen.dart';
 import 'screens/offers_screen.dart';
@@ -78,7 +79,7 @@ class _AppShellState extends State<AppShell> {
         TabKey.offers => const OffersScreen(),
         TabKey.payroll => const PayrollScreen(),
         TabKey.rating => const LeaderboardScreen(),
-        TabKey.awards => const _Pending('Награды'),
+        TabKey.awards => const AchievementsScreen(),
       };
 }
 
@@ -115,17 +116,4 @@ class _TabButton extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Заглушка вкладки: экраны переносятся по одному, каждый следующий
-/// коммит заменяет одну такую заглушку настоящим экраном.
-class _Pending extends StatelessWidget {
-  const _Pending(this.title);
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) => Center(
-        child: Text(title, style: Theme.of(context).textTheme.headlineSmall),
-      );
 }
