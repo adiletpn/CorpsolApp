@@ -38,6 +38,28 @@ class CorpsolApi {
     return CheckInResponse.fromJson(json as Map<String, dynamic>);
   }
 
+  /// Свой табель за период.
+  Future<List<AttendanceRecord>> myAttendance({
+    required String from,
+    required String to,
+  }) async {
+    final json = await _client.request(
+      '/attendance/me?from=${Uri.encodeQueryComponent(from)}'
+      '&to=${Uri.encodeQueryComponent(to)}',
+    );
+    return (json as List<dynamic>)
+        .map((item) => AttendanceRecord.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<LeaderboardResult> leaderboard({
+    required String from,
+    required String to,
+  }) async {
+    final json = await _client.request('/gamification/leaderboard?from=$from&to=$to');
+    return LeaderboardResult.fromJson(json as Map<String, dynamic>);
+  }
+
   Future<List<Payroll>> payroll(String periodStart) async {
     final json = await _client.request('/payroll?periodStart=$periodStart');
     return (json as List<dynamic>)
