@@ -45,6 +45,15 @@ class FakeSession implements SessionSource {
     emitSignedOut();
   }
 
+  /// Адреса, на которые уходило письмо о смене пароля.
+  final resetSentTo = <String>[];
+
+  @override
+  Future<void> sendPasswordReset(String email) async {
+    if (signInFailure != null) throw signInFailure!;
+    resetSentTo.add(email.trim());
+  }
+
   @override
   Future<String?> idToken() async => tokenOverride;
 

@@ -45,6 +45,9 @@ abstract interface class SessionSource {
 
   Future<void> signOut();
 
+  /// Письмо со ссылкой на смену пароля.
+  Future<void> sendPasswordReset(String email);
+
   Future<String?> idToken();
 }
 
@@ -106,6 +109,20 @@ class FirebaseSession implements SessionSource {
 
   @override
   Future<void> signOut() => _auth.signOut();
+
+  @override
+  Future<void> sendPasswordReset(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email.trim());
+    } on FirebaseAuthException catch (error) {
+      // Несуществующий адрес не подтверждаем: иначе по форме можно
+      // перебором узнать, кто работает в компании.
+      if (error.code == 'user-not-found' || error.code == 'invalid-email') {
+        return;
+      }
+      throw AuthFailure(_kindOf(error.code), error.code);
+    }
+  }
 
   @override
   @override
