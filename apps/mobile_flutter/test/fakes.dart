@@ -135,6 +135,14 @@ class FakeApi implements CorpsolApi {
   @override
   Future<List<Achievement>> achievements() async => _answer(achievementsList);
 
+  DateTime? leftAt;
+
+  @override
+  Future<DateTime> checkOut() async {
+    leftAt = DateTime(2026, 10, 9, 18, 5);
+    return _answer(leftAt!);
+  }
+
   @override
   Future<List<Call>> myCalls({
     required String from,

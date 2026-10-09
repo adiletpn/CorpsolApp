@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../api/client.dart';
 import '../api/endpoints.dart';
 import '../api/models.dart';
 import '../core/labels.dart';
@@ -24,11 +25,35 @@ class _HomeScreenState extends State<HomeScreen> {
   List<AttendanceRecord> _records = const [];
   bool _loading = true;
   bool _failed = false;
+  bool _leaving = false;
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  /// Отметка ухода. Сервер сам находит сегодняшнюю смену.
+  Future<void> _checkOut() async {
+    if (_leaving) return;
+    setState(() => _leaving = true);
+
+    final messenger = ScaffoldMessenger.maybeOf(context);
+
+    try {
+      await context.read<CorpsolApi>().checkOut();
+      await _load();
+    } on ApiError catch (error) {
+      messenger?.showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (_) {
+      messenger?.showSnackBar(
+        const SnackBar(
+          content: Text('Нет связи с сервером. Попробуйте ещё раз.'),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _leaving = false);
+    }
   }
 
   Future<void> _load() async {
@@ -59,9 +84,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = context.watch<AuthController>().user;
     final today = dateKey(DateTime.now());
 
-    final checkedInToday = _records.any(
-      (record) => record.checkInAt != null && record.workDate == today,
-    );
+    final todayRecord = _records
+        .where((record) => record.workDate == today)
+        .firstOrNull;
+    final checkedInToday = todayRecord?.checkInAt != null;
 
     // Свежие смены сверху: вчерашний день нужен чаще, чем первое число месяца.
     final sorted = [..._records]
@@ -76,7 +102,13 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           _Header(fullName: user?.fullName ?? ''),
           SizedBox(height: gap(2.5)),
-          _CheckInCard(done: checkedInToday, onScan: widget.onScan),
+          _CheckInCard(
+            done: checkedInToday,
+            leftAt: todayRecord?.checkOutAt,
+            busy: _leaving,
+            onScan: widget.onScan,
+            onCheckOut: _checkOut,
+          ),
           SizedBox(height: gap(2.5)),
           _MonthSummary(records: _records),
           SizedBox(height: gap(2.5)),
@@ -141,10 +173,21 @@ class _Header extends StatelessWidget {
 }
 
 class _CheckInCard extends StatelessWidget {
-  const _CheckInCard({required this.done, required this.onScan});
+  const _CheckInCard({
+    required this.done,
+    required this.leftAt,
+    required this.busy,
+    required this.onScan,
+    required this.onCheckOut,
+  });
 
   final bool done;
+
+  /// Время ухода, если смена уже закрыта.
+  final DateTime? leftAt;
+  final bool busy;
   final VoidCallback onScan;
+  final VoidCallback onCheckOut;
 
   @override
   Widget build(BuildContext context) {
@@ -170,12 +213,38 @@ class _CheckInCard extends StatelessWidget {
                   ),
                   SizedBox(height: gap(0.375)),
                   Text(
-                    'На сегодня всё, хорошего дня',
+                    leftAt == null
+                        ? 'Не забудьте отметить уход'
+                        : 'Ушли в ${formatTime(leftAt!)}. Хорошего вечера',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
               ),
             ),
+            if (leftAt == null) ...[
+              SizedBox(width: gap(1)),
+              FilledButton(
+                onPressed: busy ? null : onCheckOut,
+                style: FilledButton.styleFrom(
+                  backgroundColor: context.palette.surfaceRaised,
+                  foregroundColor: context.palette.text,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: gap(2),
+                    vertical: gap(1.5),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                  ),
+                ),
+                child: busy
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Ухожу'),
+              ),
+            ],
           ],
         ),
       );
