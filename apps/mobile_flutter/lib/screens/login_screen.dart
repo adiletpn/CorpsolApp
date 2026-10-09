@@ -150,17 +150,16 @@ class _LoginScreenState extends State<LoginScreen> {
                         fontSize: 14,
                       ),
                     ),
-
-                    if (_notice != null) ...[
-                      SizedBox(height: gap(2)),
-                      Text(
-                        _notice!,
-                        style: TextStyle(
-                          color: context.palette.success,
-                          fontSize: 14,
-                        ),
+                  ],
+                  if (_notice != null) ...[
+                    SizedBox(height: gap(2)),
+                    Text(
+                      _notice!,
+                      style: TextStyle(
+                        color: context.palette.success,
+                        fontSize: 14,
                       ),
-                    ],
+                    ),
                   ],
                   SizedBox(height: gap(3)),
                   // Кнопка на градиенте — главное действие экрана.

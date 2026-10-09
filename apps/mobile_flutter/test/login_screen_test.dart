@@ -87,4 +87,50 @@ void main() {
       );
     });
   });
+
+  group('вход: забытый пароль', () {
+    testWidgets('без почты просит её ввести, а письмо не шлёт', (tester) async {
+      final session = FakeSession();
+
+      await tester.pumpWidget(
+        harness(const LoginScreen(), session: session, signedIn: false),
+      );
+      await tester.tap(find.text('Забыли пароль?'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Введите рабочую почту'), findsOneWidget);
+      expect(session.resetSentTo, isEmpty);
+    });
+
+    testWidgets('письмо уходит на введённый адрес', (tester) async {
+      final session = FakeSession();
+
+      await tester.pumpWidget(
+        harness(const LoginScreen(), session: session, signedIn: false),
+      );
+      await tester.enterText(find.byType(TextField).first, ' mop1@corpsol.kz ');
+      await tester.tap(find.text('Забыли пароль?'));
+      await tester.pumpAndSettle();
+
+      expect(session.resetSentTo, ['mop1@corpsol.kz']);
+    });
+
+    testWidgets('ответ не подтверждает, заведена ли такая почта', (
+      tester,
+    ) async {
+      await tester.pumpWidget(harness(const LoginScreen(), signedIn: false));
+      await tester.enterText(
+        find.byType(TextField).first,
+        'кого-нет@corpsol.kz',
+      );
+      await tester.tap(find.text('Забыли пароль?'));
+      await tester.pumpAndSettle();
+
+      // Формулировка одна на любой адрес — иначе перебором узнают сотрудников.
+      expect(
+        find.text('Если такая почта заведена, письмо уже отправлено'),
+        findsOneWidget,
+      );
+    });
+  });
 }
