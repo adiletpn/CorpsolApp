@@ -56,6 +56,10 @@ class AuthController extends ChangeNotifier {
     }
   }
 
+  /// Письмо со ссылкой на смену пароля. Вход при этом не происходит.
+  Future<void> sendPasswordReset(String email) =>
+      _session.sendPasswordReset(email);
+
   Future<void> signOut() async {
     await _api.closeSession().catchError((_) {});
     await _session.signOut();

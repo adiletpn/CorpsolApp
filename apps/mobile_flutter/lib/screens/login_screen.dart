@@ -31,6 +31,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _busy = false;
   String? _error;
+  String? _notice;
 
   @override
   void dispose() {
@@ -39,12 +40,47 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  /// Письмо со ссылкой на смену пароля. Ответ один на любой адрес —
+  /// подтверждать существование учётки нельзя.
+  Future<void> _resetPassword() async {
+    final email = _email.text.trim();
+
+    if (email.isEmpty) {
+      setState(() {
+        _error = 'Введите рабочую почту, и мы пришлём ссылку';
+        _notice = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _busy = true;
+      _error = null;
+      _notice = null;
+    });
+
+    try {
+      await context.read<AuthController>().sendPasswordReset(email);
+      if (!mounted) return;
+      setState(
+        () => _notice = 'Если такая почта заведена, письмо уже отправлено',
+      );
+    } on AuthFailure catch (failure) {
+      setState(() => _error = failure.message);
+    } catch (_) {
+      setState(() => _error = 'Не удалось отправить письмо. Попробуйте позже');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _submit() async {
     if (_busy) return;
 
     setState(() {
       _busy = true;
       _error = null;
+      _notice = null;
     });
 
     try {
@@ -114,6 +150,17 @@ class _LoginScreenState extends State<LoginScreen> {
                         fontSize: 14,
                       ),
                     ),
+
+                    if (_notice != null) ...[
+                      SizedBox(height: gap(2)),
+                      Text(
+                        _notice!,
+                        style: TextStyle(
+                          color: context.palette.success,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
                   ],
                   SizedBox(height: gap(3)),
                   // Кнопка на градиенте — главное действие экрана.
@@ -151,6 +198,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
+                    ),
+                  ),
+                  SizedBox(height: gap(1)),
+                  TextButton(
+                    onPressed: _busy ? null : _resetPassword,
+                    child: Text(
+                      'Забыли пароль?',
+                      style: TextStyle(color: context.palette.textMuted),
                     ),
                   ),
                   SizedBox(height: gap(2)),
