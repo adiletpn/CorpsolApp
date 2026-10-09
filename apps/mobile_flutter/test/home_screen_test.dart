@@ -9,12 +9,13 @@ AttendanceRecord record({
   AttendanceStatus status = AttendanceStatus.onTime,
   AttendanceMethod method = AttendanceMethod.qr,
   DateTime? checkInAt,
+  DateTime? checkOutAt,
   int lateMinutes = 0,
 }) => AttendanceRecord(
   id: 'uid-1_$workDate',
   workDate: workDate,
   checkInAt: checkInAt,
-  checkOutAt: null,
+  checkOutAt: checkOutAt,
   status: status,
   lateMinutes: lateMinutes,
   method: method,
@@ -86,6 +87,67 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Отметить приход'), findsOneWidget);
+    });
+  });
+
+  group('главный экран: уход', () {
+    String todayKey() {
+      final now = DateTime.now();
+      return '${now.year}-${now.month.toString().padLeft(2, '0')}'
+          '-${now.day.toString().padLeft(2, '0')}';
+    }
+
+    testWidgets('после прихода предлагает отметить уход', (tester) async {
+      final api = FakeApi(
+        attendance: [record(workDate: todayKey(), checkInAt: DateTime.now())],
+      );
+
+      await tester.pumpWidget(harness(HomeScreen(onScan: () {}), api: api));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Не забудьте отметить уход'), findsOneWidget);
+      expect(find.text('Ухожу'), findsOneWidget);
+    });
+
+    testWidgets('нажатие отправляет отметку ухода', (tester) async {
+      final api = FakeApi(
+        attendance: [record(workDate: todayKey(), checkInAt: DateTime.now())],
+      );
+
+      await tester.pumpWidget(harness(HomeScreen(onScan: () {}), api: api));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Ухожу'));
+      await tester.pumpAndSettle();
+
+      expect(api.leftAt, isNotNull);
+    });
+
+    testWidgets('закрытая смена показывает время ухода без кнопки', (
+      tester,
+    ) async {
+      final api = FakeApi(
+        attendance: [
+          record(
+            workDate: todayKey(),
+            checkInAt: DateTime.now(),
+            checkOutAt: DateTime(2026, 10, 9, 18, 5),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(harness(HomeScreen(onScan: () {}), api: api));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Ушли в 18:05'), findsOneWidget);
+      expect(find.text('Ухожу'), findsNothing);
+    });
+
+    testWidgets('до прихода кнопки ухода нет', (tester) async {
+      await tester.pumpWidget(harness(HomeScreen(onScan: () {})));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ухожу'), findsNothing);
     });
   });
 }
