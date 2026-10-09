@@ -8,6 +8,7 @@ import 'screens/leaderboard_screen.dart';
 import 'screens/offers_screen.dart';
 import 'screens/payroll_screen.dart';
 import 'screens/scan_screen.dart';
+import 'screens/work_screen.dart';
 import 'palette.dart';
 import 'theme.dart';
 import 'widgets/ambient.dart';
@@ -18,6 +19,7 @@ enum TabKey {
   home('Приход', Icons.how_to_reg_outlined),
   offers('Сделки', Icons.handshake_outlined),
   payroll('Зарплата', Icons.payments_outlined),
+  work('Работа', Icons.insights_outlined),
   rating('Рейтинг', Icons.leaderboard_outlined),
   awards('Награды', Icons.emoji_events_outlined);
 
@@ -94,6 +96,7 @@ class _AppShellState extends State<AppShell> {
     TabKey.home => HomeScreen(onScan: _openScanner),
     TabKey.offers => const OffersScreen(),
     TabKey.payroll => const PayrollScreen(),
+    TabKey.work => const WorkScreen(),
     TabKey.rating => const LeaderboardScreen(),
     TabKey.awards => const AchievementsScreen(),
   };
