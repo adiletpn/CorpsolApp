@@ -81,6 +81,19 @@ class CorpsolApi {
     return LeaderboardResult.fromJson(json as Map<String, dynamic>);
   }
 
+  /// Отметка ухода. Сервер сам находит сегодняшнюю смену и отказывает,
+  /// если приход не отмечен.
+  Future<DateTime> checkOut() async {
+    final json = await _client.request(
+      '/attendance/check-out',
+      method: 'POST',
+      body: {'capturedAt': DateTime.now().toUtc().toIso8601String()},
+    );
+
+    final map = json as Map<String, dynamic>;
+    return DateTime.parse(map['checkOutAt'] as String).toLocal();
+  }
+
   Future<List<Payroll>> payroll(String periodStart) async {
     final json = await _client.request('/payroll?periodStart=$periodStart');
     return (json as List<dynamic>)
