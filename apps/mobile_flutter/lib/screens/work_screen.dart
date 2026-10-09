@@ -48,7 +48,10 @@ class WorkScreen extends StatelessWidget {
           summary: results[2] as CallsSummary,
         );
       },
-      isEmpty: (data) => data.plans.isEmpty && data.calls.isEmpty,
+      // Сводка по звонкам — тоже содержимое: список может быть пуст,
+      // когда звонки есть, но запрос за ними не вернул страницу.
+      isEmpty: (data) =>
+          data.plans.isEmpty && data.calls.isEmpty && data.summary.total == 0,
       emptyMessage: 'Планов и звонков за этот месяц пока нет',
       emptyIcon: Icons.insights_outlined,
       builder: (context, data) {
