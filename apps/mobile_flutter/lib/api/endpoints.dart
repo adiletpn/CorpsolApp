@@ -102,6 +102,22 @@ class CorpsolApi {
         .toList();
   }
 
+  /// Свои звонки за период. Бэкенд сам ограничивает МОПа его записями.
+  Future<List<Call>> myCalls({required String from, required String to}) async {
+    final json = await _client.request('/calls?from=$from&to=$to');
+    return (json as List<dynamic>)
+        .map((item) => Call.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<CallsSummary> callsSummary({
+    required String from,
+    required String to,
+  }) async {
+    final json = await _client.request('/calls/summary?from=$from&to=$to');
+    return CallsSummary.fromJson(json as Map<String, dynamic>);
+  }
+
   Future<List<Achievement>> achievements() async {
     final json = await _client.request('/gamification/achievements');
     return (json as List<dynamic>)
