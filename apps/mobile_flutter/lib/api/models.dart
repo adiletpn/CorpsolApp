@@ -386,3 +386,55 @@ class Achievement {
     unlockedAt: _parseOrNull(json['unlockedAt']),
   );
 }
+
+enum CallDirection { inbound, outbound }
+
+enum CallStatus { answered, noAnswer, busy, failed }
+
+CallStatus callStatusFromJson(String value) => switch (value) {
+  'NO_ANSWER' => CallStatus.noAnswer,
+  'BUSY' => CallStatus.busy,
+  'FAILED' => CallStatus.failed,
+  _ => CallStatus.answered,
+};
+
+class Call {
+  const Call({
+    required this.id,
+    required this.direction,
+    required this.status,
+    required this.clientPhone,
+    required this.callDate,
+    required this.startedAt,
+    required this.durationSeconds,
+    required this.talkSeconds,
+  });
+
+  final String id;
+  final CallDirection direction;
+  final CallStatus status;
+  final String clientPhone;
+
+  /// Календарная дата звонка «ГГГГ-ММ-ДД».
+  final String callDate;
+  final DateTime startedAt;
+
+  /// Полная длительность соединения, включая гудки.
+  final int durationSeconds;
+
+  /// Чистое время разговора. План считается по нему, а не по гудкам.
+  final int talkSeconds;
+
+  factory Call.fromJson(Map<String, dynamic> json) => Call(
+    id: json['id'] as String,
+    direction: json['direction'] == 'INBOUND'
+        ? CallDirection.inbound
+        : CallDirection.outbound,
+    status: callStatusFromJson(json['status'] as String),
+    clientPhone: json['clientPhone'] as String,
+    callDate: json['callDate'] as String,
+    startedAt: DateTime.parse(json['startedAt'] as String).toLocal(),
+    durationSeconds: (json['durationSeconds'] as num).toInt(),
+    talkSeconds: (json['talkSeconds'] as num).toInt(),
+  );
+}
