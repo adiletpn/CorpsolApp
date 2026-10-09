@@ -60,6 +60,8 @@ class FakeApi implements CorpsolApi {
     this.payrollList = const [],
     this.plansList = const [],
     this.achievementsList = const [],
+    this.callsList = const [],
+    this.callsSummaryResult,
     this.leaderboardResult,
     this.failWith,
   });
@@ -69,6 +71,8 @@ class FakeApi implements CorpsolApi {
   List<Payroll> payrollList;
   List<Plan> plansList;
   List<Achievement> achievementsList;
+  List<Call> callsList;
+  CallsSummary? callsSummaryResult;
   LeaderboardResult? leaderboardResult;
 
   /// Если задано, любой запрос падает с этой ошибкой.
@@ -130,6 +134,21 @@ class FakeApi implements CorpsolApi {
 
   @override
   Future<List<Achievement>> achievements() async => _answer(achievementsList);
+
+  @override
+  Future<List<Call>> myCalls({
+    required String from,
+    required String to,
+  }) async => _answer(callsList);
+
+  @override
+  Future<CallsSummary> callsSummary({
+    required String from,
+    required String to,
+  }) async => _answer(
+    callsSummaryResult ??
+        const CallsSummary(total: 0, answered: 0, talkMinutes: 0),
+  );
 
   @override
   Future<CheckInResponse> checkIn({

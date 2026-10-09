@@ -54,3 +54,10 @@ String payrollStatusLabel(PayrollStatus status) => switch (status) {
   PayrollStatus.approved => 'Утверждён',
   PayrollStatus.paid => 'Выплачен',
 };
+
+String callStatusLabel(CallStatus status) => switch (status) {
+  CallStatus.answered => 'Ответили',
+  CallStatus.noAnswer => 'Не ответили',
+  CallStatus.busy => 'Занято',
+  CallStatus.failed => 'Сбой',
+};
