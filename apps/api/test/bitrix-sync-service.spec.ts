@@ -105,3 +105,77 @@ describe('синхронизация Bitrix: с какого момента за
     expect(harness.requestedFrom).toBe(since);
   });
 });
+
+describe('синхронизация Bitrix: точка продолжения', () => {
+  it('полная выгрузка двигает точку на последний звонок', async () => {
+    const harness = setup({
+      records: [
+        record('1', '2026-10-09T09:00:00+05:00'),
+        record('2', '2026-10-09T14:30:00+05:00'),
+        record('3', '2026-10-09T11:15:00+05:00'),
+      ],
+    });
+
+    await harness.service.sync(ORG);
+
+    expect(harness.syncs).toHaveLength(1);
+    expect(harness.syncs[0].status).toBe('OK');
+    expect(harness.syncs[0].syncedUpTo?.toISOString()).toBe('2026-10-09T09:30:00.000Z');
+  });
+
+  it('неполная выгрузка точку не двигает', async () => {
+    const harness = setup({
+      records: [record('1', '2026-10-09T09:00:00+05:00')],
+      truncated: true,
+    });
+
+    await harness.service.sync(ORG);
+
+    // Иначе всё, что осталось за пределом страниц, было бы пропущено.
+    expect(harness.syncs[0].status).toBe('OK');
+    expect(harness.syncs[0].syncedUpTo).toBeUndefined();
+  });
+
+  it('пустая выгрузка точку не двигает', async () => {
+    const harness = setup();
+
+    await harness.service.sync(ORG);
+
+    expect(harness.syncs[0].syncedUpTo).toBeUndefined();
+  });
+
+  it('признак неполной выгрузки виден в ответе', async () => {
+    const harness = setup({
+      records: [record('1', '2026-10-09T09:00:00+05:00')],
+      truncated: true,
+    });
+
+    const result = await harness.service.sync(ORG);
+
+    expect(result.truncated).toBe(true);
+    expect(result.fetched).toBe(1);
+  });
+});
+
+describe('синхронизация Bitrix: сбой', () => {
+  it('ошибка портала записывается и пробрасывается наверх', async () => {
+    const harness = setup({ fetchThrows: new Error('портал недоступен') });
+
+    await expect(harness.service.sync(ORG)).rejects.toThrow('портал недоступен');
+
+    expect(harness.syncs).toHaveLength(1);
+    expect(harness.syncs[0].status).toBe('ERROR');
+    expect(harness.syncs[0].error).toBe('портал недоступен');
+  });
+
+  it('после сбоя точка продолжения остаётся прежней', async () => {
+    const harness = setup({
+      syncedUpTo: new Date('2026-10-09T12:00:00Z'),
+      fetchThrows: new Error('таймаут'),
+    });
+
+    await expect(harness.service.sync(ORG)).rejects.toThrow();
+
+    expect(harness.syncs[0].syncedUpTo).toBeUndefined();
+  });
+});
