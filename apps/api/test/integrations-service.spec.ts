@@ -91,3 +91,96 @@ describe('интеграции: адрес вебхука наружу не ух
     expect(JSON.stringify(view)).not.toContain('s3cr3ttok3n');
   });
 });
+
+describe('интеграции: доступ к адресу изнутри', () => {
+  it('ненастроенная интеграция не отдаёт адрес', async () => {
+    const { service } = setup();
+
+    await expect(service.requireWebhook(ORG)).rejects.toThrow(NotFoundException);
+  });
+
+  it('отключённая интеграция адрес не отдаёт', async () => {
+    const { firestore, service } = setup();
+    seedIntegration(firestore, ORG, { isActive: false });
+
+    await expect(service.requireWebhook(ORG)).rejects.toThrow(NotFoundException);
+  });
+
+  it('настроенная отдаёт адрес целиком — им ходят в портал', async () => {
+    const { firestore, service } = setup();
+    seedIntegration(firestore);
+
+    expect(await service.requireWebhook(ORG)).toBe(WEBHOOK);
+  });
+});
+
+describe('интеграции: отключение', () => {
+  it('токен стирается, а не просто гасится признак', async () => {
+    const { firestore, service } = setup();
+    seedIntegration(firestore);
+
+    await service.disconnect(admin(), 'BITRIX');
+
+    const doc = firestore.read(COLLECTIONS.integrations, `${ORG}_BITRIX`);
+    expect(doc?.isActive).toBe(false);
+    expect(doc?.webhookUrl).toBeNull();
+  });
+
+  it('после отключения адрес не выдаётся', async () => {
+    const { firestore, service } = setup();
+    seedIntegration(firestore);
+    await service.disconnect(admin(), 'BITRIX');
+
+    await expect(service.requireWebhook(ORG)).rejects.toThrow(NotFoundException);
+  });
+});
+
+describe('интеграции: чужие организации', () => {
+  it('в списке видна только своя интеграция', async () => {
+    const { firestore, service } = setup();
+    seedIntegration(firestore, ORG);
+    seedIntegration(firestore, OTHER_ORG);
+
+    const list = await service.list(admin());
+
+    expect(list).toHaveLength(1);
+  });
+
+  it('адрес чужой организации не достать', async () => {
+    const { firestore, service } = setup();
+    seedIntegration(firestore, OTHER_ORG);
+
+    await expect(service.requireWebhook(ORG)).rejects.toThrow(NotFoundException);
+  });
+});
+
+describe('интеграции: отметка синхронизации', () => {
+  it('успех записывает время и стирает прошлую ошибку', async () => {
+    const { firestore, service } = setup();
+    seedIntegration(firestore, ORG, { lastSyncError: 'прошлый сбой' });
+
+    await service.recordSync(ORG, 'BITRIX', 'OK', {
+      syncedUpTo: new Date('2026-10-09T10:00:00Z'),
+    });
+
+    const doc = firestore.read(COLLECTIONS.integrations, `${ORG}_BITRIX`);
+    expect(doc?.lastSyncStatus).toBe('OK');
+    expect(doc?.lastSyncError).toBeNull();
+    expect((doc?.syncedUpTo as Timestamp).toDate().toISOString()).toBe(
+      '2026-10-09T10:00:00.000Z',
+    );
+  });
+
+  it('сбой не сдвигает точку доборной синхронизации', async () => {
+    const { firestore, service } = setup();
+    const point = Timestamp.fromDate(new Date('2026-10-01T00:00:00Z'));
+    seedIntegration(firestore, ORG, { syncedUpTo: point });
+
+    await service.recordSync(ORG, 'BITRIX', 'FAILED', { error: 'портал недоступен' });
+
+    const doc = firestore.read(COLLECTIONS.integrations, `${ORG}_BITRIX`);
+    expect(doc?.lastSyncError).toBe('портал недоступен');
+    // Иначе после сбоя часть звонков была бы пропущена навсегда.
+    expect(doc?.syncedUpTo).toBe(point);
+  });
+});
