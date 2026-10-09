@@ -14,6 +14,7 @@ import {
   COLLECTIONS,
   attendanceDocId,
   payrollDocId,
+  planDocId,
   pointsDocId,
   userAchievementDocId,
 } from '../src/firestore/collections';
@@ -269,6 +270,86 @@ async function seedAchievements(person: Manager, lateCount: number): Promise<voi
   await batch.commit();
 }
 
+/** Звонки менеджера за прошедшие будни. */
+async function seedCalls(person: Manager, days: Date[]): Promise<number> {
+  const batch = db.batch();
+  let talkMinutes = 0;
+
+  days.forEach((day, dayIndex) => {
+    // Разное число звонков по дням — ровный график выглядел бы подделкой.
+    const perDay = 8 + ((dayIndex * 3 + person.offers) % 7);
+
+    for (let i = 0; i < perDay; i += 1) {
+      const startedAt = new Date(day);
+      startedAt.setHours(10 + Math.floor(i / 2), (i % 2) * 25 + 5, 0, 0);
+
+      // Примерно каждый четвёртый звонок остаётся без ответа.
+      const answered = (dayIndex + i) % 4 !== 0;
+      const talkSeconds = answered ? 60 + ((i * 37) % 420) : 0;
+      if (answered) talkMinutes += talkSeconds / 60;
+
+      batch.set(db.collection(COLLECTIONS.calls).doc(), {
+        userId: person.uid,
+        organizationId: ORG,
+        departmentId: DEPARTMENT,
+        source: 'KCELL',
+        direction: i % 5 === 0 ? 'INBOUND' : 'OUTBOUND',
+        status: answered ? 'ANSWERED' : 'NO_ANSWER',
+        clientPhone: `+7 70${i % 8} ${200 + i} ${30 + dayIndex} ${40 + i}`,
+        startedAt: Timestamp.fromDate(startedAt),
+        callDate: dateKey(day),
+        durationSeconds: talkSeconds + 14,
+        talkSeconds,
+      });
+    }
+  });
+
+  await batch.commit();
+  return Math.floor(talkMinutes);
+}
+
+/** Планы на месяц: один на отдел, один личный на каждого. */
+async function seedPlans(people: Manager[]): Promise<void> {
+  const now = new Date();
+  const periodStart = dateKey(new Date(now.getFullYear(), now.getMonth(), 1));
+  const periodEnd = dateKey(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+
+  const batch = db.batch();
+
+  const put = (
+    scope: 'DEPARTMENT' | 'USER',
+    ownerId: string,
+    metric: 'CALLS' | 'TALK_MINUTES' | 'OFFERS' | 'REVENUE',
+    target: number,
+  ) => {
+    batch.set(
+      db.collection(COLLECTIONS.plans).doc(planDocId(scope, ownerId, metric, periodStart)),
+      {
+        scope,
+        organizationId: ORG,
+        ownerId,
+        metric,
+        target,
+        periodStart,
+        periodEnd,
+        createdBy: 'demo',
+        createdAt: Timestamp.now(),
+      },
+    );
+  };
+
+  put('DEPARTMENT', DEPARTMENT, 'CALLS', 900);
+  put('DEPARTMENT', DEPARTMENT, 'OFFERS', 40);
+  put('DEPARTMENT', DEPARTMENT, 'REVENUE', 500000000);
+
+  for (const person of people) {
+    put('USER', person.uid, 'CALLS', 300);
+    put('USER', person.uid, 'OFFERS', 12);
+  }
+
+  await batch.commit();
+}
+
 async function main(): Promise<void> {
   const days = workdaysSoFar();
   if (days.length === 0) {
@@ -287,12 +368,16 @@ async function main(): Promise<void> {
     const acceptedSum = await seedOffers(person, days);
     await seedPayroll(person, lateCount, acceptedSum);
     await seedAchievements(person, lateCount);
+    const talkMinutes = await seedCalls(person, days);
 
     console.log(
       `${person.email}: смен ${days.length}, опозданий ${lateCount}, ` +
-        `принято сделок на ${Math.round(acceptedSum / 100).toLocaleString('ru-RU')} ₸`,
+        `принято сделок на ${Math.round(acceptedSum / 100).toLocaleString('ru-RU')} ₸, ` +
+        `разговоров ${talkMinutes} мин`,
     );
   }
+
+  await seedPlans(people);
 
   console.log('Месяц наполнен.');
 }
