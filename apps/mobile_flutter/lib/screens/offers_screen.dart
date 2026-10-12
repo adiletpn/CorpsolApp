@@ -7,8 +7,9 @@ import '../core/labels.dart';
 import '../core/period.dart';
 import '../palette.dart';
 import '../theme.dart';
+import '../widgets/figures.dart';
+import '../widgets/list.dart';
 import '../widgets/period_screen.dart';
-import '../widgets/ui.dart';
 
 class OffersScreen extends StatelessWidget {
   const OffersScreen({super.key});
@@ -26,78 +27,45 @@ class OffersScreen extends StatelessWidget {
       emptyMessage: 'За этот месяц сделок пока нет',
       emptyIcon: Icons.handshake_outlined,
       builder: (context, offers) {
+        final palette = context.palette;
         final accepted = offers.where((o) => o.status == OfferStatus.accepted);
+        final sent = offers.where((o) => o.status == OfferStatus.sent);
         final acceptedSum = accepted.fold<int>(
           0,
           (sum, o) => sum + o.amountMinor,
         );
 
-        // Свежие сверху: вчерашняя сделка нужна чаще, чем первое число месяца.
+        // Свежие сверху: вчерашняя сделка нужна чаще, чем первая в месяце.
         final sorted = [...offers]
           ..sort((a, b) => b.sentDate.compareTo(a.sentDate));
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            GradientCard(
-              padding: EdgeInsets.all(gap(3)),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Сумма принятых',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.78),
-                      fontSize: 14,
-                    ),
-                  ),
-                  SizedBox(height: gap(1)),
-                  Text(
-                    formatMoney(acceptedSum),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 38,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -1,
-                    ),
-                  ),
-                ],
-              ),
+            HeroFigure(
+              label: 'Сумма принятых',
+              value: formatMoney(acceptedSum),
+              caption: '${accepted.length} из ${offers.length} сделок приняты',
+              icon: Icons.handshake_outlined,
             ),
             SizedBox(height: gap(1.5)),
-            Row(
-              children: [
-                Expanded(
-                  child: StatTile(
-                    value: '${offers.length}',
-                    label: 'всего',
-                    color: context.palette.text,
-                  ),
+            FigureRow(
+              items: [
+                Figure(value: '${offers.length}', label: 'всего'),
+                Figure(
+                  value: '${accepted.length}',
+                  label: 'принято',
+                  color: palette.success,
                 ),
-                SizedBox(width: gap(1.25)),
-                Expanded(
-                  child: StatTile(
-                    value: '${accepted.length}',
-                    label: 'принято',
-                    color: context.palette.success,
-                  ),
-                ),
-                SizedBox(width: gap(1.25)),
-                Expanded(
-                  child: StatTile(
-                    value:
-                        '${offers.where((o) => o.status == OfferStatus.sent).length}',
-                    label: 'в работе',
-                    color: context.palette.accent,
-                  ),
-                ),
+                Figure(value: '${sent.length}', label: 'в работе'),
               ],
             ),
-            SizedBox(height: gap(2.5)),
-            for (final offer in sorted) ...[
-              _OfferRow(offer: offer),
-              SizedBox(height: gap(1)),
-            ],
+            SizedBox(height: gap(3.5)),
+            const SectionLabel('Все сделки'),
+            Panel(
+              children: [for (final offer in sorted) _offerRow(context, offer)],
+            ),
+            SizedBox(height: gap(2)),
           ],
         );
       },
@@ -105,64 +73,23 @@ class OffersScreen extends StatelessWidget {
   }
 }
 
-class _OfferRow extends StatelessWidget {
-  const _OfferRow({required this.offer});
+/// Строка сделки. Отказ и истёкший срок помечены засечкой —
+/// отправленную и принятую подсвечивать незачем, это обычный ход дел.
+Widget _offerRow(BuildContext context, Offer offer) {
+  final palette = context.palette;
+  final failed =
+      offer.status == OfferStatus.rejected ||
+      offer.status == OfferStatus.expired;
 
-  final Offer offer;
-
-  IconData get _icon => switch (offer.status) {
-    OfferStatus.accepted => Icons.check_rounded,
-    OfferStatus.rejected => Icons.close_rounded,
-    OfferStatus.expired => Icons.hourglass_disabled_outlined,
-    OfferStatus.sent => Icons.send_rounded,
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    final color = offerStatusColor(offer.status, context.palette);
-
-    return AppCard(
-      padding: EdgeInsets.all(gap(1.75)),
-      child: Row(
-        children: [
-          IconChip(icon: _icon, color: color),
-          SizedBox(width: gap(1.75)),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  offer.clientName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                SizedBox(height: gap(0.25)),
-                Text(
-                  formatDate(offer.sentDate),
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
-            ),
-          ),
-          SizedBox(width: gap(1)),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                formatMoney(offer.amountMinor),
-                style: TextStyle(
-                  color: context.palette.text,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              SizedBox(height: gap(0.5)),
-              StatusChip(label: offerStatusLabel(offer.status), color: color),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+  return PanelRow(
+    title: offer.clientName,
+    subtitle:
+        '${formatDate(offer.sentDate)} · ${offerStatusLabel(offer.status)}',
+    accent: failed ? offerStatusColor(offer.status, palette) : null,
+    trailing: RowValue(
+      formatMoney(offer.amountMinor),
+      color: offer.status == OfferStatus.accepted ? palette.success : null,
+      muted: failed,
+    ),
+  );
 }
