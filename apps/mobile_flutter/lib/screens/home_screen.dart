@@ -10,6 +10,8 @@ import '../state/auth_controller.dart';
 import '../state/theme_controller.dart';
 import '../palette.dart';
 import '../theme.dart';
+import '../widgets/figures.dart';
+import '../widgets/list.dart';
 import '../widgets/ui.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -101,7 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
         padding: EdgeInsets.all(gap(2)),
         children: [
           _Header(fullName: user?.fullName ?? ''),
-          SizedBox(height: gap(2.5)),
+          SizedBox(height: gap(3)),
           _CheckInCard(
             done: checkedInToday,
             leftAt: todayRecord?.checkOutAt,
@@ -109,31 +111,59 @@ class _HomeScreenState extends State<HomeScreen> {
             onScan: widget.onScan,
             onCheckOut: _checkOut,
           ),
-          SizedBox(height: gap(2.5)),
-          _MonthSummary(records: _records),
-          SizedBox(height: gap(2.5)),
-          Text(
-            'Табель за месяц',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
           SizedBox(height: gap(1.5)),
+          _MonthSummary(records: _records),
+          SizedBox(height: gap(3.5)),
+          const SectionLabel('Табель за месяц'),
           if (_failed && _records.isEmpty)
             ErrorRetry(message: 'Не удалось загрузить табель', onRetry: _load)
           else if (_loading && _records.isEmpty)
-            Center(
-              child: CircularProgressIndicator(color: context.palette.accent),
+            Padding(
+              padding: EdgeInsets.only(top: gap(4)),
+              child: Center(
+                child: CircularProgressIndicator(color: context.palette.accent),
+              ),
             )
           else if (sorted.isEmpty)
             const EmptyState(message: 'За этот месяц отметок пока нет')
           else
-            for (final record in sorted) ...[
-              _AttendanceRow(record: record),
-              SizedBox(height: gap(1)),
-            ],
+            Panel(
+              children: [
+                for (final record in sorted) _attendanceRow(context, record),
+              ],
+            ),
+          SizedBox(height: gap(2)),
         ],
       ),
     );
   }
+}
+
+/// Строка табеля. Цветная засечка и подпись статуса появляются только
+/// у отклонений: обычная смена говорит сама за себя временем прихода.
+Widget _attendanceRow(BuildContext context, AttendanceRecord record) {
+  final palette = context.palette;
+  final checkIn = record.checkInAt;
+  final normal = record.status == AttendanceStatus.onTime;
+  final color = attendanceStatusColor(record.status, palette);
+
+  final note = switch (record.status) {
+    AttendanceStatus.late => 'Опоздание ${record.lateMinutes} мин',
+    AttendanceStatus.absent => 'Не отмечался',
+    AttendanceStatus.dayOff => 'Выходной',
+    AttendanceStatus.excused => 'Уважительная',
+    AttendanceStatus.onTime =>
+      record.checkOutAt == null ? null : 'до ${formatTime(record.checkOutAt!)}',
+  };
+
+  return PanelRow(
+    title: formatDate(record.workDate),
+    subtitle: note,
+    accent: normal ? null : color,
+    trailing: checkIn == null
+        ? RowValue('—', muted: true)
+        : RowValue(formatTime(checkIn), color: normal ? null : color),
+  );
 }
 
 class _Header extends StatelessWidget {
@@ -314,87 +344,26 @@ class _MonthSummary extends StatelessWidget {
       records.where((record) => record.status == status).length;
 
   @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      Expanded(
-        child: StatTile(
-          value: '${_count(AttendanceStatus.onTime)}',
-          label: 'вовремя',
-          color: context.palette.success,
-        ),
-      ),
-      SizedBox(width: gap(1.25)),
-      Expanded(
-        child: StatTile(
-          value: '${_count(AttendanceStatus.late)}',
-          label: 'опозданий',
-          color: context.palette.warning,
-        ),
-      ),
-      SizedBox(width: gap(1.25)),
-      Expanded(
-        child: StatTile(
-          value: '${_count(AttendanceStatus.absent)}',
-          label: 'прогулов',
-          color: context.palette.danger,
-        ),
-      ),
-    ],
-  );
-}
-
-class _AttendanceRow extends StatelessWidget {
-  const _AttendanceRow({required this.record});
-
-  final AttendanceRecord record;
-
-  /// Иконка повторяет статус: день виден до чтения подписи.
-  IconData get _icon => switch (record.status) {
-    AttendanceStatus.onTime => Icons.check_rounded,
-    AttendanceStatus.late => Icons.schedule_rounded,
-    AttendanceStatus.absent => Icons.close_rounded,
-    AttendanceStatus.dayOff => Icons.weekend_outlined,
-    AttendanceStatus.excused => Icons.event_available_outlined,
-  };
-
-  @override
   Widget build(BuildContext context) {
-    final checkIn = record.checkInAt;
-    final color = attendanceStatusColor(record.status, context.palette);
+    final palette = context.palette;
+    final late = _count(AttendanceStatus.late);
+    final absent = _count(AttendanceStatus.absent);
 
-    return AppCard(
-      padding: EdgeInsets.all(gap(1.75)),
-      child: Row(
-        children: [
-          IconChip(icon: _icon, color: color),
-          SizedBox(width: gap(1.75)),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  formatDate(record.workDate),
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                SizedBox(height: gap(0.25)),
-                Text(
-                  checkIn == null
-                      ? 'Без отметки${attendanceMethodNote(record.method)}'
-                      : '${formatTime(checkIn)}${attendanceMethodNote(record.method)}',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
-            ),
-          ),
-          StatusChip(
-            label:
-                record.status == AttendanceStatus.late && record.lateMinutes > 0
-                ? '+${record.lateMinutes} мин'
-                : attendanceStatusLabel(record.status),
-            color: color,
-          ),
-        ],
-      ),
+    return FigureRow(
+      items: [
+        Figure(value: '${_count(AttendanceStatus.onTime)}', label: 'вовремя'),
+        // Цветом помечаем только то, что требует внимания.
+        Figure(
+          value: '$late',
+          label: 'опозданий',
+          color: late > 0 ? palette.warning : null,
+        ),
+        Figure(
+          value: '$absent',
+          label: 'прогулов',
+          color: absent > 0 ? palette.danger : null,
+        ),
+      ],
     );
   }
 }
