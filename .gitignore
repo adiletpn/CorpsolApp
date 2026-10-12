@@ -22,3 +22,4 @@ apps/mobile_flutter/*.iml
 apps/mobile_flutter/ios/Pods/
 apps/mobile_flutter/ios/.symlinks/
 apps/mobile_flutter/ios/Flutter/Flutter.podspec
+/.env.docker

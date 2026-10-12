@@ -1,0 +1,38 @@
+# Прод-подобный запуск на своей машине: собранные образы вместо
+# режима разработки. Нужен, чтобы проверить сборку перед развёртыванием.
+#
+#   cp apps/api/.env.example .env.docker   # заполнить ключами облака
+#   docker compose up --build
+#
+# Эмуляторы Firebase сюда не входят: они для разработки,
+# а этот запуск проверяет именно боевую сборку.
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    env_file: .env.docker
+    environment:
+      PORT: 3001
+    ports:
+      - '3001:3001'
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        # Панель обращается к бэкенду из браузера, а не из своей сети,
+        # поэтому адрес здесь хостовый, а не имя сервиса.
+        NEXT_PUBLIC_API_URL: http://localhost:3001/api
+        NEXT_PUBLIC_FIREBASE_API_KEY: ${NEXT_PUBLIC_FIREBASE_API_KEY:-}
+        NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN:-}
+        NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${NEXT_PUBLIC_FIREBASE_PROJECT_ID:-corpsol-local}
+        NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID:-}
+    ports:
+      - '3000:3000'
+    depends_on:
+      - api
+    restart: unless-stopped
