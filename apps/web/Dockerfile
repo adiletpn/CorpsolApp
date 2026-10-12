@@ -47,7 +47,8 @@ USER node
 # Standalone-сборка кладёт рядом только то, что нужно для запуска.
 COPY --from=build --chown=node:node /repo/apps/web/.next/standalone ./
 COPY --from=build --chown=node:node /repo/apps/web/.next/static ./apps/web/.next/static
-COPY --from=build --chown=node:node /repo/apps/web/public ./apps/web/public
+# Папки public в проекте нет: панель не раздаёт статических файлов,
+# всё приходит из бандла. Появится — строку придётся вернуть.
 
 EXPOSE 3000
 
