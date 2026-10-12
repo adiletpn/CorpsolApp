@@ -102,7 +102,7 @@ void main() {
       await tester.pumpWidget(harness(const LeaderboardScreen(), api: api));
       await tester.pumpAndSettle();
 
-      expect(find.text('До первого места 30 баллов'), findsOneWidget);
+      expect(find.textContaining('до первого места 30'), findsOneWidget);
       expect(find.text('Данияр Абенов'), findsOneWidget);
     });
   });
