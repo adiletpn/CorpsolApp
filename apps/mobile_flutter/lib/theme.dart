@@ -20,7 +20,18 @@ abstract final class AppRadius {
 /// Шаг сетки. Все отступы кратны восьми.
 double gap(double units) => units * 8;
 
+/// Шкала держится на трёх ролях: крупные числа, спокойный текст
+/// и мелкие надписи-ярлыки. Промежуточных размеров нет намеренно —
+/// от них рябит.
 TextTheme _textTheme(AppPalette palette) => TextTheme(
+  // Число, ради которого экран открыли.
+  displayLarge: TextStyle(
+    color: palette.text,
+    fontSize: 44,
+    fontWeight: FontWeight.w800,
+    letterSpacing: -1.6,
+    height: 1,
+  ),
   displaySmall: TextStyle(
     color: palette.text,
     fontSize: 34,
