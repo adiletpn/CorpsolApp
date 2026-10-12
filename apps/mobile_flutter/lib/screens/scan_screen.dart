@@ -8,6 +8,7 @@ import '../core/period.dart';
 import '../state/check_in_controller.dart';
 import '../palette.dart';
 import '../theme.dart';
+import '../widgets/list.dart';
 
 class ScanScreen extends StatefulWidget {
   const ScanScreen({super.key, required this.onDone});
@@ -75,29 +76,43 @@ class _ScanScreenState extends State<ScanScreen> {
     fit: StackFit.expand,
     children: [
       MobileScanner(controller: _camera, onDetect: _onDetect),
-      Center(
-        child: Container(
-          width: 240,
-          height: 240,
-          decoration: BoxDecoration(
-            border: Border.all(color: context.palette.accent, width: 3),
-            borderRadius: BorderRadius.circular(AppRadius.lg),
+
+      // Затемнение по краям: светлое окно посередине само ведёт
+      // камеру к коду, объяснять не нужно.
+      const DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            radius: 0.75,
+            colors: [Colors.transparent, Color(0xB3000000)],
+            stops: [0.45, 1],
           ),
         ),
       ),
+
+      Center(
+        child: SizedBox(
+          width: 248,
+          height: 248,
+          child: CustomPaint(
+            painter: _ViewfinderPainter(color: context.palette.accent),
+          ),
+        ),
+      ),
+
       Positioned(
         left: 0,
         right: 0,
-        bottom: gap(4),
+        bottom: gap(6),
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: gap(3)),
+          padding: EdgeInsets.symmetric(horizontal: gap(4)),
           child: Text(
-            'Наведите камеру на QR-код терминала в офисе',
+            'Наведите камеру на QR-код терминала',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: context.palette.text,
+            style: const TextStyle(
+              color: Colors.white,
               fontSize: 16,
-              shadows: const [Shadow(blurRadius: 8, color: Colors.black)],
+              fontWeight: FontWeight.w600,
+              shadows: [Shadow(blurRadius: 12, color: Colors.black)],
             ),
           ),
         ),
@@ -118,89 +133,105 @@ class _ScanScreenState extends State<ScanScreen> {
   );
 
   Widget _success(CheckInResponse result) {
+    final palette = context.palette;
     final late = result.status == AttendanceStatus.late;
 
     return _Centered(
       children: [
         Icon(
-          late ? Icons.schedule : Icons.check_circle,
-          color: late ? context.palette.warning : context.palette.success,
-          size: 72,
+          late ? Icons.schedule_rounded : Icons.check_circle_rounded,
+          color: late ? palette.warning : palette.success,
+          size: 64,
         ),
         SizedBox(height: gap(2.5)),
         Text(
           late ? 'Опоздание ${result.lateMinutes} мин' : 'Приход отмечен',
-          style: TextStyle(
-            color: context.palette.text,
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
-          ),
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.headlineSmall,
         ),
-        SizedBox(height: gap(1)),
+        SizedBox(height: gap(3)),
+        Panel(
+          children: [
+            PanelRow(
+              title: 'Время',
+              trailing: RowValue(formatTime(result.checkInAt)),
+            ),
+            PanelRow(title: 'Офис', trailing: RowValue(result.office.name)),
+            PanelRow(
+              title: 'До офиса',
+              trailing: RowValue('${result.distanceMeters.round()} м'),
+            ),
+          ],
+        ),
+        SizedBox(height: gap(3)),
+        _wideButton(context, 'Готово', widget.onDone),
+      ],
+    );
+  }
+
+  Widget _failure() {
+    final palette = context.palette;
+
+    return _Centered(
+      children: [
+        Icon(Icons.error_outline_rounded, color: palette.danger, size: 64),
+        SizedBox(height: gap(2.5)),
         Text(
-          '${result.office.name} · ${formatTime(result.checkInAt)}',
-          style: TextStyle(color: context.palette.textMuted, fontSize: 15),
+          _controller.message ?? 'Отметка не прошла',
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.headlineSmall,
         ),
-        SizedBox(height: gap(0.5)),
-        Text(
-          '${result.distanceMeters.round()} м до офиса',
-          style: TextStyle(color: context.palette.textMuted, fontSize: 14),
-        ),
-        SizedBox(height: gap(4)),
-        FilledButton(
-          onPressed: widget.onDone,
-          style: FilledButton.styleFrom(
-            backgroundColor: context.palette.accent,
-            foregroundColor: context.palette.background,
-            padding: EdgeInsets.symmetric(
-              horizontal: gap(5),
-              vertical: gap(1.75),
+        if (_controller.hint != null) ...[
+          SizedBox(height: gap(1.5)),
+          Text(
+            _controller.hint!,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: palette.textMuted,
+              fontSize: 15,
+              height: 1.45,
             ),
           ),
-          child: const Text('Готово'),
+        ],
+        SizedBox(height: gap(3.5)),
+        _wideButton(context, 'Попробовать ещё раз', _controller.retry),
+        SizedBox(height: gap(1)),
+        TextButton(
+          onPressed: widget.onDone,
+          child: Text('Закрыть', style: TextStyle(color: palette.textMuted)),
         ),
       ],
     );
   }
 
-  Widget _failure() => _Centered(
-    children: [
-      Icon(Icons.error_outline, color: context.palette.danger, size: 72),
-      SizedBox(height: gap(2.5)),
-      Text(
-        _controller.message ?? 'Отметка не прошла',
-        textAlign: TextAlign.center,
-        style: TextStyle(color: context.palette.text, fontSize: 18),
-      ),
-      if (_controller.hint != null) ...[
-        SizedBox(height: gap(1.5)),
-        Text(
-          _controller.hint!,
-          textAlign: TextAlign.center,
-          style: TextStyle(color: context.palette.textMuted, fontSize: 15),
-        ),
-      ],
-      SizedBox(height: gap(4)),
-      Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          OutlinedButton(
-            onPressed: widget.onDone,
-            child: const Text('Закрыть'),
+  /// Главное действие на всю ширину: на этом экране выбор один,
+  /// и кнопку ищут большим пальцем, не глядя.
+  Widget _wideButton(BuildContext context, String label, VoidCallback onTap) =>
+      SizedBox(
+        width: double.infinity,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: appGradient,
+            borderRadius: BorderRadius.circular(AppRadius.sm),
           ),
-          SizedBox(width: gap(1.5)),
-          FilledButton(
-            onPressed: _controller.retry,
+          child: FilledButton(
+            onPressed: onTap,
             style: FilledButton.styleFrom(
-              backgroundColor: context.palette.accent,
-              foregroundColor: context.palette.background,
+              backgroundColor: Colors.transparent,
+              foregroundColor: Colors.white,
+              shadowColor: Colors.transparent,
+              padding: EdgeInsets.symmetric(vertical: gap(2.25)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+              ),
             ),
-            child: const Text('Попробовать ещё раз'),
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
           ),
-        ],
-      ),
-    ],
-  );
+        ),
+      );
 }
 
 class _Centered extends StatelessWidget {
@@ -215,4 +246,47 @@ class _Centered extends StatelessWidget {
       child: Column(mainAxisSize: MainAxisSize.min, children: children),
     ),
   );
+}
+
+/// Уголки видоискателя. Сплошная рамка спорит с кодом внутри,
+/// уголки же показывают границу и оставляют поле чистым.
+class _ViewfinderPainter extends CustomPainter {
+  const _ViewfinderPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    const arm = 34.0;
+    const radius = 18.0;
+
+    void corner(Offset origin, double dx, double dy) {
+      final path = Path()
+        ..moveTo(origin.dx + dx * arm, origin.dy)
+        ..lineTo(origin.dx + dx * radius, origin.dy)
+        ..quadraticBezierTo(
+          origin.dx,
+          origin.dy,
+          origin.dx,
+          origin.dy + dy * radius,
+        )
+        ..lineTo(origin.dx, origin.dy + dy * arm);
+      canvas.drawPath(path, paint);
+    }
+
+    corner(Offset.zero, 1, 1);
+    corner(Offset(size.width, 0), -1, 1);
+    corner(Offset(0, size.height), 1, -1);
+    corner(Offset(size.width, size.height), -1, -1);
+  }
+
+  @override
+  bool shouldRepaint(_ViewfinderPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
