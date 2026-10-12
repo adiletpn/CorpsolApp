@@ -6,8 +6,9 @@ import '../api/models.dart';
 import '../core/period.dart';
 import '../palette.dart';
 import '../theme.dart';
+import '../widgets/figures.dart';
+import '../widgets/list.dart';
 import '../widgets/period_screen.dart';
-import '../widgets/ui.dart';
 
 class AchievementsScreen extends StatelessWidget {
   const AchievementsScreen({super.key});
@@ -31,58 +32,29 @@ class AchievementsScreen extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            AppCard(
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.emoji_events,
-                    color: context.palette.warning,
-                    size: 36,
-                  ),
-                  SizedBox(width: gap(2)),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${unlocked.length} из ${achievements.length}',
-                          style: TextStyle(
-                            color: context.palette.text,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        Text(
-                          '$points баллов набрано',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+            HeroFigure(
+              label: 'Получено наград',
+              value: '${unlocked.length} из ${achievements.length}',
+              caption: '$points баллов набрано',
+              icon: Icons.emoji_events_outlined,
             ),
             if (unlocked.isNotEmpty) ...[
-              SizedBox(height: gap(2.5)),
-              Text('Получены', style: Theme.of(context).textTheme.titleMedium),
-              SizedBox(height: gap(1.5)),
-              for (final item in unlocked) ...[
-                _AchievementCard(achievement: item),
-                SizedBox(height: gap(1)),
-              ],
+              SizedBox(height: gap(3.5)),
+              const SectionLabel('Получены'),
+              Panel(
+                children: [
+                  for (final item in unlocked) _awardRow(context, item),
+                ],
+              ),
             ],
             if (goals.isNotEmpty) ...[
-              SizedBox(height: gap(2)),
-              Text(
-                'Ещё не получены',
-                style: Theme.of(context).textTheme.titleMedium,
+              SizedBox(height: gap(3.5)),
+              const SectionLabel('Ещё впереди'),
+              Panel(
+                children: [for (final item in goals) _awardRow(context, item)],
               ),
-              SizedBox(height: gap(1.5)),
-              for (final item in goals) ...[
-                _AchievementCard(achievement: item),
-                SizedBox(height: gap(1)),
-              ],
             ],
+            SizedBox(height: gap(2)),
           ],
         );
       },
@@ -90,75 +62,22 @@ class AchievementsScreen extends StatelessWidget {
   }
 }
 
-class _AchievementCard extends StatelessWidget {
-  const _AchievementCard({required this.achievement});
+/// Строка награды. Полученная помечена золотом, цель остаётся спокойной —
+/// иначе список целей выглядит как список провалов.
+Widget _awardRow(BuildContext context, Achievement achievement) {
+  final palette = context.palette;
+  final unlocked = achievement.isUnlocked;
 
-  final Achievement achievement;
-
-  @override
-  Widget build(BuildContext context) {
-    final unlocked = achievement.isUnlocked;
-    final color = unlocked
-        ? context.palette.warning
-        : context.palette.textFaint;
-
-    return AppCard(
-      padding: EdgeInsets.all(gap(1.75)),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          IconChip(
-            icon: unlocked
-                ? Icons.military_tech_rounded
-                : Icons.lock_outline_rounded,
-            color: color,
-          ),
-          SizedBox(width: gap(1.75)),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  achievement.title,
-                  style: TextStyle(
-                    // Неполученные приглушены: это цель, а не достижение.
-                    color: unlocked
-                        ? context.palette.text
-                        : context.palette.textMuted,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(height: gap(0.25)),
-                Text(
-                  achievement.description,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                if (unlocked) ...[
-                  SizedBox(height: gap(0.625)),
-                  Text(
-                    'Получено ${formatDate(achievement.unlockedAt!.toIso8601String())}',
-                    style: TextStyle(
-                      color: context.palette.success,
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          SizedBox(width: gap(1)),
-          Text(
-            '+${achievement.points}',
-            style: TextStyle(
-              color: color,
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  return PanelRow(
+    title: achievement.title,
+    subtitle: unlocked
+        ? 'Получено ${formatDate(achievement.unlockedAt!.toIso8601String())}'
+        : achievement.description,
+    accent: unlocked ? palette.warning : null,
+    trailing: RowValue(
+      '+${achievement.points}',
+      color: unlocked ? palette.warning : null,
+      muted: !unlocked,
+    ),
+  );
 }

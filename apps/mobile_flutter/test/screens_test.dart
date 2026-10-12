@@ -132,8 +132,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('1 из 2'), findsOneWidget);
-      expect(find.text('Получены'), findsOneWidget);
-      expect(find.text('Ещё не получены'), findsOneWidget);
+      // Ярлыки разделов набраны прописными.
+      expect(find.text('ПОЛУЧЕНЫ'), findsOneWidget);
+      expect(find.text('ЕЩЁ ВПЕРЕДИ'), findsOneWidget);
       expect(find.text('50 баллов набрано'), findsOneWidget);
     });
   });
