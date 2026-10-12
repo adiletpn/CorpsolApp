@@ -209,6 +209,21 @@ PORT=3001
 
 ### 3. Образы
 
+Обычный путь — тег в репозитории. По тегу вида `v1.2.3` CI собирает оба
+образа и кладёт их в `ghcr.io`, облако забирает оттуда:
+
+```bash
+git tag v1.0.0 && git push origin v1.0.0
+```
+
+Перед первым выпуском задайте секреты репозитория (Settings → Secrets →
+Actions): `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_FIREBASE_API_KEY`,
+`NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`,
+`NEXT_PUBLIC_FIREBASE_APP_ID`. Это ключи панели: они попадают в бандл
+на сборке, поэтому нужны именно там, а не в настройках контейнера.
+
+Вручную то же самое:
+
 ```bash
 docker build -f apps/api/Dockerfile -t corpsol-api .
 
