@@ -221,62 +221,44 @@ class _CheckInCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Отмеченный день не зовёт нажимать — градиент уходит, остаётся карточка.
+    // Отмеченный день не зовёт нажимать: градиент уходит, остаётся
+    // спокойная панель со временем и кнопкой ухода.
     if (done) {
-      return AppCard(
-        padding: EdgeInsets.all(gap(2.5)),
-        child: Row(
-          children: [
-            IconChip(
-              icon: Icons.check_rounded,
-              color: context.palette.success,
-              size: 52,
-            ),
-            SizedBox(width: gap(2)),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Приход отмечен',
-                    style: Theme.of(context).textTheme.titleMedium,
+      final palette = context.palette;
+
+      return Panel(
+        children: [
+          PanelRow(
+            title: 'Приход отмечен',
+            subtitle: leftAt == null
+                ? 'Не забудьте отметить уход'
+                : 'Ушли в ${formatTime(leftAt!)}. Хорошего вечера',
+            accent: palette.success,
+            trailing: leftAt != null
+                ? Icon(Icons.check_rounded, color: palette.success, size: 22)
+                : FilledButton(
+                    onPressed: busy ? null : onCheckOut,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: palette.surfaceRaised,
+                      foregroundColor: palette.text,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: gap(2),
+                        vertical: gap(1.25),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                      ),
+                    ),
+                    child: busy
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Ухожу'),
                   ),
-                  SizedBox(height: gap(0.375)),
-                  Text(
-                    leftAt == null
-                        ? 'Не забудьте отметить уход'
-                        : 'Ушли в ${formatTime(leftAt!)}. Хорошего вечера',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-            if (leftAt == null) ...[
-              SizedBox(width: gap(1)),
-              FilledButton(
-                onPressed: busy ? null : onCheckOut,
-                style: FilledButton.styleFrom(
-                  backgroundColor: context.palette.surfaceRaised,
-                  foregroundColor: context.palette.text,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: gap(2),
-                    vertical: gap(1.5),
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
-                  ),
-                ),
-                child: busy
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Ухожу'),
-              ),
-            ],
-          ],
-        ),
+          ),
+        ],
       );
     }
 
