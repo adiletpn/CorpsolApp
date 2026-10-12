@@ -20,22 +20,18 @@ class AmbientBackground extends StatelessWidget {
         Positioned.fill(child: ColoredBox(color: palette.background)),
 
         // Пятна выходят за край экрана: так не видно, где они кончаются.
+        // Свечение держится у шапки: ниже начинаются панели,
+        // и фон там должен быть ровным.
         Positioned(
-          top: -140,
-          left: -110,
-          child: _Blob(color: palette.ambientA, size: 360),
+          top: -180,
+          left: -120,
+          child: _Blob(color: palette.ambientA, size: 380),
         ),
         Positioned(
-          top: 180,
-          right: -150,
-          child: _Blob(color: palette.ambientB, size: 320),
-        ),
-        Positioned(
-          bottom: -120,
-          left: -60,
+          top: -80,
+          right: -160,
           child: _Blob(color: palette.ambientB, size: 300),
         ),
-
         child,
       ],
     );
