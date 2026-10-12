@@ -170,6 +170,88 @@ npm test -w @corpsol/api
 Повторный импорт одной и той же выгрузки не создаёт дублей: ключ идемпотентности —
 пара `(source, externalId)`.
 
+## Развёртывание
+
+Локально всё работает на эмуляторах. Для боевого запуска нужен облачный
+проект Firebase и место, куда положить два образа.
+
+### 1. Проект Firebase
+
+В консоли Firebase создайте проект и включите:
+
+- **Authentication** → Sign-in method → Email/Password
+- **Firestore Database** → режим production, регион поближе к Казахстану
+
+Затем Project settings → Service accounts → Generate new private key.
+Из скачанного файла нужны три значения: `project_id`, `client_email`
+и `private_key`.
+
+Правила Firestore залейте из `firestore.rules` — без них база открыта.
+
+### 2. Переменные окружения
+
+Бэкенд (см. `apps/api/.env.example`):
+
+```
+FIREBASE_PROJECT_ID=...
+FIREBASE_CLIENT_EMAIL=...
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEv...\n-----END PRIVATE KEY-----\n"
+PORT=3001
+```
+
+Ключ остаётся **одной строкой** с экранированными переводами. Если
+развернуть его на несколько строк, Admin SDK молча не пройдёт подпись,
+и видно это будет только на боевом проекте.
+
+Панель собирается с ключами внутри бандла, поэтому её переменные
+передаются **аргументами сборки**, а не окружением контейнера —
+см. `apps/web/Dockerfile`.
+
+### 3. Образы
+
+```bash
+docker build -f apps/api/Dockerfile -t corpsol-api .
+
+docker build -f apps/web/Dockerfile -t corpsol-web . \
+  --build-arg NEXT_PUBLIC_API_URL=https://api.вашдомен.kz/api \
+  --build-arg NEXT_PUBLIC_FIREBASE_PROJECT_ID=... \
+  --build-arg NEXT_PUBLIC_FIREBASE_API_KEY=... \
+  --build-arg NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=... \
+  --build-arg NEXT_PUBLIC_FIREBASE_APP_ID=...
+```
+
+Перед выкладкой проверить сборку целиком можно на своей машине:
+
+```bash
+cp apps/api/.env.example .env.docker   # заполнить ключами облака
+docker compose up --build
+```
+
+### 4. Что проверить после запуска
+
+```bash
+curl https://api.вашдомен.kz/api/health
+```
+
+Ответ `{"status":"ok"}` означает, что процесс поднялся. Этот же маршрут
+облако дёргает само, чтобы понять, жив ли сервис.
+
+### Чего делать нельзя
+
+**Не запускайте сид против боевого проекта.** Он создаёт учётки
+с общеизвестным паролем и для этого заблокирован намеренно. Снимать
+защиту `ALLOW_PRODUCTION_SEED=yes` — только осознанно и один раз.
+
+**Не кладите ключ сервисного аккаунта в репозиторий.** Он даёт полный
+доступ к базе в обход всех правил.
+
+### Чего ещё нет
+
+Ночная простановка прогулов работает внутри процесса бэкенда
+(`@Cron`). Если запустить несколько экземпляров, задача выполнится
+столько же раз. Пока экземпляр один — это не проблема, при
+масштабировании понадобится блокировка.
+
 ## Мобильное приложение
 
 Приложение МОПа переписывается на Flutter — `apps/mobile_flutter`. Прежняя
