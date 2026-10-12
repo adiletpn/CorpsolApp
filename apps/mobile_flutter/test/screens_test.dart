@@ -62,7 +62,8 @@ void main() {
 
       expect(find.text('345 000 ₸'), findsOneWidget);
       expect(find.text('Перевыполнение плана'), findsOneWidget);
-      expect(find.text('Утверждён'), findsOneWidget);
+      // Ярлык шапки набран прописными.
+      expect(find.text('УТВЕРЖДЁН'), findsOneWidget);
     });
   });
 
