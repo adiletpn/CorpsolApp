@@ -7,7 +7,9 @@ WORKDIR /repo
 
 # Сначала только манифесты: слой с зависимостями переиспользуется,
 # пока не поменялся package-lock.
-COPY package.json package-lock.json ./
+# Корневой конфиг TypeScript: от него наследуются пакеты,
+# без него сборка падает с «Cannot read file tsconfig.base.json».
+COPY package.json package-lock.json tsconfig.base.json ./
 COPY packages/shared/package.json packages/shared/
 COPY apps/api/package.json apps/api/
 # Панель в образ бэкенда не входит, но npm ci по корню требует её манифест.

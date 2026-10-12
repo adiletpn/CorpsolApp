@@ -8,7 +8,9 @@
 FROM node:20-slim AS build
 WORKDIR /repo
 
-COPY package.json package-lock.json ./
+# Корневой конфиг TypeScript: от него наследуются пакеты,
+# без него сборка падает с «Cannot read file tsconfig.base.json».
+COPY package.json package-lock.json tsconfig.base.json ./
 COPY packages/shared/package.json packages/shared/
 COPY apps/web/package.json apps/web/
 COPY apps/api/package.json apps/api/
