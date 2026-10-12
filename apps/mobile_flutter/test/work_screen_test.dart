@@ -58,8 +58,8 @@ void main() {
       await tester.pumpWidget(harness(const WorkScreen(), api: api));
       await tester.pumpAndSettle();
 
-      expect(find.text('План отдела'), findsOneWidget);
-      expect(find.text('Звонки'), findsWidgets);
+      expect(find.text('ПЛАН ОТДЕЛА'), findsOneWidget);
+      expect(find.text('ЗВОНКИ'), findsOneWidget);
       expect(find.text('64%'), findsOneWidget);
       expect(find.textContaining('640 из 1000'), findsOneWidget);
     });
@@ -85,9 +85,9 @@ void main() {
       await tester.pumpWidget(harness(const WorkScreen(), api: api));
       await tester.pumpAndSettle();
 
-      expect(find.text('План отдела'), findsOneWidget);
-      expect(find.text('Ваш план'), findsOneWidget);
-      expect(find.textContaining('План выполнен'), findsOneWidget);
+      expect(find.text('ПЛАН ОТДЕЛА'), findsOneWidget);
+      expect(find.text('ВАШ ПЛАН'), findsOneWidget);
+      expect(find.textContaining('Выполнен:'), findsOneWidget);
     });
 
     testWidgets('выручка показывается деньгами, а не числом', (tester) async {
