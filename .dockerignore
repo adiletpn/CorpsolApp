@@ -1,0 +1,12 @@
+node_modules
+**/node_modules
+**/dist
+**/.next
+**/build
+apps/mobile
+apps/mobile_flutter
+.git
+.github
+scratchpad
+*.log
+.DS_Store
