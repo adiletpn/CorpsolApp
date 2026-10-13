@@ -119,6 +119,9 @@ function RuleForm({ onCreated }: { onCreated: () => void }) {
           <Input
             type="number"
             min={0}
+            // Без шага браузер отвергает дробное и молча отменяет
+            // отправку формы, хотя копейки мы переводим в тиыны.
+            step="0.01"
             value={form.amount}
             onChange={(event) => setForm({ ...form, amount: event.target.value })}
           />
@@ -129,6 +132,9 @@ function RuleForm({ onCreated }: { onCreated: () => void }) {
             type="number"
             min={0}
             max={100}
+            // Премия в 2,5% от оклада — обычное условие. Без шага
+            // такое правило просто не завести.
+            step="0.01"
             value={form.percent}
             onChange={(event) => setForm({ ...form, percent: event.target.value })}
           />
