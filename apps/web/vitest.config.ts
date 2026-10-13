@@ -1,6 +1,9 @@
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  // JSX разбирается без импорта React в каждом файле — так же,
+  // как это делает Next.js.
+  esbuild: { jsx: 'automatic' },
   test: {
     // Экраны панели работают с DOM, поэтому не node, а браузерное окружение.
     environment: 'jsdom',
