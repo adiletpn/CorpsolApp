@@ -129,6 +129,9 @@ function CreateForm({
           <Input
             type="number"
             min={0}
+            // Без шага браузер считает дробное значение недопустимым
+            // и молча отменяет отправку формы, хотя тиыны мы считаем.
+            step="0.01"
             value={form.salary}
             onChange={(event) => setForm({ ...form, salary: event.target.value })}
           />
