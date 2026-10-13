@@ -259,7 +259,11 @@ class _Mark extends StatelessWidget {
           ),
         ],
       ),
-      child: const Icon(Icons.headset_mic_outlined, color: Colors.white, size: 34),
+      child: const Icon(
+        Icons.headset_mic_outlined,
+        color: Colors.white,
+        size: 34,
+      ),
     ),
   );
 }
