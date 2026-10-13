@@ -8,6 +8,7 @@
     "start:dev": "nest start --watch",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "seed": "ts-node scripts/seed.ts",
+    "bootstrap": "ts-node scripts/bootstrap.ts",
     "test": "jest"
   },
   "dependencies": {
