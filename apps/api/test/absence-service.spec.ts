@@ -1,7 +1,11 @@
 import { Timestamp } from 'firebase-admin/firestore';
 
 import { AbsenceService } from '../src/attendance/absence.service';
-import { COLLECTIONS, attendanceDocId } from '../src/firestore/collections';
+import {
+  COLLECTIONS,
+  attendanceDocId,
+  jobRunDocId,
+} from '../src/firestore/collections';
 import { FakeFirestore, fakeFirebase } from './fake-firestore';
 
 const ORG = 'org-1';
@@ -298,6 +302,95 @@ describe('что записывается в табель', () => {
 
     // Расчёт зарплаты складывает это поле — undefined сломал бы сумму.
     expect(recordOf(firestore, 'mop-1')?.lateMinutes).toBe(0);
+  });
+});
+
+describe('ночной прогон в нескольких экземплярах', () => {
+  const runKey = (workDate: string) => jobRunDocId('absence', `${ORG}_${workDate}`);
+
+  /** Организация с одним сотрудником, который вчера не вышел. */
+  const ready = () => {
+    const context = setup();
+    seedEmployee(context.firestore, 'mop-1');
+    seedSchedule(context.firestore);
+    return context;
+  };
+
+  it('прогон отмечается в базе', async () => {
+    const { firestore, service } = ready();
+
+    await service.markYesterdayEverywhere(new Date('2026-09-16T10:00:00Z'));
+
+    const run = firestore.read(COLLECTIONS.jobRuns, runKey('2026-09-15'));
+    expect(run).toBeDefined();
+    expect(run?.marked).toBe(1);
+  });
+
+  it('второй экземпляр не делает ту же работу', async () => {
+    const { firestore, service } = ready();
+    const at = new Date('2026-09-16T10:00:00Z');
+
+    const first = await service.markYesterdayEverywhere(at);
+    const second = await service.markYesterdayEverywhere(at);
+
+    // Расписание срабатывает в каждом экземпляре сервера. Второй должен
+    // увидеть занятый замок и отступить, а не перебирать тех же людей.
+    expect(first).toHaveLength(1);
+    expect(second).toHaveLength(0);
+  });
+
+  it('запущенный прогон виден до того, как закончится', async () => {
+    const { firestore, service } = ready();
+
+    await service.markYesterdayEverywhere(new Date('2026-09-16T10:00:00Z'));
+
+    const run = firestore.read(COLLECTIONS.jobRuns, runKey('2026-09-15'));
+    expect(run?.startedAt).toBeDefined();
+    expect(run?.finishedAt).not.toBeNull();
+  });
+
+  it('следующий день берётся отдельным замком', async () => {
+    const { firestore, service } = ready();
+
+    await service.markYesterdayEverywhere(new Date('2026-09-16T10:00:00Z'));
+    await service.markYesterdayEverywhere(new Date('2026-09-17T10:00:00Z'));
+
+    expect(firestore.read(COLLECTIONS.jobRuns, runKey('2026-09-15'))).toBeDefined();
+    expect(firestore.read(COLLECTIONS.jobRuns, runKey('2026-09-16'))).toBeDefined();
+  });
+
+  it('упавший прогон не закрывает день навсегда', async () => {
+    const { firestore, service } = ready();
+    const at = new Date('2026-09-16T10:00:00Z');
+
+    // База отвалилась на записи прогулов.
+    const broken = jest
+      .spyOn(firestore, 'batch')
+      .mockImplementationOnce(() => {
+        throw new Error('недоступна');
+      });
+
+    await service.markYesterdayEverywhere(at);
+    broken.mockRestore();
+
+    // Замок снят, поэтому повторный запуск после перезапуска контейнера
+    // доставит прогулы, а не пропустит день.
+    expect(firestore.read(COLLECTIONS.jobRuns, runKey('2026-09-15'))).toBeUndefined();
+
+    const retry = await service.markYesterdayEverywhere(at);
+    expect(retry[0]?.marked).toBe(1);
+  });
+
+  it('ручной запуск не упирается в замок ночного прогона', async () => {
+    const { service } = ready();
+
+    await service.markYesterdayEverywhere(new Date('2026-09-16T10:00:00Z'));
+
+    // Руководитель догоняет день вручную, когда ночная задача отработала
+    // не так, как нужно. Замок для этого не препятствие — повторную запись
+    // и без него не сделать: день с отметкой не трогается.
+    const manual = await service.markForOrganization(ORG, '2026-09-15');
+    expect(manual.marked).toBe(0);
   });
 });
 
