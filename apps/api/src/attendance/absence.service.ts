@@ -3,8 +3,13 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { Timestamp } from 'firebase-admin/firestore';
 
 import { FirebaseService } from '../firebase/firebase.service';
-import { COLLECTIONS, attendanceDocId } from '../firestore/collections';
-import type { AttendanceDoc, OrganizationDoc, UserDoc } from '../firestore/types';
+import { COLLECTIONS, attendanceDocId, jobRunDocId } from '../firestore/collections';
+import type {
+  AttendanceDoc,
+  JobRunDoc,
+  OrganizationDoc,
+  UserDoc,
+} from '../firestore/types';
 import { findActiveSchedule } from '../schedules/schedule-resolver';
 import { localIsoWeekday, localWorkDateKey } from '../common/utils/time';
 
@@ -159,18 +164,88 @@ export class AbsenceService {
       const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       const workDate = localWorkDateKey(yesterday, timezone);
 
+      // Замок берём до работы: при нескольких экземплярах сервера
+      // расписание срабатывает в каждом, и без него все они пройдут
+      // по одним и тем же сотрудникам.
+      if (!(await this.claimRun(doc.id, workDate))) {
+        this.logger.log(
+          `Прогулы за ${workDate} в организации ${doc.id} уже ставит другой экземпляр`,
+        );
+        continue;
+      }
+
       try {
-        results.push(await this.markForOrganization(doc.id, workDate));
+        const result = await this.markForOrganization(doc.id, workDate);
+        await this.finishRun(doc.id, workDate, result.marked);
+        results.push(result);
       } catch (cause) {
         // Падение по одной организации не должно оставить без прогулов
         // все остальные.
         this.logger.error(
           `Прогулы за ${workDate} не проставлены в организации ${doc.id}: ${String(cause)}`,
         );
+        await this.releaseRun(doc.id, workDate);
       }
     }
 
     return results;
+  }
+
+  /** Ключ замка: своя отметка на каждую организацию и каждый день. */
+  private runDoc(organizationId: string, workDate: string) {
+    return this.db
+      .collection(COLLECTIONS.jobRuns)
+      .doc(jobRunDocId('absence', `${organizationId}_${workDate}`));
+  }
+
+  /**
+   * Занимает прогон за собой. Создание документа с уже занятым ключом
+   * падает на уровне базы, поэтому гонку выигрывает ровно один экземпляр
+   * — договариваться между собой серверам не нужно.
+   */
+  private async claimRun(organizationId: string, workDate: string): Promise<boolean> {
+    const record: JobRunDoc = {
+      job: 'absence',
+      scope: `${organizationId}_${workDate}`,
+      startedAt: Timestamp.now(),
+      finishedAt: null,
+      marked: null,
+    };
+
+    try {
+      await this.runDoc(organizationId, workDate).create(record);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Отметка об успешном прогоне: виден и факт, и сколько прогулов вышло. */
+  private async finishRun(
+    organizationId: string,
+    workDate: string,
+    marked: number,
+  ): Promise<void> {
+    await this.runDoc(organizationId, workDate).update({
+      finishedAt: Timestamp.now(),
+      marked,
+    });
+  }
+
+  /**
+   * Снимает замок после неудачи.
+   *
+   * Иначе упавший прогон закрыл бы день навсегда: расписание в эту дату
+   * больше не сработает, и прогулы пришлось бы доставлять руками.
+   */
+  private async releaseRun(organizationId: string, workDate: string): Promise<void> {
+    try {
+      await this.runDoc(organizationId, workDate).delete();
+    } catch (cause) {
+      this.logger.error(
+        `Не снят замок прогона за ${workDate} в организации ${organizationId}: ${String(cause)}`,
+      );
+    }
   }
 
   /**

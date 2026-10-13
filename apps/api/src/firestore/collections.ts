@@ -30,6 +30,7 @@ export const COLLECTIONS = {
   auditEvents: 'auditEvents',
   dailySummaries: 'dailySummaries',
   monthlySummaries: 'monthlySummaries',
+  jobRuns: 'jobRuns',
 } as const;
 
 /** Firestore запрещает «/» в идентификаторе — он разделяет сегменты пути. */
@@ -98,3 +99,12 @@ export const dailySummaryDocId = (userId: string, date: string): string =>
 /** Предагрегат за месяц по отделу. */
 export const monthlySummaryDocId = (departmentId: string, month: string): string =>
   `${sanitize(departmentId)}_${month}`;
+
+/**
+ * Отметка о прогоне фоновой задачи. Ключ собран из имени задачи и того,
+ * за что она отвечает, поэтому ночной прогон достаётся ровно одному
+ * экземпляру сервера: второй не сможет создать документ с тем же ключом
+ * и просто не станет делать ту же работу второй раз.
+ */
+export const jobRunDocId = (job: string, scope: string): string =>
+  `${job}_${sanitize(scope)}`;

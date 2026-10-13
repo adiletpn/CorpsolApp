@@ -296,3 +296,20 @@ export interface PayrollDoc {
   approvedBy: string | null;
   approvedAt: Timestamp | null;
 }
+
+/**
+ * Отметка о прогоне фоновой задачи.
+ *
+ * Сервер может работать в нескольких экземплярах, и расписание сработает
+ * в каждом. Документ с детерминированным ключом играет роль замка:
+ * создать его успевает один, остальные видят занятый ключ и отступают.
+ */
+export interface JobRunDoc {
+  job: string;
+  /** За что именно отвечает прогон: организация и дата. */
+  scope: string;
+  startedAt: Timestamp;
+  finishedAt: Timestamp | null;
+  /** Сколько записей задача создала — виден результат, а не только факт. */
+  marked: number | null;
+}
