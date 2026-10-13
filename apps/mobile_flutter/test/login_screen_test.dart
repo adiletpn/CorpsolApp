@@ -133,4 +133,49 @@ void main() {
       );
     });
   });
+
+  group('вход: ввод пароля', () {
+    testWidgets('пароль по умолчанию скрыт', (tester) async {
+      await tester.pumpWidget(
+        harness(const LoginScreen(), session: FakeSession(), signedIn: false),
+      );
+
+      final password = tester.widget<TextField>(find.byType(TextField).last);
+      expect(password.obscureText, isTrue);
+    });
+
+    testWidgets('пароль можно показать и снова скрыть', (tester) async {
+      await tester.pumpWidget(
+        harness(const LoginScreen(), session: FakeSession(), signedIn: false),
+      );
+
+      // Чаще всего «неверный пароль» — это забытая раскладка или caps lock.
+      // Увидеть введённое дешевле, чем разбираться с заявкой в поддержку.
+      await tester.tap(find.byIcon(Icons.visibility_outlined));
+      await tester.pump();
+      expect(
+        tester.widget<TextField>(find.byType(TextField).last).obscureText,
+        isFalse,
+      );
+
+      await tester.tap(find.byIcon(Icons.visibility_off_outlined));
+      await tester.pump();
+      expect(
+        tester.widget<TextField>(find.byType(TextField).last).obscureText,
+        isTrue,
+      );
+    });
+
+    testWidgets('подсказки автозаполнения проставлены', (tester) async {
+      await tester.pumpWidget(
+        harness(const LoginScreen(), session: FakeSession(), signedIn: false),
+      );
+
+      // Рабочую почту и пароль выдаёт ЧР, запоминать их наизусть
+      // сотрудник не обязан — связку должен подставлять менеджер паролей.
+      final fields = tester.widgetList<TextField>(find.byType(TextField));
+      expect(fields.first.autofillHints, contains(AutofillHints.username));
+      expect(fields.last.autofillHints, contains(AutofillHints.password));
+    });
+  });
 }
