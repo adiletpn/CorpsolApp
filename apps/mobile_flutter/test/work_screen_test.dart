@@ -37,6 +37,10 @@ Call call({
   talkSeconds: talkSeconds,
 );
 
+/// Неразрывный пробел между разрядами. Записан кодом намеренно:
+/// от обычного он в исходнике неотличим.
+const nbsp = '\u00A0';
+
 void main() {
   setUpAll(initLocale);
 
@@ -105,7 +109,7 @@ void main() {
       await tester.pumpWidget(harness(const WorkScreen(), api: api));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('450 000 ₸'), findsOneWidget);
+      expect(find.textContaining('450${nbsp}000 ₸'), findsOneWidget);
     });
   });
 

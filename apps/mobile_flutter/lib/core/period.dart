@@ -26,8 +26,9 @@ final _money = NumberFormat.decimalPattern('ru');
 /// Суммы хранятся в тиынах, показываются в тенге.
 String formatMoney(int amountMinor) {
   final tenge = (amountMinor / 100).round();
-  // Неразрывный пробел вместо обычного: сумма не переносится по строкам.
-  return '${_money.format(tenge).replaceAll(' ', ' ')} ₸';
+  // Пробел между разрядами оставляем неразрывным, как его ставит
+  // форматирование: иначе сумма переносится по строкам посередине.
+  return '${_money.format(tenge)} ₸';
 }
 
 String formatDate(String isoDate) {

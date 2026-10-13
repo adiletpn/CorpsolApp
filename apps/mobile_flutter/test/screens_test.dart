@@ -7,6 +7,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'fakes.dart';
 
+/// Неразрывный пробел между разрядами. Записан кодом намеренно:
+/// от обычного он в исходнике неотличим.
+const nbsp = '\u00A0';
+
 void main() {
   setUpAll(initLocale);
 
@@ -60,7 +64,7 @@ void main() {
       await tester.pumpWidget(harness(const PayrollScreen(), api: api));
       await tester.pumpAndSettle();
 
-      expect(find.text('345 000 ₸'), findsOneWidget);
+      expect(find.text('345${nbsp}000 ₸'), findsOneWidget);
       expect(find.text('Перевыполнение плана'), findsOneWidget);
       // Ярлык шапки набран прописными.
       expect(find.text('УТВЕРЖДЁН'), findsOneWidget);
