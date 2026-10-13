@@ -141,6 +141,10 @@ function CreateForm({
         <Field label={isMoneyMetric(form.metric) ? 'Цель, ₸' : 'Цель'}>
           <Input
             type="number"
+            // Денежная цель переводится в тиыны, поэтому копейки
+            // должны проходить. Без шага поле их не принимает,
+            // и форма молча не отправляется.
+            step={isMoneyMetric(form.metric) ? '0.01' : '1'}
             min={0}
             required
             value={form.target}
