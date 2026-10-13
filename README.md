@@ -88,6 +88,16 @@ npx ts-node scripts/demo-month.ts
 
 ## Тесты
 
+Проверки идут одной командой на весь монорепозиторий:
+
+```bash
+npm test          # бэкенд и панель
+npm test -w @corpsol/web   # только панель
+```
+
+Приложение МОПа проверяется отдельно: `cd apps/mobile_flutter && flutter test`.
+
+
 Тесты бэкенда идут без эмулятора: Firestore и Firebase Auth подменяются
 реализациями в памяти ([fake-firestore.ts](apps/api/test/fake-firestore.ts)).
 Поднимать эмулятор ради проверки подписи QR или разбора выгрузки звонков —
