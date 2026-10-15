@@ -181,14 +181,42 @@ describe('отметка прихода: подменённая геолокац
 });
 
 describe('отметка прихода: офисный Wi-Fi', () => {
-  it('без офисной сети отметка не проходит, если сеть задана', async () => {
+  it('чужая сеть отклоняется своим кодом, а не «вне офиса»', async () => {
     const { firestore, terminals, service } = setup({ wifiBssids: ['A1:B2:C3:D4:E5:F6'] });
     seedEmployee(firestore);
     const qr = await freshQr(terminals);
 
+    // Сотрудник стоит в офисе: совет подойти ближе погнал бы его
+    // ходить по зданию, хотя дело в сети.
     await expect(
       service.checkIn(actor(), dtoAt(qr, { wifiBssid: 'FF:FF:FF:FF:FF:FF' }) as never),
-    ).rejects.toMatchObject({ response: { code: 'outside_fence' } });
+    ).rejects.toMatchObject({ response: { code: 'wifi_mismatch', wifiMissing: false } });
+  });
+
+  it('телефон без Wi-Fi отличается от телефона в чужой сети', async () => {
+    const { firestore, terminals, service } = setup({ wifiBssids: ['A1:B2:C3:D4:E5:F6'] });
+    seedEmployee(firestore);
+    const qr = await freshQr(terminals);
+
+    // «Включите Wi-Fi» и «подключитесь к офисной сети» — разные действия,
+    // и подсказку клиент выбирает по этому признаку.
+    await expect(
+      service.checkIn(actor(), dtoAt(qr) as never),
+    ).rejects.toMatchObject({ response: { code: 'wifi_mismatch', wifiMissing: true } });
+  });
+
+  it('своя сеть пропускает, как бы ни был записан адрес', async () => {
+    const { firestore, terminals, service } = setup({ wifiBssids: ['A1:B2:C3:D4:E5:F6'] });
+    seedEmployee(firestore);
+    const qr = await freshQr(terminals);
+
+    // Роутер и телефон пишут адрес по-разному: регистр и разделители
+    // у них не совпадают.
+    const result = await service.checkIn(
+      actor(),
+      dtoAt(qr, { wifiBssid: 'a1-b2-c3-d4-e5-f6' }) as never,
+    );
+    expect(result.status).toBeDefined();
   });
 
   it('пустой список сетей проверку по Wi-Fi отключает', async () => {
