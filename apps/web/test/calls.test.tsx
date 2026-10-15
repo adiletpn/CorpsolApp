@@ -1,14 +1,18 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { can } from '@corpsol/shared';
 
 let summary: unknown = { total: 0, answered: 0, talkMinutes: 0 };
 let calls: unknown[] = [];
+let nextBefore: string | null = null;
+const paths: string[] = [];
 
 vi.mock('../lib/api', () => ({
   request: vi.fn(async (path: string) => {
+    paths.push(path);
     if (path.startsWith('/calls/summary')) return summary;
-    if (path.startsWith('/calls')) return calls;
+    if (path.startsWith('/calls')) return { items: calls, nextBefore };
     if (path === '/employees') {
       return [
         {
@@ -25,7 +29,14 @@ vi.mock('../lib/api', () => ({
     }
     return [];
   }),
-  query: vi.fn(() => ''),
+  query: (params: Record<string, string | number | boolean | undefined>) => {
+    const search = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== '') search.set(key, String(value));
+    }
+    const result = search.toString();
+    return result ? `?${result}` : '';
+  },
   ApiError: class extends Error {},
 }));
 
@@ -66,6 +77,8 @@ const call = (overrides: Record<string, unknown> = {}) => ({
 beforeEach(() => {
   summary = { total: 0, answered: 0, talkMinutes: 0 };
   calls = [];
+  nextBefore = null;
+  paths.length = 0;
 });
 
 describe('сводка по звонкам', () => {
@@ -130,5 +143,65 @@ describe('журнал звонков', () => {
     expect(
       await screen.findByText('За выбранный период звонков нет'),
     ).toBeInTheDocument();
+  });
+});
+
+describe('журнал страницами', () => {
+  it('без следующей страницы кнопки нет', async () => {
+    calls = [call()];
+    render(<Calls />);
+
+    await screen.findByText('+7 707 111 22 33');
+    expect(screen.queryByRole('button', { name: 'Показать ещё' })).not.toBeInTheDocument();
+  });
+
+  it('кнопка появляется, когда журнал показан не целиком', async () => {
+    calls = [call()];
+    nextBefore = '2026-10-12T09:15:00.000Z';
+    render(<Calls />);
+
+    expect(
+      await screen.findByRole('button', { name: 'Показать ещё' }),
+    ).toBeInTheDocument();
+  });
+
+  it('дозагрузка добавляет записи, а не заменяет показанные', async () => {
+    calls = [call({ id: 'c1', clientPhone: '77071112233' })];
+    nextBefore = '2026-10-12T09:15:00.000Z';
+    const user = userEvent.setup();
+    render(<Calls />);
+
+    calls = [call({ id: 'c2', clientPhone: '77079998877' })];
+    nextBefore = null;
+    await user.click(await screen.findByRole('button', { name: 'Показать ещё' }));
+
+    // Пролистав страницу, человек не должен терять предыдущие записи.
+    expect(await screen.findByText('+7 707 999 88 77')).toBeInTheDocument();
+    expect(screen.getByText('+7 707 111 22 33')).toBeInTheDocument();
+  });
+
+  it('курсор уходит на сервер при дозагрузке', async () => {
+    calls = [call()];
+    nextBefore = '2026-10-12T09:15:00.000Z';
+    const user = userEvent.setup();
+    render(<Calls />);
+
+    await user.click(await screen.findByRole('button', { name: 'Показать ещё' }));
+
+    // Смещением страницы брать нельзя: импорт сдвинет записи,
+    // и часть звонков человек не увидит вовсе.
+    await waitFor(() => {
+      expect(paths.some((path) => path.includes('before=2026-10-12'))).toBe(true);
+    });
+  });
+
+  it('сводка считается по всему периоду, а не по странице', async () => {
+    summary = { total: 400, answered: 300, talkMinutes: 900 };
+    calls = [call()];
+    nextBefore = '2026-10-12T09:15:00.000Z';
+    render(<Calls />);
+
+    // На экране полсотни строк, но доля дозвонов — по всем четырёмстам.
+    expect(await screen.findByText('75%')).toBeInTheDocument();
   });
 });
