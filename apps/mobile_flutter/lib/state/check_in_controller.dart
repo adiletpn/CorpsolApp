@@ -4,6 +4,7 @@ import '../api/client.dart';
 import '../api/endpoints.dart';
 import '../api/models.dart';
 import '../core/location.dart';
+import '../core/network.dart';
 
 /// Подсказки поверх сообщения сервера: что именно сотруднику сделать.
 const checkInActionHints = <String, String>{
@@ -27,11 +28,16 @@ enum CheckInPhase { scanning, submitting, success, failure }
 typedef LocationReader = Future<LocationReading> Function();
 
 class CheckInController extends ChangeNotifier {
-  CheckInController(this._api, {LocationReader? readLocationOverride})
-    : _readLocation = readLocationOverride ?? readLocation;
+  CheckInController(
+    this._api, {
+    LocationReader? readLocationOverride,
+    WifiReader? readWifiOverride,
+  }) : _readLocation = readLocationOverride ?? readLocation,
+       _readWifi = readWifiOverride ?? readWifi;
 
   final CorpsolApi _api;
   final LocationReader _readLocation;
+  final WifiReader _readWifi;
 
   CheckInPhase _phase = CheckInPhase.scanning;
   String _step = '';
@@ -60,6 +66,11 @@ class CheckInController extends ChangeNotifier {
       _enterSubmitting('Определяем местоположение…');
       final location = await _readLocation();
 
+      // Сеть читаем всегда, даже если офис её не проверяет: включить
+      // фактор могут завтра, и тогда старые сборки перестали бы
+      // отмечаться, пока сотрудники не обновятся.
+      final wifi = await _readWifi();
+
       _enterSubmitting('Подтверждаем приход…');
       final result = await _api.checkIn(
         qr: qr,
@@ -67,6 +78,7 @@ class CheckInController extends ChangeNotifier {
         lng: location.lng,
         accuracyMeters: location.accuracyMeters,
         isMocked: location.isMocked,
+        wifiBssid: wifi.bssid,
       );
 
       _phase = CheckInPhase.success;
