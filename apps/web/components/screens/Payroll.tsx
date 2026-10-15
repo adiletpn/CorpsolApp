@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { PLAN_METRIC_LABELS, PLAN_METRICS, type PlanMetric } from '@corpsol/shared';
 
-import { query, request } from '../../lib/api';
+import { download, query, request } from '../../lib/api';
 import { currentMonth, formatMoney } from '../../lib/period';
 import { useSession } from '../../lib/session';
 import type { BonusRule, Employee, Payroll as PayrollDoc } from '../../lib/types';
@@ -209,6 +209,18 @@ export function Payroll() {
   const employeeName = (userId: string): string =>
     employees.find((employee) => employee.id === userId)?.fullName ?? 'Сотрудник';
 
+  const exportCsv = async () => {
+    setError(null);
+    try {
+      await download(
+        `/reports/payroll.csv${query({ periodStart: period.from })}`,
+        `zarplata_${period.from}.csv`,
+      );
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Не удалось выгрузить расчёт');
+    }
+  };
+
   return (
     <>
       <h1 style={styles.title}>Зарплата</h1>
@@ -216,11 +228,20 @@ export function Payroll() {
       <Card
         title={`Расчёт за ${period.from} — ${period.to}`}
         action={
-          canManage ? (
-            <Button onClick={recalculateAll} disabled={busy}>
-              {busy ? 'Считаем…' : 'Пересчитать всем'}
-            </Button>
-          ) : null
+          <div style={styles.actions}>
+            {/* Выгрузка доступна и тому, кто считать не может: бухгалтеру
+                нужен документ, а право пересчёта ему давать незачем. */}
+            {payrolls.length > 0 ? (
+              <Button variant="ghost" onClick={() => void exportCsv()}>
+                Выгрузить
+              </Button>
+            ) : null}
+            {canManage ? (
+              <Button onClick={recalculateAll} disabled={busy}>
+                {busy ? 'Считаем…' : 'Пересчитать всем'}
+              </Button>
+            ) : null}
+          </div>
         }
       >
         {error ? <ErrorText>{error}</ErrorText> : null}
@@ -358,6 +379,7 @@ export function Payroll() {
 }
 
 const styles: Record<string, React.CSSProperties> = {
+  actions: { display: 'flex', gap: 8 },
   title: { fontSize: 26, margin: '0 0 24px' },
   formGrid: {
     display: 'grid',
