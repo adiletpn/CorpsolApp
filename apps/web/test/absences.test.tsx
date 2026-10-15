@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const requests: Array<{ path: string; options?: Record<string, unknown> }> = [];
+const downloads: Array<{ path: string; fallbackName: string }> = [];
+let downloadFailure: Error | null = null;
 let response: unknown = { organizationId: 'org-1', workDate: '', expected: 0, marked: 0 };
 let failure: Error | null = null;
 
@@ -12,7 +14,18 @@ vi.mock('../lib/api', () => ({
     if (failure) throw failure;
     return response;
   }),
-  query: vi.fn(() => ''),
+  query: (params: Record<string, string | number | boolean | undefined>) => {
+    const search = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== '') search.set(key, String(value));
+    }
+    const result = search.toString();
+    return result ? `?${result}` : '';
+  },
+  download: vi.fn(async (path: string, fallbackName: string) => {
+    downloads.push({ path, fallbackName });
+    if (downloadFailure) throw downloadFailure;
+  }),
   ApiError: class extends Error {},
 }));
 
@@ -20,7 +33,9 @@ const { Absences } = await import('../components/screens/Absences');
 
 beforeEach(() => {
   requests.length = 0;
+  downloads.length = 0;
   failure = null;
+  downloadFailure = null;
   response = { organizationId: 'org-1', workDate: '2026-10-12', expected: 12, marked: 3 };
 });
 
@@ -111,5 +126,72 @@ describe('прогулы: сбой', () => {
     await user.clear(dateInput());
 
     expect(screen.getByRole('button', { name: /проставить/i })).toBeDisabled();
+  });
+});
+
+describe('табель для бухгалтерии', () => {
+  it('по умолчанию выгружается текущий месяц целиком', async () => {
+    const user = userEvent.setup();
+    render(<Absences />);
+
+    await user.click(screen.getByRole('button', { name: 'Выгрузить табель' }));
+
+    // Бухгалтеру нужен месяц, а не день, за который догоняли прогулы.
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const first = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`;
+
+    expect(downloads[0]?.path).toContain(`from=${first}`);
+  });
+
+  it('период выгрузки не зависит от дня простановки прогулов', async () => {
+    const user = userEvent.setup();
+    render(<Absences />);
+
+    await user.clear(dateInput());
+    await user.type(dateInput(), '2026-03-04');
+    await user.click(screen.getByRole('button', { name: 'Выгрузить табель' }));
+
+    // Это разные задачи на одном экране, и путать их периоды нельзя.
+    expect(downloads[0]?.path).not.toContain('2026-03-04');
+  });
+
+  it('выбранный период уходит в запрос', async () => {
+    const user = userEvent.setup();
+    render(<Absences />);
+
+    const [fromInput, toInput] = [
+      screen.getByLabelText('С') as HTMLInputElement,
+      screen.getByLabelText('По') as HTMLInputElement,
+    ];
+    await user.clear(fromInput);
+    await user.type(fromInput, '2026-09-01');
+    await user.clear(toInput);
+    await user.type(toInput, '2026-09-30');
+
+    await user.click(screen.getByRole('button', { name: 'Выгрузить табель' }));
+
+    expect(downloads[0]?.path).toContain('from=2026-09-01');
+    expect(downloads[0]?.path).toContain('to=2026-09-30');
+  });
+
+  it('имя файла содержит период, а не просто «отчёт»', async () => {
+    const user = userEvent.setup();
+    render(<Absences />);
+
+    await user.click(screen.getByRole('button', { name: 'Выгрузить табель' }));
+
+    // В папке бухгалтера за год лежит дюжина таких файлов.
+    expect(downloads[0]?.fallbackName).toMatch(/^tabel_\d{4}-\d{2}-\d{2}_/);
+  });
+
+  it('сбой выгрузки объясняется, а не проходит молча', async () => {
+    downloadFailure = new Error('Нет доступа к отчёту');
+    const user = userEvent.setup();
+    render(<Absences />);
+
+    await user.click(screen.getByRole('button', { name: 'Выгрузить табель' }));
+
+    expect(await screen.findByText('Нет доступа к отчёту')).toBeInTheDocument();
   });
 });
