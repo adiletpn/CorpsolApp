@@ -84,3 +84,25 @@ export interface CheckInRequest {
   wifiBssid?: string;
   capturedAt: string;
 }
+
+/**
+ * Подписи статусов для человека.
+ *
+ * Лежат здесь, а не в каждом клиенте: табель читают и в панели, и в
+ * приложении, и в выгрузке для бухгалтерии — расхождение в словах между
+ * ними выглядит как расхождение в данных.
+ */
+export const ATTENDANCE_STATUS_LABELS: Record<AttendanceStatus, string> = {
+  ON_TIME: 'Вовремя',
+  LATE: 'Опоздание',
+  ABSENT: 'Прогул',
+  DAY_OFF: 'Выходной',
+  EXCUSED: 'Уважительная причина',
+};
+
+/** Чем поставлена отметка. В выгрузке это главный признак ручного вмешательства. */
+export const CHECK_METHOD_LABELS: Record<string, string> = {
+  QR: 'Скан QR',
+  MANUAL_ADJUSTMENT: 'Правка руководителя',
+  AUTO_ABSENCE: 'Проставлено системой',
+};
