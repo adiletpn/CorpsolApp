@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Доступ к сведениям о сети Wi-Fi: по адресу точки доступа
+	     подтверждается, что сотрудник отмечается из офисного помещения,
+	     а не с парковки под окнами.
+
+	     Файл намеренно НЕ подключён к цели сборки. Apple выдаёт это
+	     разрешение только идентификаторам приложений, которым его
+	     включили в кабинете разработчика; пока это не сделано, подпись
+	     падает с «profile doesn't include the Access Wi-Fi Information
+	     capability», и собрать приложение нельзя вовсе.
+
+	     Как включить — в README, раздел «Офисный Wi-Fi на iOS». -->
+	<key>com.apple.developer.networking.wifi-info</key>
+	<true/>
+</dict>
+</plist>
