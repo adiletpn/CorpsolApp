@@ -12,6 +12,7 @@ const checkInActionHints = <String, String>{
   'accuracy_too_low':
       'Выйдите ближе к окну или на улицу — сигнал GPS слишком слабый.',
   'mocked_location': 'Отключите приложения подмены геолокации.',
+  'wifi_mismatch': 'Подключитесь к рабочему Wi-Fi офиса и повторите отметку.',
   'qr_expired':
       'Код на экране обновляется каждые 30 секунд — отсканируйте заново.',
   'qr_invalid': 'Это не код терминала. Сканируйте код с экрана в офисе.',
@@ -43,6 +44,7 @@ class CheckInController extends ChangeNotifier {
   String _step = '';
   String? _message;
   String? _code;
+  Map<String, dynamic>? _details;
   CheckInResponse? _result;
 
   CheckInPhase get phase => _phase;
@@ -52,7 +54,17 @@ class CheckInController extends ChangeNotifier {
   CheckInResponse? get result => _result;
 
   /// Подсказка под сообщением сервера, если для кода она есть.
-  String? get hint => _code == null ? null : checkInActionHints[_code];
+  String? get hint {
+    if (_code == null) return null;
+
+    // «Включите Wi-Fi» и «подключитесь к офисной сети» — разные действия.
+    // Сервер отличает эти случаи, и подсказка должна отличаться тоже.
+    if (_code == 'wifi_mismatch' && _details?['wifiMissing'] == true) {
+      return 'Телефон не подключён к Wi-Fi. Включите его и выберите сеть офиса.';
+    }
+
+    return checkInActionHints[_code];
+  }
 
   /// Камера успевает отдать один и тот же код несколько раз подряд —
   /// защёлка не даёт отправить дубль запроса.
@@ -93,7 +105,7 @@ class CheckInController extends ChangeNotifier {
     } on LocationServiceOff {
       _fail('Включите геолокацию в настройках телефона.');
     } on ApiError catch (error) {
-      _fail(error.message, error.code);
+      _fail(error.message, error.code, error.details);
     } catch (_) {
       _fail('Нет связи с сервером. Попробуйте ещё раз.');
     }
@@ -106,6 +118,7 @@ class CheckInController extends ChangeNotifier {
     _phase = CheckInPhase.scanning;
     _message = null;
     _code = null;
+    _details = null;
     _result = null;
     notifyListeners();
   }
@@ -116,9 +129,10 @@ class CheckInController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _fail(String message, [String? code]) {
+  void _fail(String message, [String? code, Map<String, dynamic>? details]) {
     _phase = CheckInPhase.failure;
     _message = message;
     _code = code;
+    _details = details;
   }
 }
