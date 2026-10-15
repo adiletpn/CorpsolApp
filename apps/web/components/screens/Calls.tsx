@@ -4,8 +4,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 
 import { query, request } from '../../lib/api';
 import { currentMonth, formatDuration, formatPhone } from '../../lib/period';
-import type { Call, CallSummary, Employee } from '../../lib/types';
-import { Badge, Card, Empty, ErrorText, Select, Stat, StatsRow } from '../ui';
+import type { Call, CallSummary, CallsPage, Employee } from '../../lib/types';
+import { Badge, Button, Card, Empty, ErrorText, Select, Stat, StatsRow } from '../ui';
 
 const STATUS_LABELS: Record<Call['status'], string> = {
   ANSWERED: 'Состоялся',
@@ -39,6 +39,10 @@ export function Calls() {
   const [loading, setLoading] = useState(true);
   const [selectedUserId, setSelectedUserId] = useState('');
 
+  // Курсор следующей страницы. null — журнал показан целиком.
+  const [nextBefore, setNextBefore] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+
   const period = currentMonth();
 
   const load = useCallback(async () => {
@@ -49,14 +53,17 @@ export function Calls() {
         to: period.to,
         userId: selectedUserId || undefined,
       });
-      const [result, list, staff] = await Promise.all([
+      const [result, page, staff] = await Promise.all([
+        // Сводка считается по всем звонкам периода, а не по показанной
+        // странице: доля дозвонов по первым пятидесяти — просто неверное число.
         request<CallSummary>(`/calls/summary${range}`),
-        request<Call[]>(`/calls${range}`),
+        request<CallsPage>(`/calls${range}`),
         request<Employee[]>('/employees'),
       ]);
 
       setSummary(result);
-      setCalls(list);
+      setCalls(page.items);
+      setNextBefore(page.nextBefore);
       setEmployees(staff);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Не удалось загрузить звонки');
@@ -65,6 +72,31 @@ export function Calls() {
       setLoading(false);
     }
   }, [period.from, period.to, selectedUserId]);
+
+  /** Дозагрузка: записи добавляются к показанным, а не заменяют их. */
+  const loadMore = async () => {
+    if (!nextBefore) return;
+
+    setLoadingMore(true);
+    setError(null);
+    try {
+      const page = await request<CallsPage>(
+        `/calls${query({
+          from: period.from,
+          to: period.to,
+          userId: selectedUserId || undefined,
+          before: nextBefore,
+        })}`,
+      );
+
+      setCalls((shown) => [...shown, ...page.items]);
+      setNextBefore(page.nextBefore);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Не удалось загрузить ещё');
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   useEffect(() => {
     void load();
@@ -178,12 +210,25 @@ export function Calls() {
             </tbody>
           </table>
         )}
+
+        {nextBefore ? (
+          <div style={styles.more}>
+            <Button variant="ghost" disabled={loadingMore} onClick={() => void loadMore()}>
+              {loadingMore ? 'Загружаем…' : 'Показать ещё'}
+            </Button>
+            {/* Сколько именно осталось, сервер не считает: пересчитывать
+                тысячи записей ради подписи на кнопке дороже самой страницы. */}
+            <span style={styles.moreHint}>Показано {calls.length}</span>
+          </div>
+        ) : null}
       </Card>
     </div>
   );
 }
 
 const styles: Record<string, React.CSSProperties> = {
+  more: { display: 'flex', alignItems: 'center', gap: 12, marginTop: 16 },
+  moreHint: { color: 'var(--text-muted)', fontSize: 13 },
   title: { fontSize: 26, margin: '0 0 4px' },
   period: { color: 'var(--text-muted)', fontSize: 14, margin: '0 0 24px' },
   table: { width: '100%', borderCollapse: 'collapse', fontSize: 14 },

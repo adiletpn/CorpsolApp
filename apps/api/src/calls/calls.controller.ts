@@ -20,6 +20,11 @@ export class CallsController {
     private readonly bitrixSync: BitrixSyncService,
   ) {}
 
+  /**
+   * Журнал страницами. Старые клиенты, не присылающие `limit`, получают
+   * первые полсотни записей вместо всего месяца — для экрана этого
+   * достаточно, а нагрузка падает на порядок.
+   */
   @Get()
   @RequirePermissions('calls.read.self', 'calls.read.department', 'calls.read.all')
   list(
@@ -27,8 +32,16 @@ export class CallsController {
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('userId') userId?: string,
+    @Query('limit') limit?: string,
+    @Query('before') before?: string,
   ) {
-    return this.calls.list(user, from, to, userId);
+    return this.calls.page(user, {
+      from,
+      to,
+      userId,
+      limit: limit ? Number(limit) : undefined,
+      before,
+    });
   }
 
   @Get('summary')

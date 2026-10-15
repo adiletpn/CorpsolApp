@@ -227,6 +227,17 @@ export interface Call {
   recordingUrl: string | null;
 }
 
+/**
+ * Страница журнала звонков.
+ *
+ * `nextBefore` — время начала последней показанной записи. Пусто, когда
+ * журнал показан целиком; по нему экран решает, рисовать ли «показать ещё».
+ */
+export interface CallsPage {
+  items: Call[];
+  nextBefore: string | null;
+}
+
 export interface CallSummary {
   total: number;
   answered: number;
