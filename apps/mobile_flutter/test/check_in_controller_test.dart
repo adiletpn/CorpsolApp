@@ -1,5 +1,6 @@
 import 'package:corpsol_mobile/api/client.dart';
 import 'package:corpsol_mobile/core/location.dart';
+import 'package:corpsol_mobile/core/network.dart';
 import 'package:corpsol_mobile/state/check_in_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -17,9 +18,12 @@ LocationReading reading({bool isMocked = false, double accuracy = 10}) =>
 CheckInController controllerFor(
   FakeApi api, {
   Future<LocationReading> Function()? location,
+  WifiReading? wifi,
 }) => CheckInController(
   api,
   readLocationOverride: location ?? () async => reading(),
+  readWifiOverride: () async =>
+      wifi ?? const WifiReading(bssid: null, denied: true),
 );
 
 void main() {
@@ -148,6 +152,66 @@ void main() {
 
       expect(controller.message, 'Нет связи с сервером. Попробуйте ещё раз.');
       expect(controller.code, isNull);
+    });
+  });
+
+  group('отметка прихода: офисный Wi-Fi', () {
+    test('адрес точки доступа уходит вместе с отметкой', () async {
+      final api = FakeApi();
+      final controller = controllerFor(
+        api,
+        wifi: const WifiReading(bssid: 'A1:B2:C3:D4:E5:F6', denied: false),
+      );
+
+      await controller.submit('qr-payload');
+
+      expect(api.lastCheckIn?['wifiBssid'], 'A1:B2:C3:D4:E5:F6');
+    });
+
+    test('без доступа к сети отметка всё равно отправляется', () async {
+      final api = FakeApi();
+      final controller = controllerFor(
+        api,
+        wifi: const WifiReading(bssid: null, denied: true),
+      );
+
+      await controller.submit('qr-payload');
+
+      // Wi-Fi — вспомогательный фактор. Обязателен он или нет, решает
+      // сервер по настройкам офиса, а не телефон за него.
+      expect(controller.phase, CheckInPhase.success);
+      expect(api.lastCheckIn?['wifiBssid'], isNull);
+    });
+
+    test('чужая сеть объясняется подключением к офисной', () async {
+      final api = FakeApi()
+        ..failWith = const ApiError(
+          422,
+          'wifi_mismatch',
+          'Телефон не в офисной сети Wi-Fi — отметка недоступна.',
+          {'wifiMissing': false},
+        );
+      final controller = controllerFor(api);
+
+      await controller.submit('qr-payload');
+
+      expect(controller.hint, contains('рабочему Wi-Fi'));
+    });
+
+    test('выключенный Wi-Fi просят включить, а не выбрать сеть', () async {
+      final api = FakeApi()
+        ..failWith = const ApiError(
+          422,
+          'wifi_mismatch',
+          'Телефон не в офисной сети Wi-Fi — отметка недоступна.',
+          {'wifiMissing': true},
+        );
+      final controller = controllerFor(api);
+
+      await controller.submit('qr-payload');
+
+      // Советовать выбрать сеть тому, у кого Wi-Fi выключен, бессмысленно.
+      expect(controller.hint, contains('Включите'));
     });
   });
 }

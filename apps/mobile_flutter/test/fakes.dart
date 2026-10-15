@@ -90,6 +90,10 @@ class FakeApi implements CorpsolApi {
   int sessionsOpened = 0;
   int sessionsClosed = 0;
 
+  /// Что ушло в последней отметке прихода — по нему проверяется,
+  /// что клиент действительно собрал все факторы.
+  Map<String, Object?>? lastCheckIn;
+
   T _answer<T>(T value) {
     if (failWith != null) throw failWith!;
     return value;
@@ -175,16 +179,26 @@ class FakeApi implements CorpsolApi {
     required double accuracyMeters,
     required bool isMocked,
     String? wifiBssid,
-  }) async => _answer(
-    CheckInResponse(
-      id: 'uid-1_2026-10-08',
-      status: AttendanceStatus.onTime,
-      lateMinutes: 0,
-      checkInAt: DateTime(2026, 10, 8, 9, 0),
-      office: const OfficeRef(id: 'office-1', name: 'Главный офис'),
-      distanceMeters: 12,
-    ),
-  );
+  }) async {
+    lastCheckIn = {
+      'qr': qr,
+      'lat': lat,
+      'lng': lng,
+      'accuracyMeters': accuracyMeters,
+      'isMocked': isMocked,
+      'wifiBssid': wifiBssid,
+    };
+    return _answer(
+      CheckInResponse(
+        id: 'uid-1_2026-10-08',
+        status: AttendanceStatus.onTime,
+        lateMinutes: 0,
+        checkInAt: DateTime(2026, 10, 8, 9, 0),
+        office: const OfficeRef(id: 'office-1', name: 'Главный офис'),
+        distanceMeters: 12,
+      ),
+    );
+  }
 }
 
 /// Оборачивает экран в те же провайдеры, что и настоящее приложение.
