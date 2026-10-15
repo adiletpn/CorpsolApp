@@ -122,7 +122,14 @@ export class AttendanceService {
     // и у телефона различаются, и посимвольное сравнение не совпало бы никогда.
     if (office.wifiBssids.length > 0) {
       if (!matchesKnownBssid(dto.wifiBssid, office.wifiBssids)) {
-        throw new CheckInRejected('outside_fence', { reasonDetail: 'wifi_mismatch' });
+        // Отдельный код, а не «вне геозоны»: сотрудник стоит в офисе,
+        // и совет подойти ближе отправил бы его ходить по зданию,
+        // пока настоящая причина — чужая или выключенная сеть.
+        throw new CheckInRejected('wifi_mismatch', {
+          // Телефон не прислал адрес вовсе — чаще всего Wi-Fi просто
+          // выключен. Это другая подсказка, чем «не та сеть».
+          wifiMissing: !dto.wifiBssid,
+        });
       }
     }
 
