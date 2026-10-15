@@ -132,3 +132,36 @@ describe('офис: необязательный адрес', () => {
     await waitFor(() => expect(officeBody().address).toBeUndefined());
   });
 });
+
+describe('предупреждение о факторе Wi-Fi', () => {
+  it('пустое поле сетей не пугает администратора', async () => {
+    render(<Settings />);
+
+    await screen.findByText('Новый офис');
+    expect(screen.queryByText(/Проверка включится сразу/)).not.toBeInTheDocument();
+  });
+
+  it('заполненное поле объясняет цену решения', async () => {
+    const user = userEvent.setup();
+    render(<Settings />);
+
+    await screen.findByText('Новый офис');
+    await user.type(screen.getByLabelText(/Wi-Fi офиса/), 'A1:B2:C3:D4:E5:F6');
+
+    // Четвёртый фактор включается сразу для всех: сотрудник вне сети
+    // не отметится, даже стоя в офисе.
+    expect(await screen.findByText(/Проверка включится сразу/)).toBeInTheDocument();
+  });
+
+  it('предупреждение называет iPhone отдельно', async () => {
+    const user = userEvent.setup();
+    render(<Settings />);
+
+    await screen.findByText('Новый офис');
+    await user.type(screen.getByLabelText(/Wi-Fi офиса/), 'A1:B2:C3:D4:E5:F6');
+
+    // На iOS адрес точки доступа закрыт разрешением Apple — без него
+    // владельцы айфонов перестанут отмечаться вовсе.
+    expect(await screen.findByText(/iPhone/)).toBeInTheDocument();
+  });
+});
