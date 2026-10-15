@@ -80,3 +80,42 @@ export function query(params: Record<string, string | number | boolean | undefin
   const result = search.toString();
   return result ? `?${result}` : '';
 }
+
+/**
+ * Скачивание файла из API.
+ *
+ * Простой ссылкой это не сделать: маршрут требует токен в заголовке,
+ * а <a href> его не отправит. Поэтому файл забирается запросом и
+ * отдаётся браузеру уже из памяти.
+ */
+export async function download(path: string, fallbackName: string): Promise<void> {
+  const token = await currentIdToken();
+  if (!token) throw new ApiError(401, 'no_session', 'Сессия не найдена, войдите заново');
+
+  const response = await fetch(`${BASE_URL}${path}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  });
+
+  if (!response.ok) throw await parseError(response);
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filenameFrom(response) ?? fallbackName;
+  link.click();
+
+  // Ссылка на объект держит файл в памяти, пока её не освободить.
+  URL.revokeObjectURL(url);
+}
+
+/** Имя файла, которое предложил сервер. */
+function filenameFrom(response: Response): string | null {
+  const header = response.headers.get('Content-Disposition');
+  if (!header) return null;
+
+  const match = /filename="([^"]+)"/.exec(header);
+  return match?.[1] ?? null;
+}
