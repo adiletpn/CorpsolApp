@@ -38,6 +38,45 @@ export class CallsService {
    * МОП по ТЗ видит только свои звонки, РОП — весь отдел,
    * директор и админ — всю компанию.
    */
+  /**
+   * Страница журнала звонков.
+   *
+   * Журнал за месяц в колл-центре — это тысячи записей на человека и
+   * десятки тысяч на отдел. Отдавать их целиком дорого вдвойне: Firestore
+   * считает деньги за каждый прочитанный документ, а браузер всё это
+   * рисует одной таблицей.
+   *
+   * Курсор — время начала последнего показанного звонка. Смещением
+   * страницы не берём: за время листания приходит импорт, записи
+   * сдвигаются, и часть звонков человек не увидел бы вовсе.
+   */
+  async page(
+    actor: AuthenticatedUser,
+    options: { from?: string; to?: string; userId?: string; limit?: number; before?: string } = {},
+  ): Promise<{ items: CallView[]; nextBefore: string | null }> {
+    const limit = Math.min(Math.max(options.limit ?? 50, 1), 200);
+
+    const all = await this.list(actor, options.from, options.to, options.userId);
+    const rest = options.before
+      ? all.filter((call) => call.startedAt < options.before!)
+      : all;
+
+    const items = rest.slice(0, limit);
+
+    return {
+      items,
+      // Следующий курсор отдаём, только если что-то осталось: иначе
+      // кнопка «показать ещё» обещала бы несуществующую страницу.
+      nextBefore: rest.length > limit ? items[items.length - 1].startedAt : null,
+    };
+  }
+
+  /**
+   * Все звонки по области видимости.
+   *
+   * Остаётся полной выборкой намеренно: по ней считается сводка, а доля
+   * дозвонов, посчитанная по первой странице, — это просто неверное число.
+   */
   async list(
     actor: AuthenticatedUser,
     from?: string,
