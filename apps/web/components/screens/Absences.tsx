@@ -2,8 +2,8 @@
 
 import React, { useState } from 'react';
 
-import { request } from '../../lib/api';
-import { dateKey } from '../../lib/period';
+import { download, query, request } from '../../lib/api';
+import { currentMonth, dateKey } from '../../lib/period';
 import type { AbsenceRunResult } from '../../lib/types';
 import { Button, Card, Field, Input, ErrorText } from '../ui';
 
@@ -26,6 +26,24 @@ export function Absences() {
   const [result, setResult] = useState<AbsenceRunResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // Период выгрузки отдельный от дня простановки: бухгалтеру нужен
+  // месяц целиком, а прогулы догоняют за конкретную дату.
+  const month = currentMonth();
+  const [from, setFrom] = useState(month.from);
+  const [to, setTo] = useState(month.to);
+
+  const exportCsv = async () => {
+    setError(null);
+    try {
+      await download(
+        `/reports/attendance.csv${query({ from, to })}`,
+        `tabel_${from}_${to}.csv`,
+      );
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Не удалось выгрузить табель');
+    }
+  };
 
   const run = async () => {
     setBusy(true);
@@ -77,6 +95,35 @@ export function Absences() {
           </p>
         ) : null}
       </Card>
+
+      <Card title="Табель для бухгалтерии">
+        <p style={styles.hint}>
+          Файл открывается в Excel. В колонке «Чем отмечено» видно, какие дни
+          проставлены сканом, какие — руками руководителя, а какие закрыла
+          ночная задача.
+        </p>
+
+        <div style={styles.period}>
+          <Field label="С">
+            <Input
+              type="date"
+              value={from}
+              onChange={(event) => setFrom(event.target.value)}
+            />
+          </Field>
+          <Field label="По">
+            <Input
+              type="date"
+              value={to}
+              onChange={(event) => setTo(event.target.value)}
+            />
+          </Field>
+        </div>
+
+        <Button onClick={() => void exportCsv()} disabled={!from || !to}>
+          Выгрузить табель
+        </Button>
+      </Card>
     </div>
   );
 }
@@ -85,5 +132,6 @@ const styles: Record<string, React.CSSProperties> = {
   title: { fontSize: 26, margin: '0 0 4px' },
   hint: { color: 'var(--text-muted)', fontSize: 14, margin: '0 0 24px', lineHeight: 1.6 },
   row: { maxWidth: 240 },
+  period: { display: 'flex', gap: 16, flexWrap: 'wrap', maxWidth: 500 },
   result: { marginTop: 16, fontSize: 14, color: 'var(--text-muted)' },
 };
