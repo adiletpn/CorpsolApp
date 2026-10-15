@@ -107,8 +107,11 @@ export async function download(path: string, fallbackName: string): Promise<void
   link.download = filenameFrom(response) ?? fallbackName;
   link.click();
 
-  // Ссылка на объект держит файл в памяти, пока её не освободить.
-  URL.revokeObjectURL(url);
+  // Ссылка на объект держит файл в памяти, пока её не освободить, но
+  // освобождать сразу после клика нельзя: Safari и Firefox успевают
+  // отменить начатое скачивание. Отпускаем следующим тиком, когда
+  // браузер уже забрал содержимое.
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 /** Имя файла, которое предложил сервер. */
