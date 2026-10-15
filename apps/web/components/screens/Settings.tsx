@@ -112,12 +112,37 @@ function OfficeForm({ onCreated }: { onCreated: () => void }) {
         </Field>
       </div>
 
+      {/* Заполненное поле включает четвёртый фактор сразу для всех.
+          На iOS адрес точки доступа закрыт разрешением от Apple, и пока
+          оно не выдано, владельцы айфонов перестанут отмечаться вовсе —
+          без этой строки причину искали бы долго. */}
+      {form.wifiBssids.trim() ? <WifiWarning /> : null}
+
       {error ? <ErrorText>{error}</ErrorText> : null}
 
       <Button type="submit" disabled={busy}>
         {busy ? 'Создаём…' : 'Добавить офис'}
       </Button>
     </form>
+  );
+}
+
+/**
+ * Предупреждение о четвёртом факторе.
+ *
+ * Сети Wi-Fi включают проверку немедленно и для всех сотрудников сразу.
+ * Отдельного переключателя «только предупреждать» нет намеренно: половинчатая
+ * проверка прихода не проверка, — но администратор должен понимать цену.
+ */
+function WifiWarning() {
+  return (
+    <div style={styles.warning}>
+      <strong>Проверка включится сразу для всех.</strong> Сотрудник вне этой
+      сети не сможет отметить приход, даже стоя в офисе. На iPhone адрес точки
+      доступа доступен только после отдельного разрешения Apple — пока оно
+      не выдано, отметка у владельцев айфонов перестанет проходить.
+      Сначала убедитесь, что приложение собрано с этим разрешением.
+    </div>
   );
 }
 
@@ -397,6 +422,15 @@ export function Settings() {
 }
 
 const styles: Record<string, React.CSSProperties> = {
+  warning: {
+    background: 'color-mix(in srgb, var(--warning) 12%, transparent)',
+    border: '1px solid color-mix(in srgb, var(--warning) 35%, transparent)',
+    borderRadius: 10,
+    padding: '12px 14px',
+    fontSize: 13,
+    lineHeight: 1.55,
+    margin: '4px 0 16px',
+  },
   title: { fontSize: 26, margin: '0 0 24px' },
   formGrid: {
     display: 'grid',
