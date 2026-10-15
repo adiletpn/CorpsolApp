@@ -168,3 +168,75 @@ describe('сводка по звонкам', () => {
     expect(summary).toEqual({ total: 0, answered: 0, talkMinutes: 0 });
   });
 });
+
+describe('журнал страницами', () => {
+  /** Полсотни звонков подряд — обычный день одного оператора. */
+  const manyCalls = (count: number) => {
+    const { firestore, service } = setup();
+    for (let index = 0; index < count; index += 1) {
+      seedCall(firestore, `call-${index}`, {
+        startedAt: Timestamp.fromDate(
+          new Date(Date.UTC(2026, 8, 15, 9, 0, index)),
+        ),
+      });
+    }
+    return { firestore, service };
+  };
+
+  it('страница по умолчанию не отдаёт месяц целиком', async () => {
+    const { service } = manyCalls(60);
+
+    const page = await service.page(actor('MOP'));
+
+    // Firestore считает деньги за каждый прочитанный документ,
+    // а браузер рисует всё это одной таблицей.
+    expect(page.items).toHaveLength(50);
+  });
+
+  it('курсор обещается только когда есть что показывать', async () => {
+    const { service } = manyCalls(60);
+
+    const page = await service.page(actor('MOP'));
+
+    expect(page.nextBefore).not.toBeNull();
+  });
+
+  it('последняя страница курсора не обещает', async () => {
+    const { service } = manyCalls(10);
+
+    const page = await service.page(actor('MOP'));
+
+    // Иначе кнопка «показать ещё» вела бы в пустоту.
+    expect(page.nextBefore).toBeNull();
+  });
+
+  it('следующая страница продолжает с курсора, не повторяя записи', async () => {
+    const { service } = manyCalls(60);
+
+    const first = await service.page(actor('MOP'));
+    const second = await service.page(actor('MOP'), {
+      before: first.nextBefore ?? undefined,
+    });
+
+    const firstIds = new Set(first.items.map((call) => call.id));
+    expect(second.items.some((call) => firstIds.has(call.id))).toBe(false);
+  });
+
+  it('размер страницы ограничен сверху', async () => {
+    const { service } = manyCalls(60);
+
+    const page = await service.page(actor('MOP'), { limit: 10_000 });
+
+    // Иначе любой клиент снимает защиту, просто попросив побольше.
+    expect(page.items.length).toBeLessThanOrEqual(200);
+  });
+
+  it('сводка считает весь период, а не первую страницу', async () => {
+    const { service } = manyCalls(60);
+
+    const summary = await service.summary(actor('MOP'));
+
+    // Доля дозвонов по пятидесяти из шестидесяти — неверное число.
+    expect(summary.total).toBe(60);
+  });
+});
