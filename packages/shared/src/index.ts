@@ -9,3 +9,4 @@ export * from './analytics';
 export * from './phone';
 export * from './achievements';
 export * from './csv';
+export * from './notifications';
