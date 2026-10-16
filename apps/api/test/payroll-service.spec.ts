@@ -1,6 +1,7 @@
 import { Timestamp } from 'firebase-admin/firestore';
 
 import { PayrollService } from '../src/payroll/payroll.service';
+import { NotificationsService } from '../src/notifications/notifications.service';
 import { COLLECTIONS, payrollDocId } from '../src/firestore/collections';
 import type { PlansService } from '../src/plans/plans.service';
 import type { AuthenticatedUser } from '../src/common/decorators/current-user.decorator';
@@ -39,9 +40,13 @@ function setup(options: { plans?: unknown[] } = {}) {
     currency: 'KZT',
   });
 
+  const firebase = fakeFirebase(firestore);
+  const notifications = new NotificationsService(firebase);
+
   return {
     firestore,
-    service: new PayrollService(fakeFirebase(firestore), fakePlans(options.plans)),
+    notifications,
+    service: new PayrollService(firebase, fakePlans(options.plans), notifications),
   };
 }
 

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common';
 import { IsBoolean } from 'class-validator';
 
 import { CurrentUser, type AuthenticatedUser } from '../common/decorators/current-user.decorator';
@@ -35,6 +35,22 @@ export class PayrollController {
       dto.periodStart,
       dto.periodEnd,
     );
+  }
+
+  /**
+   * Утверждение расчёта. Отдельно от расчёта намеренно: посчитать можно
+   * сколько угодно раз, а утверждение фиксирует суммы и сообщает о них
+   * сотруднику.
+   */
+  @Post(':userId/approve')
+  @HttpCode(200)
+  @RequirePermissions('payroll.manage')
+  approve(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('userId') userId: string,
+    @Query('periodStart') periodStart: string,
+  ) {
+    return this.payroll.approve(user, userId, periodStart);
   }
 
   @Get('rules')

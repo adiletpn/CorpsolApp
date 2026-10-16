@@ -16,6 +16,7 @@ import type {
   UserDoc,
 } from '../firestore/types';
 import { PlansService } from '../plans/plans.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import type { AuthenticatedUser } from '../common/decorators/current-user.decorator';
 
 export interface PayrollView extends Omit<PayrollDoc, 'calculatedAt' | 'approvedAt'> {
@@ -29,6 +30,7 @@ export class PayrollService {
   constructor(
     private readonly firebase: FirebaseService,
     private readonly plans: PlansService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   private get db() {
@@ -157,6 +159,52 @@ export class PayrollService {
     return this.toView(id, doc);
   }
 
+  /**
+   * Утверждение расчёта.
+   *
+   * Пока лист черновик, суммы ещё могут измениться пересчётом — поэтому
+   * сотруднику о нём не сообщают. Утверждение фиксирует цифры и служит
+   * тем самым поводом: человек узнаёт, сколько ему начислено, не спрашивая.
+   */
+  async approve(
+    actor: AuthenticatedUser,
+    userId: string,
+    periodStart: string,
+  ): Promise<PayrollView> {
+    const id = payrollDocId(userId, periodStart);
+    const ref = this.db.collection(COLLECTIONS.payrolls).doc(id);
+    const snapshot = await ref.get();
+
+    if (!snapshot.exists) throw new NotFoundException('Расчёт за этот период не найден');
+
+    const doc = snapshot.data() as PayrollDoc;
+    if (doc.organizationId !== actor.organizationId) {
+      throw new NotFoundException('Расчёт за этот период не найден');
+    }
+
+    // Повторное утверждение не сдвигает дату и не шлёт второе сообщение:
+    // «зарплата готова» дважды за месяц читается как ошибка в расчёте.
+    if (doc.status !== 'DRAFT') return this.toView(id, doc);
+
+    const approvedAt = Timestamp.now();
+    await ref.update({ status: 'APPROVED', approvedBy: actor.id, approvedAt });
+
+    await this.notifications.notifyUser(userId, {
+      organizationId: doc.organizationId,
+      kind: 'payroll_ready',
+      body: `За период ${doc.periodStart} — ${doc.periodEnd} начислено ${formatTenge(doc.totalMinor)}`,
+      refType: 'Payroll',
+      refId: id,
+    });
+
+    return this.toView(id, {
+      ...doc,
+      status: 'APPROVED',
+      approvedBy: actor.id,
+      approvedAt,
+    });
+  }
+
   /** Расчётные листы с учётом области видимости роли. */
   async list(actor: AuthenticatedUser, periodStart?: string): Promise<PayrollView[]> {
     let query = this.db
@@ -194,4 +242,9 @@ export class PayrollService {
       approvedAt: doc.approvedAt?.toDate().toISOString() ?? null,
     };
   }
+}
+
+/** Сумма для сообщения: тиыны человеку ничего не говорят. */
+function formatTenge(amountMinor: number): string {
+  return `${Math.round(amountMinor / 100).toLocaleString('ru-RU')} ₸`;
 }
