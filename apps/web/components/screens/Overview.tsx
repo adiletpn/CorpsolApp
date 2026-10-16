@@ -6,8 +6,28 @@ import { ratePercent } from '@corpsol/shared';
 import { query, request } from '../../lib/api';
 import { currentMonth, formatMoney, formatPercent } from '../../lib/period';
 import { useSession } from '../../lib/session';
-import type { CompanyStats, DepartmentStats, RiskFlag } from '../../lib/types';
+import type { CompanyStats, DailyPoint, DepartmentStats, RiskFlag } from '../../lib/types';
 import { Badge, Card, Empty, ErrorText, Stat, StatsRow } from '../ui';
+import { Trend, type TrendPoint } from '../Trend';
+
+/**
+ * Доля вышедших по дням.
+ *
+ * Дни, когда выходить никто не должен, сервер на кривую не кладёт —
+ * иначе выходной читался бы как провал явки.
+ */
+function attendanceSeries(points: DailyPoint[]): TrendPoint[] {
+  return points
+    .filter((point) => point.expected > 0)
+    .map((point) => ({
+      date: point.date,
+      value: (point.present / point.expected) * 100,
+    }));
+}
+
+function revenueSeries(points: DailyPoint[]): TrendPoint[] {
+  return points.map((point) => ({ date: point.date, value: point.revenueMinor }));
+}
 
 function Risks({ risks }: { risks: RiskFlag[] }) {
   if (risks.length === 0) return <Badge tone="success">Без замечаний</Badge>;
@@ -46,17 +66,21 @@ export function Overview() {
   const [period] = useState(currentMonth);
   const [company, setCompany] = useState<CompanyStats | null>(null);
   const [department, setDepartment] = useState<DepartmentStats | null>(null);
+  const [daily, setDaily] = useState<DailyPoint[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
     try {
       if (can('analytics.company')) {
-        setCompany(
-          await request<CompanyStats>(
-            `/analytics/company${query({ from: period.from, to: period.to })}`,
-          ),
-        );
+        const range = query({ from: period.from, to: period.to });
+        const [stats, points] = await Promise.all([
+          request<CompanyStats>(`/analytics/company${range}`),
+          request<DailyPoint[]>(`/analytics/daily${range}`),
+        ]);
+
+        setCompany(stats);
+        setDaily(points);
       } else {
         setDepartment(
           await request<DepartmentStats>(
@@ -113,6 +137,25 @@ export function Overview() {
           <Stat label="Выручка" value={formatMoney(stats.revenueMinor)} />
         </StatsRow>
       </Card>
+
+      {company && daily.length > 0 ? (
+        <Card title="Динамика за период">
+          {/* Два графика, а не один с двумя осями: проценты и тенге —
+              разные масштабы, и общая шкала исказила бы оба. */}
+          <Trend
+            title="Явка по дням"
+            points={attendanceSeries(daily)}
+            format={(value) => `${Math.round(value)}%`}
+            max={100}
+          />
+          <Trend
+            title="Выручка по дням"
+            points={revenueSeries(daily)}
+            format={formatMoney}
+            color="var(--success)"
+          />
+        </Card>
+      ) : null}
 
       {company ? (
         <Card title="Отделы">

@@ -98,6 +98,16 @@ export interface DepartmentStats {
   employees?: EmployeeStats[];
 }
 
+/** Точка кривой за один рабочий день. */
+export interface DailyPoint {
+  date: string;
+  expected: number;
+  present: number;
+  onTime: number;
+  acceptedOffers: number;
+  revenueMinor: number;
+}
+
 export interface CompanyStats {
   periodStart: string;
   periodEnd: string;
