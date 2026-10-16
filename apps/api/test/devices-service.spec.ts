@@ -2,6 +2,7 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Timestamp } from 'firebase-admin/firestore';
 
 import { DevicesService } from '../src/devices/devices.service';
+import { NotificationsService } from '../src/notifications/notifications.service';
 import { COLLECTIONS } from '../src/firestore/collections';
 import { FakeAuth, FakeFirestore, fakeFirebase } from './fake-firestore';
 
@@ -11,7 +12,9 @@ const HR = 'hr-1';
 function setup() {
   const firestore = new FakeFirestore();
   const auth = new FakeAuth();
-  return { firestore, auth, service: new DevicesService(fakeFirebase(firestore, auth)) };
+  const firebase = fakeFirebase(firestore, auth);
+  const notifications = new NotificationsService(firebase);
+  return { firestore, auth, notifications, service: new DevicesService(firebase, notifications) };
 }
 
 async function seedUser(

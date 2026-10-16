@@ -2,6 +2,7 @@ import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { Timestamp } from 'firebase-admin/firestore';
 
 import { AuthService } from '../src/auth/auth.service';
+import { NotificationsService } from '../src/notifications/notifications.service';
 import { DevicesService } from '../src/devices/devices.service';
 import { AUTH_ERRORS } from '../src/auth/auth.errors';
 import { COLLECTIONS } from '../src/firestore/collections';
@@ -18,7 +19,7 @@ function setup() {
   return {
     firestore,
     auth,
-    service: new AuthService(firebase, new DevicesService(firebase)),
+    service: new AuthService(firebase, new DevicesService(firebase, new NotificationsService(firebase))),
   };
 }
 

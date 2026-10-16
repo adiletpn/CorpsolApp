@@ -1,6 +1,7 @@
 import type { Role } from '@corpsol/shared';
 
 import { DevicesService } from '../src/devices/devices.service';
+import { NotificationsService } from '../src/notifications/notifications.service';
 import type { UserDoc } from '../src/firestore/types';
 import { FakeFirestore, fakeFirebase } from './fake-firestore';
 
@@ -9,7 +10,8 @@ const user = (role: Role): UserDoc => ({ role, status: 'ACTIVE' }) as unknown as
 const phone = (deviceId: string) => ({ deviceId, platform: 'ios' });
 
 function service() {
-  return new DevicesService(fakeFirebase(new FakeFirestore()));
+  const firebase = fakeFirebase(new FakeFirestore());
+  return new DevicesService(firebase, new NotificationsService(firebase));
 }
 
 describe('кто обязан предъявлять телефон', () => {

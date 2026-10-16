@@ -6,6 +6,7 @@ import { FirebaseService } from '../firebase/firebase.service';
 import { COLLECTIONS, deviceDocId } from '../firestore/collections';
 import type { DeviceDoc, DeviceRequestDoc, UserDoc } from '../firestore/types';
 import { AUTH_ERRORS } from '../auth/auth.errors';
+import { NotificationsService } from '../notifications/notifications.service';
 import type { DeviceDescriptorDto } from '../auth/dto';
 
 /**
@@ -31,7 +32,10 @@ export interface BoundDevice extends DeviceDoc {
 
 @Injectable()
 export class DevicesService {
-  constructor(private readonly firebase: FirebaseService) {}
+  constructor(
+    private readonly firebase: FirebaseService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   private get db() {
     return this.firebase.firestore;
@@ -166,7 +170,23 @@ export class DevicesService {
       resolveNote: null,
     };
 
-    await this.db.collection(COLLECTIONS.deviceRequests).add(request);
+    const created = await this.db.collection(COLLECTIONS.deviceRequests).add(request);
+
+    // Заявка блокирует человеку вход: пока её не рассмотрят, он не может
+    // ни отметить приход, ни открыть приложение. Ждать, пока ЧР случайно
+    // заглянет на нужный экран, — значит оставить его без работы на день.
+    const user = await this.db.collection(COLLECTIONS.users).doc(userId).get();
+    const organizationId = (user.data() as UserDoc | undefined)?.organizationId;
+    const fullName = (user.data() as UserDoc | undefined)?.fullName ?? 'Сотрудник';
+
+    if (organizationId) {
+      await this.notifications.notifyRole(organizationId, ['HR', 'SUPER_ADMIN'], {
+        kind: 'device_rebind_requested',
+        body: `${fullName} просит закрепить ${descriptor.model ?? 'новый телефон'}`,
+        refType: 'DeviceRequest',
+        refId: created.id,
+      });
+    }
   }
 
   /** Открепление активного устройства — доступно HR и супер-админу. */
