@@ -611,3 +611,82 @@ describe('сводка компании складывается из отдел
     expect(stats.departments[0].headcount).toBe(1);
   });
 });
+
+describe('динамика по дням', () => {
+  it('дни идут по возрастанию, а не вперемешку', async () => {
+    const { firestore, service } = setup();
+    seedDay(firestore, 'u1', '2026-09-03', 'ON_TIME');
+    seedDay(firestore, 'u1', '2026-09-01', 'ON_TIME');
+    seedDay(firestore, 'u1', '2026-09-02', 'LATE', 5);
+
+    const points = await service.daily(actor('DIRECTOR'), PERIOD.start, PERIOD.end);
+
+    expect(points.map((point) => point.date)).toEqual([
+      '2026-09-01',
+      '2026-09-02',
+      '2026-09-03',
+    ]);
+  });
+
+  it('выходной не портит посещаемость', async () => {
+    const { firestore, service } = setup();
+    seedDay(firestore, 'u1', '2026-09-05', 'DAY_OFF');
+    seedDay(firestore, 'u2', '2026-09-05', 'DAY_OFF');
+
+    const points = await service.daily(actor('DIRECTOR'), PERIOD.start, PERIOD.end);
+
+    // Суббота обрушила бы кривую в ноль, хотя выходить никто не должен.
+    expect(points).toHaveLength(0);
+  });
+
+  it('прогул уменьшает явку, но остаётся в ожидаемых', async () => {
+    const { firestore, service } = setup();
+    seedDay(firestore, 'u1', '2026-09-01', 'ON_TIME');
+    seedDay(firestore, 'u2', '2026-09-01', 'ABSENT');
+
+    const [point] = await service.daily(actor('DIRECTOR'), PERIOD.start, PERIOD.end);
+
+    expect(point.expected).toBe(2);
+    expect(point.present).toBe(1);
+  });
+
+  it('опоздание — это явка, но не пунктуальность', async () => {
+    const { firestore, service } = setup();
+    seedDay(firestore, 'u1', '2026-09-01', 'LATE', 15);
+
+    const [point] = await service.daily(actor('DIRECTOR'), PERIOD.start, PERIOD.end);
+
+    // Человек пришёл и работал — в явке он есть, в «вовремя» его нет.
+    expect(point.present).toBe(1);
+    expect(point.onTime).toBe(0);
+  });
+
+  it('выручку даёт только принятая сделка', async () => {
+    const { firestore, service } = setup();
+    seedDay(firestore, 'u1', '2026-09-15', 'ON_TIME');
+    seedOffer(firestore, 'o1', 'u1', 500_000, { sentDate: '2026-09-15' });
+    seedOffer(firestore, 'o2', 'u1', 900_000, { sentDate: '2026-09-15', status: 'SENT' });
+
+    const [point] = await service.daily(actor('DIRECTOR'), PERIOD.start, PERIOD.end);
+
+    expect(point.revenueMinor).toBe(500_000);
+    expect(point.acceptedOffers).toBe(1);
+  });
+
+  it('день со сделкой, но без смен, тоже попадает на кривую', async () => {
+    const { firestore, service } = setup();
+    seedOffer(firestore, 'o1', 'u1', 500_000, { sentDate: '2026-09-15' });
+
+    const points = await service.daily(actor('DIRECTOR'), PERIOD.start, PERIOD.end);
+
+    // Иначе выручка пропала бы из отчёта вместе с днём.
+    expect(points).toHaveLength(1);
+    expect(points[0].expected).toBe(0);
+  });
+
+  it('пустой период отдаёт пустую кривую, а не ошибку', async () => {
+    const { service } = setup();
+
+    expect(await service.daily(actor('DIRECTOR'), PERIOD.start, PERIOD.end)).toEqual([]);
+  });
+});
