@@ -155,6 +155,10 @@ class FakeQuery {
       id,
       exists: true,
       data: () => ({ ...doc }),
+      // Настоящий снимок выборки отдаёт ссылку на документ, и код
+      // пользуется ею, чтобы писать пачкой. Без неё двойник расходится
+      // с Firestore ровно там, где это заметят только в бою.
+      ref: new FakeDocRef(this.store, id, this.collectionName),
     }));
 
     return { docs, empty: docs.length === 0, size: docs.length };
