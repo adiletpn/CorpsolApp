@@ -170,12 +170,12 @@ export class AnalyticsService {
 
     for (const doc of attendance.docs) {
       const record = doc.data() as AttendanceDoc;
-      const day = point(record.workDate);
 
-      // Выходной в знаменатель не идёт: иначе суббота обрушивает
-      // посещаемость, хотя никто и не должен был выйти.
+      // Выходной пропускаем до создания точки: иначе суббота попадёт
+      // на кривую нулём и прочитается как день, когда никто не вышел.
       if (record.status === 'DAY_OFF') continue;
 
+      const day = point(record.workDate);
       day.expected += 1;
       if (record.status !== 'ABSENT') day.present += 1;
       if (record.status === 'ON_TIME') day.onTime += 1;
