@@ -5,6 +5,7 @@ import { ROLE_LABELS, type Permission } from '@corpsol/shared';
 
 import { useSession } from '../lib/session';
 import { LoginForm } from './LoginForm';
+import { Notifications } from './Notifications';
 
 interface NavItem {
   key: string;
@@ -76,6 +77,7 @@ export function Shell({
         </nav>
 
         <div style={styles.user}>
+          <Notifications />
           <div style={styles.userName}>{session.email}</div>
           <div style={styles.userRole}>{ROLE_LABELS[session.role]}</div>
           <button style={styles.signOut} onClick={signOut}>
