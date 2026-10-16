@@ -11,6 +11,7 @@ import {
 
 import { CurrentUser, type AuthenticatedUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
+import { RateLimit } from '../common/rate-limit/rate-limit.decorator';
 import { RequirePermissions } from '../common/decorators/require-permissions.decorator';
 import { AttendanceService } from './attendance.service';
 import { AttendanceAdjustmentService } from './adjustment.service';
@@ -101,6 +102,10 @@ export class AttendanceController {
    * терминала, поэтому монитор у входа безопасно оставить без присмотра.
    */
   @Public()
+  // Экран спрашивает код раз в тридцать секунд; две дюжины в минуту
+  // с запасом покрывают перезагрузку страницы и сбои сети, но перебор
+  // токена останавливают на корню.
+  @RateLimit({ limit: 24, windowMs: 60_000 })
   @Get('terminal/:terminalId/code')
   async issueCode(
     @Param('terminalId') terminalId: string,

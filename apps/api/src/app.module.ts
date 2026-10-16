@@ -20,6 +20,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { CallsModule } from './calls/calls.module';
 import { AttendanceModule } from './attendance/attendance.module';
 import { AuditModule } from './audit/audit.module';
+import { RateLimitGuard } from './common/rate-limit/rate-limit.guard';
 import { JobsModule } from './common/jobs/jobs.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ReportsModule } from './reports/reports.module';
@@ -50,6 +51,9 @@ import { SchedulesModule } from './schedules/schedules.module';
     JobsModule,
   ],
   providers: [
+    // Частота проверяется до разбора токена: смысл в том, чтобы отсечь
+    // поток раньше, чем он дойдёт до базы.
+    { provide: APP_GUARD, useClass: RateLimitGuard },
     { provide: APP_GUARD, useClass: FirebaseAuthGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
   ],
