@@ -31,6 +31,7 @@ export const COLLECTIONS = {
   dailySummaries: 'dailySummaries',
   monthlySummaries: 'monthlySummaries',
   jobRuns: 'jobRuns',
+  notifications: 'notifications',
 } as const;
 
 /** Firestore запрещает «/» в идентификаторе — он разделяет сегменты пути. */
@@ -108,3 +109,14 @@ export const monthlySummaryDocId = (departmentId: string, month: string): string
  */
 export const jobRunDocId = (job: string, scope: string): string =>
   `${job}_${sanitize(scope)}`;
+
+/**
+ * Уведомление. Ключ собран из получателя, вида события и объекта,
+ * поэтому повторная обработка того же события не завалит человека
+ * копиями одного и того же сообщения.
+ */
+export const notificationDocId = (
+  userId: string,
+  kind: string,
+  refId: string,
+): string => `${sanitize(userId)}_${kind}_${sanitize(refId)}`;

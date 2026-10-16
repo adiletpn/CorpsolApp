@@ -313,3 +313,17 @@ export interface JobRunDoc {
   /** Сколько записей задача создала — виден результат, а не только факт. */
   marked: number | null;
 }
+
+/** Уведомление одному человеку. Роль адресатом не ставим: иначе непонятно, кто прочитал. */
+export interface NotificationDoc {
+  organizationId: string;
+  userId: string;
+  kind: string;
+  title: string;
+  body: string;
+  /** На что ссылается: заявка, расчёт, план. По нему экран ведёт в нужный раздел. */
+  refType: string | null;
+  refId: string | null;
+  createdAt: Timestamp;
+  readAt: Timestamp | null;
+}
