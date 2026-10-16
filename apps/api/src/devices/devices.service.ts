@@ -249,15 +249,56 @@ export class DevicesService {
       resolveNote: note ?? null,
     });
 
+    await this.notifyApplicant(request.userId, requestId, 'device_rebind_approved', note);
+
     return device;
   }
 
   async rejectRequest(requestId: string, actorId: string, note?: string): Promise<void> {
-    await this.db.collection(COLLECTIONS.deviceRequests).doc(requestId).update({
+    const ref = this.db.collection(COLLECTIONS.deviceRequests).doc(requestId);
+    const snapshot = await ref.get();
+    const request = snapshot.data() as DeviceRequestDoc | undefined;
+
+    await ref.update({
       status: 'REJECTED',
       resolvedAt: Timestamp.now(),
       resolvedBy: actorId,
       resolveNote: note ?? null,
+    });
+
+    if (request) {
+      await this.notifyApplicant(request.userId, requestId, 'device_rebind_rejected', note);
+    }
+  }
+
+  /**
+   * Ответ заявителю.
+   *
+   * Без него человек узнаёт решение, только пробуя войти снова: при
+   * отказе — упираясь в ту же ошибку и не понимая, рассмотрели его
+   * вообще или нет.
+   */
+  private async notifyApplicant(
+    userId: string,
+    requestId: string,
+    kind: 'device_rebind_approved' | 'device_rebind_rejected',
+    note?: string,
+  ): Promise<void> {
+    const user = await this.db.collection(COLLECTIONS.users).doc(userId).get();
+    const organizationId = (user.data() as UserDoc | undefined)?.organizationId;
+    if (!organizationId) return;
+
+    const body =
+      kind === 'device_rebind_approved'
+        ? 'Телефон закреплён за вами — можно входить.'
+        : `Заявка отклонена.${note ? ` Причина: ${note}` : ' Обратитесь к ЧР.'}`;
+
+    await this.notifications.notifyUser(userId, {
+      organizationId,
+      kind,
+      body,
+      refType: 'DeviceRequest',
+      refId: requestId,
     });
   }
 
