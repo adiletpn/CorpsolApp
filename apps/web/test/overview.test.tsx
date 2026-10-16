@@ -6,10 +6,12 @@ const paths: string[] = [];
 let role: Role = 'DIRECTOR';
 let company: unknown = null;
 let department: unknown = null;
+let daily: unknown[] = [];
 
 vi.mock('../lib/api', () => ({
   request: vi.fn(async (path: string) => {
     paths.push(path);
+    if (path.startsWith('/analytics/daily')) return daily;
     if (path.startsWith('/analytics/company')) return company;
     if (path.startsWith('/analytics/department')) return department;
     return [];
@@ -60,6 +62,7 @@ const departmentStats = (overrides: Record<string, unknown> = {}) => ({
 
 beforeEach(() => {
   paths.length = 0;
+  daily = [];
   role = 'DIRECTOR';
   company = {
     periodStart: '2026-10-01',
@@ -205,5 +208,63 @@ describe('таблица сотрудников отдела', () => {
     render(<Overview />);
 
     expect(await screen.findByText('В отделе пока никого нет')).toBeInTheDocument();
+  });
+});
+
+describe('динамика за период', () => {
+  const day = (overrides: Record<string, unknown> = {}) => ({
+    date: '2026-10-05',
+    expected: 10,
+    present: 9,
+    onTime: 8,
+    acceptedOffers: 2,
+    revenueMinor: 500_000,
+    ...overrides,
+  });
+
+  it('без данных график не рисуется', async () => {
+    render(<Overview />);
+
+    await screen.findByText('Сводка по компании');
+    expect(screen.queryByText('Динамика за период')).not.toBeInTheDocument();
+  });
+
+  it('явка и выручка показаны отдельными кривыми', async () => {
+    daily = [day(), day({ date: '2026-10-06' })];
+    render(<Overview />);
+
+    // Проценты и тенге на одной оси исказили бы оба ряда.
+    expect(await screen.findByText('Явка по дням')).toBeInTheDocument();
+    expect(screen.getByText('Выручка по дням')).toBeInTheDocument();
+  });
+
+  it('доля считается от тех, кто должен был выйти', async () => {
+    daily = [day({ expected: 10, present: 9 })];
+    render(<Overview />);
+
+    expect(await screen.findByText('Последнее значение: 90%')).toBeInTheDocument();
+  });
+
+  it('день без ожидаемых смен из кривой явки выпадает', async () => {
+    daily = [day({ expected: 0, present: 0, revenueMinor: 300_000 })];
+    render(<Overview />);
+
+    // Делить на ноль нечем, а нарисованный ноль читался бы как провал.
+    expect(await screen.findByText('За период данных нет')).toBeInTheDocument();
+  });
+
+  it('выручка подписана деньгами, а не числом тиын', async () => {
+    daily = [day({ revenueMinor: 500_000 })];
+    render(<Overview />);
+
+    expect(await screen.findByText(/Последнее значение: 5\s?000\s₸/)).toBeInTheDocument();
+  });
+
+  it('РОП динамику по компании не запрашивает', async () => {
+    role = 'ROP';
+    render(<Overview />);
+
+    await screen.findByText('Отдел: Продажи');
+    expect(paths.some((path) => path.startsWith('/analytics/daily'))).toBe(false);
   });
 });
