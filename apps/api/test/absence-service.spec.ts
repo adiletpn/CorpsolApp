@@ -1,6 +1,7 @@
 import { Timestamp } from 'firebase-admin/firestore';
 
 import { AbsenceService } from '../src/attendance/absence.service';
+import { JobLockService } from '../src/common/jobs/job-lock.service';
 import {
   COLLECTIONS,
   attendanceDocId,
@@ -20,7 +21,8 @@ function setup() {
     timezone: 'Asia/Almaty',
   });
 
-  return { firestore, service: new AbsenceService(fakeFirebase(firestore)) };
+  const firebase = fakeFirebase(firestore);
+  return { firestore, service: new AbsenceService(firebase, new JobLockService(firebase)) };
 }
 
 function seedEmployee(

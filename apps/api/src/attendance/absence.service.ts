@@ -3,13 +3,9 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { Timestamp } from 'firebase-admin/firestore';
 
 import { FirebaseService } from '../firebase/firebase.service';
-import { COLLECTIONS, attendanceDocId, jobRunDocId } from '../firestore/collections';
-import type {
-  AttendanceDoc,
-  JobRunDoc,
-  OrganizationDoc,
-  UserDoc,
-} from '../firestore/types';
+import { COLLECTIONS, attendanceDocId } from '../firestore/collections';
+import type { AttendanceDoc, OrganizationDoc, UserDoc } from '../firestore/types';
+import { JobLockService } from '../common/jobs/job-lock.service';
 import { findActiveSchedule } from '../schedules/schedule-resolver';
 import { localIsoWeekday, localWorkDateKey } from '../common/utils/time';
 
@@ -32,7 +28,10 @@ export interface AbsenceRunResult {
 export class AbsenceService {
   private readonly logger = new Logger(AbsenceService.name);
 
-  constructor(private readonly firebase: FirebaseService) {}
+  constructor(
+    private readonly firebase: FirebaseService,
+    private readonly locks: JobLockService,
+  ) {}
 
   private get db() {
     return this.firebase.firestore;
@@ -164,88 +163,37 @@ export class AbsenceService {
       const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       const workDate = localWorkDateKey(yesterday, timezone);
 
-      // Замок берём до работы: при нескольких экземплярах сервера
-      // расписание срабатывает в каждом, и без него все они пройдут
-      // по одним и тем же сотрудникам.
-      if (!(await this.claimRun(doc.id, workDate))) {
-        this.logger.log(
-          `Прогулы за ${workDate} в организации ${doc.id} уже ставит другой экземпляр`,
-        );
-        continue;
-      }
-
       try {
-        const result = await this.markForOrganization(doc.id, workDate);
-        await this.finishRun(doc.id, workDate, result.marked);
+        // Замок берём до работы: при нескольких экземплярах сервера
+        // расписание срабатывает в каждом, и без него все они пройдут
+        // по одним и тем же сотрудникам.
+        const result = await this.locks.run(
+          'absence',
+          `${doc.id}_${workDate}`,
+          async () => {
+            const run = await this.markForOrganization(doc.id, workDate);
+            return { ...run, count: run.marked };
+          },
+        );
+
+        if (!result) {
+          this.logger.log(
+            `Прогулы за ${workDate} в организации ${doc.id} уже ставит другой экземпляр`,
+          );
+          continue;
+        }
+
         results.push(result);
       } catch (cause) {
         // Падение по одной организации не должно оставить без прогулов
-        // все остальные.
+        // все остальные. Замок снят внутри run — день можно повторить.
         this.logger.error(
           `Прогулы за ${workDate} не проставлены в организации ${doc.id}: ${String(cause)}`,
         );
-        await this.releaseRun(doc.id, workDate);
       }
     }
 
     return results;
-  }
-
-  /** Ключ замка: своя отметка на каждую организацию и каждый день. */
-  private runDoc(organizationId: string, workDate: string) {
-    return this.db
-      .collection(COLLECTIONS.jobRuns)
-      .doc(jobRunDocId('absence', `${organizationId}_${workDate}`));
-  }
-
-  /**
-   * Занимает прогон за собой. Создание документа с уже занятым ключом
-   * падает на уровне базы, поэтому гонку выигрывает ровно один экземпляр
-   * — договариваться между собой серверам не нужно.
-   */
-  private async claimRun(organizationId: string, workDate: string): Promise<boolean> {
-    const record: JobRunDoc = {
-      job: 'absence',
-      scope: `${organizationId}_${workDate}`,
-      startedAt: Timestamp.now(),
-      finishedAt: null,
-      marked: null,
-    };
-
-    try {
-      await this.runDoc(organizationId, workDate).create(record);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  /** Отметка об успешном прогоне: виден и факт, и сколько прогулов вышло. */
-  private async finishRun(
-    organizationId: string,
-    workDate: string,
-    marked: number,
-  ): Promise<void> {
-    await this.runDoc(organizationId, workDate).update({
-      finishedAt: Timestamp.now(),
-      marked,
-    });
-  }
-
-  /**
-   * Снимает замок после неудачи.
-   *
-   * Иначе упавший прогон закрыл бы день навсегда: расписание в эту дату
-   * больше не сработает, и прогулы пришлось бы доставлять руками.
-   */
-  private async releaseRun(organizationId: string, workDate: string): Promise<void> {
-    try {
-      await this.runDoc(organizationId, workDate).delete();
-    } catch (cause) {
-      this.logger.error(
-        `Не снят замок прогона за ${workDate} в организации ${organizationId}: ${String(cause)}`,
-      );
-    }
   }
 
   /**
