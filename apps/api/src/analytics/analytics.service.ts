@@ -44,6 +44,17 @@ export interface DepartmentStats {
   employees?: EmployeeStats[];
 }
 
+/** Точка на кривой: один рабочий день. */
+export interface DailyPoint {
+  date: string;
+  /** Сколько человек должны были выйти: выходные не в счёт. */
+  expected: number;
+  present: number;
+  onTime: number;
+  acceptedOffers: number;
+  revenueMinor: number;
+}
+
 export interface CompanyStats {
   periodStart: string;
   periodEnd: string;
@@ -110,6 +121,76 @@ export class AnalyticsService {
       revenueMinor: stats.reduce((total, item) => total + item.revenueMinor, 0),
       departments: stats.sort((a, b) => a.name.localeCompare(b.name, 'ru')),
     };
+  }
+
+  /**
+   * Динамика по дням.
+   *
+   * Один процент за месяц прячет главное: провалилась ли посещаемость
+   * в конкретную неделю или ровно держалась весь период. Руководителю
+   * нужна не цифра, а форма кривой — по ней видно, когда начались
+   * проблемы и чем это совпало.
+   */
+  async daily(
+    actor: AuthenticatedUser,
+    periodStart: string,
+    periodEnd: string,
+  ): Promise<DailyPoint[]> {
+    const [attendance, offers] = await Promise.all([
+      this.db
+        .collection(COLLECTIONS.attendance)
+        .where('organizationId', '==', actor.organizationId)
+        .where('workDate', '>=', periodStart)
+        .where('workDate', '<=', periodEnd)
+        .get(),
+      this.db
+        .collection(COLLECTIONS.offers)
+        .where('organizationId', '==', actor.organizationId)
+        .where('sentDate', '>=', periodStart)
+        .where('sentDate', '<=', periodEnd)
+        .get(),
+    ]);
+
+    const byDate = new Map<string, DailyPoint>();
+    const point = (date: string): DailyPoint => {
+      const existing = byDate.get(date);
+      if (existing) return existing;
+
+      const created: DailyPoint = {
+        date,
+        expected: 0,
+        present: 0,
+        onTime: 0,
+        acceptedOffers: 0,
+        revenueMinor: 0,
+      };
+      byDate.set(date, created);
+      return created;
+    };
+
+    for (const doc of attendance.docs) {
+      const record = doc.data() as AttendanceDoc;
+      const day = point(record.workDate);
+
+      // Выходной в знаменатель не идёт: иначе суббота обрушивает
+      // посещаемость, хотя никто и не должен был выйти.
+      if (record.status === 'DAY_OFF') continue;
+
+      day.expected += 1;
+      if (record.status !== 'ABSENT') day.present += 1;
+      if (record.status === 'ON_TIME') day.onTime += 1;
+    }
+
+    for (const doc of offers.docs) {
+      const offer = doc.data() as { sentDate: string; status: string; amountMinor: number };
+      if (offer.status !== 'ACCEPTED') continue;
+
+      const day = point(offer.sentDate);
+      day.acceptedOffers += 1;
+      day.revenueMinor += offer.amountMinor;
+    }
+
+    return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
   }
 
   /** Сводка по отделу с разбивкой по сотрудникам — рабочий экран РОПа. */

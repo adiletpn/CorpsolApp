@@ -9,6 +9,20 @@ export class AnalyticsController {
   constructor(private readonly analytics: AnalyticsService) {}
 
   /** Сводка по всей компании — дашборд директора. */
+  /**
+   * Динамика по дням. Право то же, что и на сводку по компании: это
+   * те же цифры, только разложенные во времени.
+   */
+  @Get('daily')
+  @RequirePermissions('analytics.company')
+  daily(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('from') from: string,
+    @Query('to') to: string,
+  ) {
+    return this.analytics.daily(user, from, to);
+  }
+
   @Get('company')
   @RequirePermissions('analytics.company')
   company(
