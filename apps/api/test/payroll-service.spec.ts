@@ -250,3 +250,82 @@ describe('сохранение расчёта', () => {
     ).rejects.toThrow();
   });
 });
+
+describe('утверждение расчёта', () => {
+  const calculated = async () => {
+    const context = setup();
+    await context.service.calculate(director, USER, PERIOD.start, PERIOD.end);
+    return context;
+  };
+
+  it('черновик становится утверждённым', async () => {
+    const { service } = await calculated();
+
+    const result = await service.approve(director, USER, PERIOD.start);
+
+    expect(result.status).toBe('APPROVED');
+    expect(result.approvedBy).toBe('director');
+  });
+
+  it('сотрудник узнаёт о начислении', async () => {
+    const { service, notifications } = await calculated();
+
+    await service.approve(director, USER, PERIOD.start);
+
+    const [item] = await notifications.list(USER);
+    expect(item?.title).toBe('Расчёт за месяц готов');
+  });
+
+  it('в сообщении сумма в тенге, а не в тиынах', async () => {
+    const { service, notifications } = await calculated();
+
+    await service.approve(director, USER, PERIOD.start);
+
+    const [item] = await notifications.list(USER);
+    expect(item?.body).toContain('₸');
+    expect(item?.body).not.toMatch(/\d{7,}/);
+  });
+
+  it('черновик сотруднику не показывают', async () => {
+    const { service, notifications } = await calculated();
+
+    // Пока лист черновик, суммы ещё изменятся пересчётом.
+    expect(await notifications.list(USER)).toHaveLength(0);
+    await service.approve(director, USER, PERIOD.start);
+  });
+
+  it('повторное утверждение не шлёт второе сообщение', async () => {
+    const { service, notifications } = await calculated();
+
+    await service.approve(director, USER, PERIOD.start);
+    await service.approve(director, USER, PERIOD.start);
+
+    // «Зарплата готова» дважды за месяц читается как ошибка в расчёте.
+    expect(await notifications.list(USER)).toHaveLength(1);
+  });
+
+  it('повторное утверждение не сдвигает дату', async () => {
+    const { service } = await calculated();
+
+    const first = await service.approve(director, USER, PERIOD.start);
+    const second = await service.approve(director, USER, PERIOD.start);
+
+    expect(second.approvedAt).toBe(first.approvedAt);
+  });
+
+  it('несуществующий расчёт утвердить нельзя', async () => {
+    const { service } = setup();
+
+    await expect(service.approve(director, USER, PERIOD.start)).rejects.toThrow();
+  });
+
+  it('чужая организация расчёт не утвердит', async () => {
+    const { service } = await calculated();
+
+    const foreign = { ...director, organizationId: 'org-999' } as typeof director;
+
+    // Ответ тот же, что и для несуществующего: подтверждать чужому,
+    // что расчёт существует, незачем.
+    await expect(service.approve(foreign, USER, PERIOD.start)).rejects.toThrow();
+  });
+});
