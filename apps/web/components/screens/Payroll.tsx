@@ -156,6 +156,7 @@ export function Payroll() {
   const [rules, setRules] = useState<BonusRule[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [approving, setApproving] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -208,6 +209,21 @@ export function Payroll() {
 
   const employeeName = (userId: string): string =>
     employees.find((employee) => employee.id === userId)?.fullName ?? 'Сотрудник';
+
+  const approve = async (userId: string) => {
+    setApproving(userId);
+    setError(null);
+    try {
+      await request(`/payroll/${userId}/approve${query({ periodStart: period.from })}`, {
+        method: 'POST',
+      });
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Не удалось утвердить расчёт');
+    } finally {
+      setApproving(null);
+    }
+  };
 
   const exportCsv = async () => {
     setError(null);
@@ -276,12 +292,30 @@ export function Payroll() {
                       {formatMoney(payroll.totalMinor)}
                     </td>
                     <td style={styles.cell}>
-                      <Button
-                        variant="ghost"
-                        onClick={() => setExpanded(expanded === payroll.id ? null : payroll.id)}
-                      >
-                        {expanded === payroll.id ? 'Свернуть' : 'Расшифровка'}
-                      </Button>
+                      <div style={styles.rowActions}>
+                        <Button
+                          variant="ghost"
+                          onClick={() => setExpanded(expanded === payroll.id ? null : payroll.id)}
+                        >
+                          {expanded === payroll.id ? 'Свернуть' : 'Расшифровка'}
+                        </Button>
+
+                        {/* Пока лист черновик, суммы ещё изменятся пересчётом,
+                            и сотруднику о них не сообщают. Утверждение
+                            фиксирует цифры и шлёт человеку уведомление. */}
+                        {canManage && payroll.status === 'DRAFT' ? (
+                          <Button
+                            disabled={approving === payroll.userId}
+                            onClick={() => void approve(payroll.userId)}
+                          >
+                            {approving === payroll.userId ? 'Утверждаем…' : 'Утвердить'}
+                          </Button>
+                        ) : null}
+
+                        {payroll.status !== 'DRAFT' ? (
+                          <Badge tone="success">утверждён</Badge>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
 
@@ -380,6 +414,7 @@ export function Payroll() {
 
 const styles: Record<string, React.CSSProperties> = {
   actions: { display: 'flex', gap: 8 },
+  rowActions: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
   title: { fontSize: 26, margin: '0 0 24px' },
   formGrid: {
     display: 'grid',
