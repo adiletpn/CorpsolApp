@@ -3,6 +3,7 @@ import React from 'react';
 
 import { api, type Payroll as PayrollSheet } from '../api';
 import { formatDate, monthRange } from '../format';
+import { StackedBar, chart } from '../charts';
 import { PeriodScreen } from '../PeriodScreen';
 import { Gap, HeroFigure, Panel, PanelRow, RowValue, SectionLabel, tone } from '../ui';
 
@@ -55,21 +56,25 @@ function PayrollCard({ sheet }: { sheet: PayrollSheet }) {
       />
       <Gap size={3} />
       <SectionLabel>Из чего сложилось</SectionLabel>
+      {/* Порядок «бонусы, оклад, удержания» — от валидатора палитры:
+          зелёный рядом с красным при дейтеранопии неразличим, синий оклад
+          их разделяет. Удержания ещё и заштрихованы — признак кроме цвета. */}
       <Panel>
-        <PanelRow title="Оклад" trailing={<RowValue>{formatMinor(sheet.baseSalaryMinor)}</RowValue>} />
-        <PanelRow
-          title="Бонусы"
-          trailing={
-            <RowValue color={sheet.bonusMinor > 0 ? tone.success : undefined}>{formatMinor(sheet.bonusMinor)}</RowValue>
-          }
+        <StackedBar
+          caption={`Оклад ${formatMinor(sheet.baseSalaryMinor)}, бонусы ${formatMinor(sheet.bonusMinor)}, удержания ${formatMinor(sheet.penaltyMinor)}`}
+          segments={[
+            { key: 'bonus', label: 'Бонусы', value: sheet.bonusMinor, color: chart.good, display: `+${formatMinor(sheet.bonusMinor)}` },
+            { key: 'base', label: 'Оклад', value: sheet.baseSalaryMinor, color: chart.accent, display: formatMinor(sheet.baseSalaryMinor) },
+            {
+              key: 'penalty',
+              label: 'Удержания',
+              value: Math.abs(sheet.penaltyMinor),
+              color: chart.bad,
+              striped: true,
+              display: formatMinor(-Math.abs(sheet.penaltyMinor)),
+            },
+          ]}
         />
-        {sheet.penaltyMinor !== 0 ? (
-          <PanelRow
-            title="Удержания"
-            accent={tone.danger}
-            trailing={<RowValue color={tone.danger}>{formatMinor(-Math.abs(sheet.penaltyMinor))}</RowValue>}
-          />
-        ) : null}
       </Panel>
       {sheet.lines.length > 0 ? (
         <>
