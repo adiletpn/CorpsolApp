@@ -95,16 +95,20 @@ export function PanelRow({
   subtitle,
   trailing,
   accent,
+  leading,
 }: {
   title: React.ReactNode;
   subtitle?: React.ReactNode;
   trailing?: React.ReactNode;
   /** Цветная засечка слева — только на отклонениях. */
   accent?: string;
+  /** Значок перед строкой — когда тип записи важнее засечки. */
+  leading?: React.ReactNode;
 }) {
   return (
     <div className="panel-row">
       {accent ? <span className="panel-row-accent" style={{ background: accent }} /> : null}
+      {leading}
       <div className="panel-row-main">
         <div className="panel-row-title">{title}</div>
         {subtitle ? <div className="panel-row-subtitle">{subtitle}</div> : null}
