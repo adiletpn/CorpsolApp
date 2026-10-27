@@ -76,9 +76,18 @@ export function Figure({ value, label, color }: { value: string; label: string; 
   );
 }
 
-export function SectionLabel({ children, trailing }: { children: React.ReactNode; trailing?: React.ReactNode }) {
+export function SectionLabel({
+  children,
+  trailing,
+  id,
+}: {
+  children: React.ReactNode;
+  trailing?: React.ReactNode;
+  /** Цель прокрутки для строки разделов вверху экрана. */
+  id?: string;
+}) {
   return (
-    <div className="section-label">
+    <div className="section-label" id={id}>
       <span>{children}</span>
       {trailing}
     </div>
