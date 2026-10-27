@@ -3,6 +3,7 @@ import React from 'react';
 
 import { api, type Call, type Plan, type RankedEntry } from '../api';
 import { formatDate, monthRange, percent, timeLabel } from '../format';
+import { RingMeter } from '../charts';
 import { PeriodScreen } from '../PeriodScreen';
 import { useSession } from '../session';
 import { Figure, FigureRow, Gap, HeroFigure, Panel, PanelRow, RowValue, SectionLabel, tone } from '../ui';
@@ -61,11 +62,7 @@ export function Work() {
               <>
                 <Gap size={3} />
                 <SectionLabel>План отдела</SectionLabel>
-                <Panel>
-                  {department.map((plan) => (
-                    <PlanRow key={plan.id} plan={plan} />
-                  ))}
-                </Panel>
+                <PlanRings plans={department} />
               </>
             ) : null}
 
@@ -73,11 +70,7 @@ export function Work() {
               <>
                 <Gap size={3} />
                 <SectionLabel>Ваш план</SectionLabel>
-                <Panel>
-                  {personal.map((plan) => (
-                    <PlanRow key={plan.id} plan={plan} />
-                  ))}
-                </Panel>
+                <PlanRings plans={personal} />
               </>
             ) : null}
 
@@ -122,27 +115,31 @@ export function Work() {
   );
 }
 
-/** Полоса выполнения занимает всю ширину под текстом — своя разметка. */
-function PlanRow({ plan }: { plan: Plan }) {
-  const { metric, achieved, target, remaining, ratio, isComplete } = plan.progress;
-  const color = isComplete ? tone.success : tone.accent;
-  const format = (value: number) => (metric === 'REVENUE' ? formatMinor(Math.round(value)) : String(Math.round(value)));
-
+/**
+ * Планы кольцами в сетке по два: сколько сделано видно сразу,
+ * а не после чтения строки «612 из 900 · осталось 288».
+ */
+function PlanRings({ plans }: { plans: Plan[] }) {
   return (
-    <div className="plan">
-      <div className="plan-head">
-        <span className="plan-title">{PLAN_METRIC_LABELS[metric]}</span>
-        <RowValue color={color}>{Math.round(ratio * 100)}%</RowValue>
+    <Panel>
+      <div className="rings">
+        {plans.map((plan) => {
+          const { metric, achieved, target, remaining, ratio, isComplete } = plan.progress;
+          const format = (value: number) =>
+            metric === 'REVENUE' ? formatMinor(Math.round(value)) : Math.round(value).toLocaleString('ru-RU');
+
+          return (
+            <RingMeter
+              key={plan.id}
+              ratio={ratio}
+              complete={isComplete}
+              label={PLAN_METRIC_LABELS[metric]}
+              caption={isComplete ? `выполнен · ${format(achieved)}` : `ещё ${format(remaining)} из ${format(target)}`}
+            />
+          );
+        })}
       </div>
-      <div className="progress">
-        <div style={{ width: `${Math.min(1, Math.max(0, ratio)) * 100}%`, background: color }} />
-      </div>
-      <p className="plan-caption">
-        {isComplete
-          ? `Выполнен: ${format(achieved)} из ${format(target)}`
-          : `${format(achieved)} из ${format(target)} · осталось ${format(remaining)}`}
-      </p>
-    </div>
+    </Panel>
   );
 }
 
