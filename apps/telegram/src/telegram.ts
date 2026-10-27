@@ -79,6 +79,11 @@ export function prepareWindow(background: string): void {
   }
 }
 
+/** Подписка на смену темы в самом Telegram — пока мини-апп открыт. */
+export function onTelegramThemeChange(handler: () => void): void {
+  webApp()?.onEvent('themeChanged', handler);
+}
+
 export function haptic(type: 'error' | 'success' | 'warning'): void {
   webApp()?.HapticFeedback?.notificationOccurred(type);
 }
