@@ -18,6 +18,7 @@ import { useSession } from '../session';
 import {
   LocationError,
   canScanQr,
+  confirmClosing,
   haptic,
   openLocationSettings,
   readPosition,
@@ -100,6 +101,7 @@ export function Home({ onOpenProfile }: { onOpenProfile(): void }) {
     const qr = await scanQr('Отсканируйте QR-код на терминале в офисе');
     if (!qr) return;
 
+    confirmClosing(true);
     try {
       setNotice({ kind: 'busy', text: 'Определяем местоположение…' });
       const position = await readPosition();
@@ -125,6 +127,8 @@ export function Home({ onOpenProfile }: { onOpenProfile(): void }) {
       } else {
         setNotice({ kind: 'error', text: 'Нет связи с сервером. Попробуйте ещё раз.' });
       }
+    } finally {
+      confirmClosing(false);
     }
   }
 

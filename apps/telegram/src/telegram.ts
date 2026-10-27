@@ -28,6 +28,8 @@ interface TelegramWebApp {
   showScanQrPopup(params: { text?: string }, callback: (text: string) => boolean | void): void;
   closeScanQrPopup(): void;
   showAlert(message: string): void;
+  enableClosingConfirmation?: () => void;
+  disableClosingConfirmation?: () => void;
   HapticFeedback?: {
     notificationOccurred(type: 'error' | 'success' | 'warning'): void;
     impactOccurred(style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft'): void;
@@ -82,6 +84,16 @@ export function prepareWindow(background: string): void {
 /** Подписка на смену темы в самом Telegram — пока мини-апп открыт. */
 export function onTelegramThemeChange(handler: () => void): void {
   webApp()?.onEvent('themeChanged', handler);
+}
+
+/**
+ * Пока идёт отметка, закрытие мини-аппа переспрашивается: смахнул
+ * случайно — запрос оборвался, и непонятно, засчитан ли приход.
+ */
+export function confirmClosing(enabled: boolean): void {
+  const app = webApp();
+  if (enabled) app?.enableClosingConfirmation?.();
+  else app?.disableClosingConfirmation?.();
 }
 
 export function haptic(type: 'error' | 'success' | 'warning'): void {
