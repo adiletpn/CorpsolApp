@@ -585,14 +585,14 @@ Firebase Auth по своей природе разрешает вход с лю
 
 | Область | Эндпоинты | Кто имеет доступ |
 |---|---|---|
-| Вход | `POST /auth/session`, `POST /auth/logout`, `GET /auth/me` | все |
-| Сотрудники | `GET/POST /employees`, `PATCH /employees/:id`, `POST /employees/:id/terminate` | ЧР, супер-админ |
+| Вход | `POST /auth/session`, `POST /auth/logout`, `GET /auth/me`; мини-апп шлёт `x-telegram-init-data` с каждым запросом | все |
+| Сотрудники | `GET/POST /employees`, `PATCH /employees/:id`, `POST /employees/:id/reset-password`, `POST /employees/:id/terminate` | ЧР, супер-админ |
 | Устройства | `GET /devices/requests`, `POST /devices/requests/:id/approve` | ЧР, супер-админ |
 | Офисы | `GET/POST /offices`, `PATCH /offices/:id` | супер-админ |
 | Терминалы | `GET/POST /terminals`, `POST /terminals/:id/active` | супер-админ |
 | Отделы | `GET/POST /departments`, `PATCH /departments/:id` | супер-админ |
 | Приход | `POST /attendance/check-in`, `GET /attendance/me` | МОП, РОП |
-| Прогулы | `POST /attendance/mark-absences` | РОП и выше |
+| Прогулы и дозвоны | `POST /attendance/mark-absences`, `POST /attendance/check-call-rate` | РОП и выше |
 | Планы | `GET /plans`, `POST /plans` | чтение по роли, постановка — директор |
 | Офферты | `GET/POST /offers`, `POST /offers/:id/resolve` | создание — МОП, подтверждение — РОП и выше |
 | Зарплата | `GET /payroll`, `POST /payroll/calculate`, `POST /payroll/:userId/approve`, `GET/POST /payroll/rules` | чтение по роли, расчёт и утверждение — директор |
