@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { ROLE_LABELS } from '@corpsol/shared';
+import { ROLE_LABELS, devicePlatformLabel } from '@corpsol/shared';
 
 import { request } from '../../lib/api';
 import type { DeviceRequest } from '../../lib/types';
@@ -84,7 +84,7 @@ export function Devices() {
                   </td>
                   <td style={styles.cell}>
                     <div>{item.model ?? 'Модель не определена'}</div>
-                    <div style={styles.muted}>{item.platform}</div>
+                    <div style={styles.muted}>{devicePlatformLabel(item.platform)}</div>
                   </td>
                   <td style={styles.cell}>{whenCreated(item.createdAt)}</td>
                   <td style={styles.cell}>
