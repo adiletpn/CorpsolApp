@@ -2,7 +2,7 @@ import { PLAN_METRIC_LABELS, formatMinor } from '@corpsol/shared';
 import React from 'react';
 
 import { api, type Call, type Plan, type RankedEntry } from '../api';
-import { formatDate, monthRange, percent, timeLabel } from '../format';
+import { formatDate, initialsOf, monthRange, percent, timeLabel } from '../format';
 import { RingMeter } from '../charts';
 import { PeriodScreen } from '../PeriodScreen';
 import { useSession } from '../session';
@@ -89,7 +89,8 @@ export function Work() {
                   Рейтинг отдела
                 </SectionLabel>
                 <Panel>
-                  {board.entries.map((entry) => (
+                  <Podium entries={board.entries.slice(0, 3)} selfId={user?.id} />
+                  {board.entries.slice(3).map((entry) => (
                     <EntryRow key={entry.userId} entry={entry} isSelf={entry.userId === user?.id} />
                   ))}
                 </Panel>
@@ -175,5 +176,33 @@ function EntryRow({ entry, isSelf }: { entry: RankedEntry; isSelf: boolean }) {
         </span>
       }
     />
+  );
+}
+
+/**
+ * Тройка лидеров на пьедестале: второй, первый, третий — как на
+ * награждении. Место подписано числом, а не только цветом медали.
+ */
+function Podium({ entries, selfId }: { entries: RankedEntry[]; selfId?: string }) {
+  const order = [entries[1], entries[0], entries[2]].filter((entry): entry is RankedEntry => Boolean(entry));
+
+  return (
+    <div className="podium">
+      {order.map((entry) => (
+        <div
+          key={entry.userId}
+          className={`podium-place is-rank-${Math.min(entry.rank, 3)} ${entry.userId === selfId ? 'is-self' : ''}`}
+        >
+          <div className="podium-avatar" style={{ borderColor: MEDALS[entry.rank] ?? 'var(--border)' }}>
+            {initialsOf(entry.fullName)}
+          </div>
+          <div className="podium-name">
+            {entry.userId === selfId ? 'Вы' : entry.fullName.split(' ')[0]}
+          </div>
+          <div className="podium-points">{entry.points}</div>
+          <div className="podium-step">{entry.rank}</div>
+        </div>
+      ))}
+    </div>
   );
 }
