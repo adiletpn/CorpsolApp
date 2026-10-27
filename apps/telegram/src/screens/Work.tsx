@@ -2,7 +2,7 @@ import { PLAN_METRIC_LABELS, formatMinor } from '@corpsol/shared';
 import React from 'react';
 
 import { api, type Call, type Plan, type RankedEntry } from '../api';
-import { formatDate, initialsOf, monthRange, percent, timeLabel } from '../format';
+import { formatDate, formatMoneyShort, initialsOf, monthRange, percent, timeLabel } from '../format';
 import { RingMeter } from '../charts';
 import { PeriodScreen } from '../PeriodScreen';
 import { useSession } from '../session';
@@ -127,7 +127,8 @@ function PlanRings({ plans }: { plans: Plan[] }) {
         {plans.map((plan) => {
           const { metric, achieved, target, remaining, ratio, isComplete } = plan.progress;
           const format = (value: number) =>
-            metric === 'REVENUE' ? formatMinor(Math.round(value)) : Math.round(value).toLocaleString('ru-RU');
+            // В половине ширины полная сумма не помещается — коротко: «1,9 млн ₸».
+            metric === 'REVENUE' ? formatMoneyShort(value) : Math.round(value).toLocaleString('ru-RU');
 
           return (
             <RingMeter
