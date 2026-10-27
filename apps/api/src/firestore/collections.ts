@@ -28,6 +28,8 @@ export const COLLECTIONS = {
   achievements: 'achievements',
   userAchievements: 'userAchievements',
   auditEvents: 'auditEvents',
+  /** Выданные номера паролей «Corpsol123» — по документу на организацию. */
+  passwordCodes: 'passwordCodes',
   dailySummaries: 'dailySummaries',
   monthlySummaries: 'monthlySummaries',
   jobRuns: 'jobRuns',

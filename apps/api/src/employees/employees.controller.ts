@@ -61,6 +61,14 @@ export class EmployeesController {
     return this.employees.update(user, id, dto);
   }
 
+  /** Новый пароль «Corpsol» + три цифры — показывается один раз, как при заведении. */
+  @Post(':id/reset-password')
+  @HttpCode(200)
+  @RequirePermissions('employee.create')
+  resetPassword(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.employees.resetPassword(user, id);
+  }
+
   @Post(':id/terminate')
   @HttpCode(204)
   @RequirePermissions('employee.terminate')

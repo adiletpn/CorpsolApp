@@ -281,6 +281,8 @@ interface AuthRecord {
   uid: string;
   email: string;
   displayName?: string;
+  /** Хранится открыто — только чтобы тест видел, что пароль сменился. */
+  password?: string;
   disabled: boolean;
   claims: Record<string, unknown>;
   tokensRevokedAt: number | null;
@@ -308,6 +310,7 @@ export class FakeAuth {
       uid,
       email: input.email,
       displayName: input.displayName,
+      password: input.password,
       disabled: false,
       claims: {},
       tokensRevokedAt: null,

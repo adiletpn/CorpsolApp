@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Timestamp } from 'firebase-admin/firestore';
-import { randomBytes } from 'node:crypto';
+import { randomInt } from 'node:crypto';
 import { canAssignRole, canManageEmployee, type Role } from '@corpsol/shared';
 
 import { FirebaseService } from '../firebase/firebase.service';
@@ -30,10 +30,14 @@ export interface EmployeeView {
   terminatedAt: string | null;
 }
 
-/** Пароль выдаётся один раз при заведении и меняется сотрудником при входе. */
-function generateTemporaryPassword(): string {
-  return `${randomBytes(9).toString('base64url')}aA1!`;
-}
+/**
+ * Пароль сотрудника: «Corpsol» и три цифры. Простой намеренно — его
+ * диктуют менеджеру устно. Цифры у каждого свои: одинаковый пароль
+ * открыл бы чужой аккаунт простым перебором знакомых.
+ */
+const PASSWORD_PREFIX = 'Corpsol';
+const FIRST_CODE = 100;
+const LAST_CODE = 999;
 
 @Injectable()
 export class EmployeesService {
@@ -67,7 +71,7 @@ export class EmployeesService {
 
     await this.assertReferencesBelongToOrg(actor.organizationId, dto.departmentId, dto.officeId);
 
-    const temporaryPassword = generateTemporaryPassword();
+    const temporaryPassword = await this.issuePassword(actor.organizationId);
     const created = await this.firebase.auth.createUser({
       email,
       password: temporaryPassword,
@@ -261,6 +265,60 @@ export class EmployeesService {
     }
 
     await Promise.all(checks);
+  }
+
+  /**
+   * Новый пароль уже заведённому сотруднику — когда он забыл свой.
+   * Письмо со сбросом не подходит: рабочие почты менеджеров часто
+   * условные, и письмо никуда бы не пришло.
+   */
+  async resetPassword(
+    actor: AuthenticatedUser,
+    userId: string,
+  ): Promise<{ temporaryPassword: string }> {
+    const snapshot = await this.db.collection(COLLECTIONS.users).doc(userId).get();
+    const user = snapshot.data() as UserDoc | undefined;
+
+    if (!snapshot.exists || user?.organizationId !== actor.organizationId) {
+      throw new NotFoundException('Сотрудник не найден');
+    }
+    if (!canAssignRole(actor.role, user.role)) {
+      throw new ForbiddenException(`Роль ${actor.role} не вправе менять пароль роли ${user.role}`);
+    }
+
+    const temporaryPassword = await this.issuePassword(actor.organizationId);
+    await this.firebase.auth.updateUser(userId, { password: temporaryPassword });
+    await this.audit(actor, 'employee.password_reset', userId, {});
+
+    return { temporaryPassword };
+  }
+
+  /**
+   * Свободный трёхзначный номер организации. Выданные номера хранятся
+   * без связи с сотрудником: по базе нельзя узнать, чей это пароль.
+   * Транзакция не даёт двум одновременным заведениям взять один номер.
+   */
+  private async issuePassword(organizationId: string): Promise<string> {
+    const ref = this.db.collection(COLLECTIONS.passwordCodes).doc(organizationId);
+
+    const code = await this.db.runTransaction(async (tx) => {
+      const snapshot = await tx.get(ref);
+      const used = new Set<number>((snapshot.data()?.used as number[] | undefined) ?? []);
+
+      const free: number[] = [];
+      for (let candidate = FIRST_CODE; candidate <= LAST_CODE; candidate += 1) {
+        if (!used.has(candidate)) free.push(candidate);
+      }
+      if (free.length === 0) {
+        throw new ConflictException('Трёхзначные пароли закончились: выдано 900 номеров');
+      }
+
+      const picked = free[randomInt(free.length)];
+      tx.set(ref, { used: [...used, picked] });
+      return picked;
+    });
+
+    return `${PASSWORD_PREFIX}${code}`;
   }
 
   private toView(id: string, doc: UserDoc): EmployeeView {

@@ -201,9 +201,8 @@ describe('учётная запись нового сотрудника', () => 
 
     const created = await service.create(actor('HR'), newEmployee);
 
-    // Пароль показывается кадровику один раз — передать его сотруднику больше нечем.
-    expect(created.temporaryPassword).toEqual(expect.any(String));
-    expect(created.temporaryPassword.length).toBeGreaterThanOrEqual(12);
+    // Простой формат намеренно: пароль диктуют менеджеру устно.
+    expect(created.temporaryPassword).toMatch(/^Corpsol\d{3}$/);
   });
 
   it('пароль каждый раз новый', async () => {
@@ -216,6 +215,42 @@ describe('учётная запись нового сотрудника', () => 
     });
 
     expect(first.temporaryPassword).not.toBe(second.temporaryPassword);
+  });
+
+  it('номера не повторяются, пока не кончатся', async () => {
+    const { service } = setup();
+    const passwords = new Set<string>();
+
+    for (let index = 0; index < 60; index += 1) {
+      const created = await service.create(actor('HR'), {
+        ...newEmployee,
+        email: `mop-${index}@corpsol.kz`,
+      });
+      passwords.add(created.temporaryPassword);
+    }
+
+    // Случайный выбор без учёта выданных дал бы совпадение уже на десятках.
+    expect(passwords.size).toBe(60);
+  });
+
+  it('новый пароль не совпадает с выданными раньше', async () => {
+    const { auth, service } = setup();
+    const created = await service.create(actor('HR'), newEmployee);
+
+    const reset = await service.resetPassword(actor('HR'), created.id);
+
+    expect(reset.temporaryPassword).toMatch(/^Corpsol\d{3}$/);
+    expect(reset.temporaryPassword).not.toBe(created.temporaryPassword);
+    expect(auth.record(created.id)?.password).toBe(reset.temporaryPassword);
+  });
+
+  it('пароль сотрудника чужой организации не сбросить', async () => {
+    const { service } = setup();
+    const created = await service.create(actor('HR'), newEmployee);
+
+    await expect(
+      service.resetPassword(actor('HR', 'actor-1', { organizationId: 'org-other' }), created.id),
+    ).rejects.toThrow();
   });
 
   it('кладёт роль в claims токена', async () => {

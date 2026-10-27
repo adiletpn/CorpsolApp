@@ -67,6 +67,19 @@ function safeParse(text: string): unknown {
   }
 }
 
+/**
+ * Отказы входа сервер отдаёт кодом без текста — клиент сам говорит
+ * человеку, что случилось и что делать. Без этого он видел бы
+ * «Не удалось выполнить запрос» и не понимал, почему его не пускают.
+ */
+const CODE_MESSAGES: Record<string, string> = {
+  device_mismatch:
+    'Аккаунт закреплён за другим телефоном. Заявка на смену телефона отправлена руководителю — после одобрения войдите снова.',
+  device_taken: 'Этот телефон уже закреплён за другим сотрудником.',
+  device_required: 'Откройте приложение в Telegram на телефоне.',
+  employee_inactive: 'Учётная запись неактивна. Обратитесь к руководителю.',
+};
+
 /** Nest кладёт наш объект ошибки в поле message — разворачиваем его. */
 function toError(status: number, json: unknown): ApiError {
   let body: Record<string, unknown> = {};
@@ -78,16 +91,16 @@ function toError(status: number, json: unknown): ApiError {
         : (json as Record<string, unknown>);
   }
 
-  const message =
-    typeof body.message === 'string'
-      ? body.message
-      : status >= 500
-        ? 'Сервер временно недоступен. Попробуйте позже.'
-        : 'Не удалось выполнить запрос';
+  const code = typeof body.code === 'string' ? body.code : null;
+
+  let message = 'Не удалось выполнить запрос';
+  if (typeof body.message === 'string') message = body.message;
+  else if (code && CODE_MESSAGES[code]) message = CODE_MESSAGES[code];
+  else if (status >= 500) message = 'Сервер временно недоступен. Попробуйте позже.';
 
   return new ApiError(
     status,
-    typeof body.code === 'string' ? body.code : null,
+    code,
     message,
     (body.details as Record<string, unknown>) ?? {},
   );

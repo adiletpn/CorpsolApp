@@ -187,6 +187,22 @@ export function Employees() {
     void load();
   }, [load]);
 
+  /** Новый пароль показывается в той же карточке, что и при заведении. */
+  const resetPassword = async (employee: Employee) => {
+    if (!confirm(`Выдать ${employee.fullName} новый пароль? Старый перестанет работать.`)) return;
+
+    try {
+      const result = await request<{ temporaryPassword: string }>(
+        `/employees/${employee.id}/reset-password`,
+        { method: 'POST', body: {} },
+      );
+      setCreated({ ...employee, temporaryPassword: result.temporaryPassword });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Не удалось выдать пароль');
+    }
+  };
+
   const terminate = async (employee: Employee) => {
     if (!confirm(`Уволить сотрудника ${employee.fullName}? Доступ закроется сразу.`)) return;
 
@@ -206,7 +222,7 @@ export function Employees() {
       <h1 style={styles.title}>Сотрудники</h1>
 
       {created ? (
-        <Card title="Сотрудник заведён">
+        <Card title="Пароль сотрудника">
           <p style={styles.passwordNote}>
             Передайте временный пароль лично. Он показывается <strong>один раз</strong> —
             после перезагрузки страницы восстановить его будет нельзя.
@@ -261,7 +277,7 @@ export function Employees() {
                 <th style={styles.head}>Отдел</th>
                 <th style={styles.head}>Оклад</th>
                 <th style={styles.head}>Статус</th>
-                {can('employee.terminate') ? <th style={styles.head} /> : null}
+                {canCreate || can('employee.terminate') ? <th style={styles.head} /> : null}
               </tr>
             </thead>
             <tbody>
@@ -281,12 +297,21 @@ export function Employees() {
                       <Badge tone="danger">Уволен</Badge>
                     )}
                   </td>
-                  {can('employee.terminate') ? (
+                  {canCreate || can('employee.terminate') ? (
                     <td style={styles.cell}>
                       {employee.status === 'ACTIVE' ? (
-                        <Button variant="danger" onClick={() => terminate(employee)}>
-                          Уволить
-                        </Button>
+                        <div style={styles.actions}>
+                          {canCreate ? (
+                            <Button variant="ghost" onClick={() => resetPassword(employee)}>
+                              Новый пароль
+                            </Button>
+                          ) : null}
+                          {can('employee.terminate') ? (
+                            <Button variant="danger" onClick={() => terminate(employee)}>
+                              Уволить
+                            </Button>
+                          ) : null}
+                        </div>
                       ) : null}
                     </td>
                   ) : null}
@@ -302,6 +327,7 @@ export function Employees() {
 
 const styles: Record<string, React.CSSProperties> = {
   title: { fontSize: 26, margin: '0 0 24px' },
+  actions: { display: 'flex', gap: 8, justifyContent: 'flex-end' },
   formGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
