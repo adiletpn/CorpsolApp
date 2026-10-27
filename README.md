@@ -372,6 +372,27 @@ cp apps/api/.env.example .env.docker   # заполнить ключами об�
 docker compose up --build
 ```
 
+### Демо-витрина в боевой базе
+
+Показать приложение живым до того, как накопятся настоящие данные:
+[demo-showcase.ts](apps/api/scripts/demo-showcase.ts) наполняет текущий
+месяц для одного менеджера и четырёх вымышленных коллег (они нужны
+рейтингу) — смены, звонки, сделки, планы, зарплата, награды, один
+прогул и один не засчитанный по дозвонам день.
+
+```bash
+cd apps/api
+ALLOW_PRODUCTION_DEMO=yes DEMO_EMAIL=demo.mop@corpsol.kz \
+  railway run -s @corpsol/api -- npx ts-node scripts/demo-showcase.ts fill
+# убрать всё разом перед запуском в работу:
+ALLOW_PRODUCTION_DEMO=yes \
+  railway run -s @corpsol/api -- npx ts-node scripts/demo-showcase.ts clean
+```
+
+Каждая запись помечена `demo: true`, поэтому `clean` не задевает
+настоящие данные. Ключ Firebase приходит из переменных сервиса через
+`railway run` и не ложится на диск.
+
 ### Чего делать нельзя
 
 **Не запускайте сид против боевого проекта.** Он создаёт учётки
