@@ -22,7 +22,6 @@ import {
   Icon,
   Panel,
   PanelRow,
-  RowValue,
   SectionLabel,
   Spinner,
   tone,
@@ -128,23 +127,22 @@ function Awards({ items, loading }: { items: Achievement[] | null; loading: bool
         <Figure value={String(points)} label="баллов за награды" color={points > 0 ? tone.warning : undefined} />
       </FigureRow>
       <Gap size={1} />
-      <Panel>
-        {/* Полученные — золотом и первыми, цели спокойно ниже:
-            иначе список целей читается как список провалов. */}
+      {/* Плитками, как значки: полученные яркие и первыми, будущие под
+          замком и спокойно — иначе список целей читается как провалы. */}
+      <div className="awards">
         {[...unlocked, ...goals].map((item) => (
-          <PanelRow
-            key={item.code}
-            title={item.title}
-            subtitle={item.unlockedAt ? `Получено ${formatDate(item.unlockedAt)}` : item.description}
-            accent={item.unlockedAt ? tone.warning : undefined}
-            trailing={
-              <RowValue color={item.unlockedAt ? tone.warning : undefined} muted={!item.unlockedAt}>
-                +{item.points}
-              </RowValue>
-            }
-          />
+          <div key={item.code} className={`award ${item.unlockedAt ? 'is-unlocked' : ''}`}>
+            <span className="award-icon">
+              <Icon name={item.unlockedAt ? 'emoji_events' : 'lock'} />
+            </span>
+            <span className="award-title">{item.title}</span>
+            <span className="award-text">
+              {item.unlockedAt ? `Получено ${formatDate(item.unlockedAt)}` : item.description}
+            </span>
+            <span className="award-points">+{item.points}</span>
+          </div>
         ))}
-      </Panel>
+      </div>
     </>
   );
 }
