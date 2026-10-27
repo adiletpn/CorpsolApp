@@ -67,3 +67,12 @@ export function initialsOf(name: string): string {
     .map((word) => word[0]?.toUpperCase())
     .join('');
 }
+
+/** Приветствие по времени суток — шапка главной звучит живее. */
+export function greeting(date = new Date()): string {
+  const hour = date.getHours();
+  if (hour < 5) return 'Доброй ночи';
+  if (hour < 12) return 'Доброе утро';
+  if (hour < 18) return 'Добрый день';
+  return 'Добрый вечер';
+}

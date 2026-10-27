@@ -7,6 +7,7 @@ import {
   dateKey,
   dayPasses,
   formatDate,
+  greeting,
   initialsOf,
   monthRange,
   percent,
@@ -33,7 +34,6 @@ import {
   Panel,
   PanelRow,
   RowValue,
-  ScreenHeader,
   SectionLabel,
   Spinner,
   tone,
@@ -146,15 +146,15 @@ export function Home({ onOpenProfile }: { onOpenProfile(): void }) {
 
   return (
     <>
-      <ScreenHeader
-        title={user?.fullName ?? ''}
-        subtitle={user?.role === 'ROP' ? 'Руководитель отдела продаж' : 'Менеджер отдела продаж'}
-        trailing={
-          <button className="avatar-button" onClick={onOpenProfile} aria-label="Профиль">
-            {initialsOf(user?.fullName ?? '')}
-          </button>
-        }
-      />
+      <header className="greeting">
+        <div className="header-main">
+          <p className="greeting-hello">{greeting()},</p>
+          <h1 className="greeting-name">{user?.fullName ?? ''}</h1>
+        </div>
+        <button className="avatar-button" onClick={onOpenProfile} aria-label="Профиль">
+          {initialsOf(user?.fullName ?? '')}
+        </button>
+      </header>
       <Gap size={3} />
 
       <CheckInCard record={todayRecord} busy={leaving} onScan={checkIn} onCheckOut={checkOut} />

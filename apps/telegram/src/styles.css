@@ -280,7 +280,7 @@ p {
 }
 
 .header-title {
-  font-size: 34px;
+  font-size: 30px;
   font-weight: 800;
   letter-spacing: -0.8px;
   line-height: 1.1;
@@ -956,4 +956,25 @@ p {
 
 .tone-danger-text {
   color: var(--danger);
+}
+
+/* ---------- шапка главной ---------- */
+
+.greeting {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.greeting-hello {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.greeting-name {
+  margin: 2px 0 0;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+  line-height: 1.15;
 }
