@@ -32,6 +32,12 @@ interface TelegramWebApp {
     getItem(key: string, callback: (error: string | null, value?: string) => void): void;
     setItem(key: string, value: string, callback?: (error: string | null) => void): void;
   };
+  BackButton?: {
+    show(): void;
+    hide(): void;
+    onClick(handler: () => void): void;
+    offClick(handler: () => void): void;
+  };
   enableClosingConfirmation?: () => void;
   disableClosingConfirmation?: () => void;
   HapticFeedback?: {
@@ -122,6 +128,22 @@ export function cloudSet(key: string, value: string): void {
   } catch {
     // Не сохранилось в облаке — останется на этом устройстве.
   }
+}
+
+/**
+ * Системная кнопка «Назад» в шапке Telegram — для вложенных экранов.
+ * Возвращает отписку: экран при закрытии прячет кнопку за собой.
+ */
+export function showBackButton(onBack: () => void): () => void {
+  const button = webApp()?.BackButton;
+  if (!button) return () => undefined;
+
+  button.onClick(onBack);
+  button.show();
+  return () => {
+    button.offClick(onBack);
+    button.hide();
+  };
 }
 
 export function haptic(type: 'error' | 'success' | 'warning'): void {
