@@ -1,5 +1,5 @@
 import { formatMinor } from '@corpsol/shared';
-import React from 'react';
+import React, { useState } from 'react';
 
 import { api, type Offer } from '../api';
 import { formatDate, monthRange } from '../format';
@@ -56,16 +56,58 @@ export function Offers() {
               />
             </Panel>
             <Gap size={3} />
-            <SectionLabel>Все сделки</SectionLabel>
-            <Panel>
-              {sorted.map((offer) => (
-                <OfferRow key={offer.id} offer={offer} />
-              ))}
-            </Panel>
+            <OfferList offers={sorted} />
           </>
         );
       }}
     </PeriodScreen>
+  );
+}
+
+type Filter = 'all' | 'accepted' | 'sent' | 'lost';
+
+const FILTERS: Array<{ key: Filter; label: string; match(offer: Offer): boolean }> = [
+  { key: 'all', label: 'Все', match: () => true },
+  { key: 'accepted', label: 'Приняты', match: (offer) => offer.status === 'ACCEPTED' },
+  { key: 'sent', label: 'В работе', match: (offer) => offer.status === 'SENT' },
+  { key: 'lost', label: 'Не состоялись', match: (offer) => offer.status === 'REJECTED' || offer.status === 'EXPIRED' },
+];
+
+/**
+ * Список с фильтром чипами: «что у меня в работе» — частый вопрос,
+ * и листать ради него принятые и отказы незачем.
+ */
+function OfferList({ offers }: { offers: Offer[] }) {
+  const [filter, setFilter] = useState<Filter>('all');
+  const active = FILTERS.find((item) => item.key === filter)!;
+  const shown = offers.filter(active.match);
+
+  return (
+    <>
+      <div className="chips" role="tablist" aria-label="Фильтр сделок">
+        {FILTERS.map((item) => {
+          const count = offers.filter(item.match).length;
+          return (
+            <button
+              key={item.key}
+              role="tab"
+              aria-selected={filter === item.key}
+              className={`chip ${filter === item.key ? 'is-active' : ''}`}
+              onClick={() => setFilter(item.key)}
+              disabled={count === 0 && item.key !== 'all'}
+            >
+              {item.label} <span className="chip-count">{count}</span>
+            </button>
+          );
+        })}
+      </div>
+      <Gap size={1} />
+      <Panel>
+        {shown.map((offer) => (
+          <OfferRow key={offer.id} offer={offer} />
+        ))}
+      </Panel>
+    </>
   );
 }
 
