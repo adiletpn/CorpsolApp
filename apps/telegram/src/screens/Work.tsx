@@ -193,7 +193,7 @@ function EntryRow({ entry, isSelf }: { entry: RankedEntry; isSelf: boolean }) {
  * Тройка лидеров на пьедестале: второй, первый, третий — как на
  * награждении. Место подписано числом, а не только цветом медали.
  */
-function Podium({ entries, selfId }: { entries: RankedEntry[]; selfId?: string }) {
+export function Podium({ entries, selfId }: { entries: RankedEntry[]; selfId?: string }) {
   const order = [entries[1], entries[0], entries[2]].filter((entry): entry is RankedEntry => Boolean(entry));
 
   return (
