@@ -152,6 +152,7 @@ Widget _attendanceRow(BuildContext context, AttendanceRecord record) {
     AttendanceStatus.absent => 'Не отмечался',
     AttendanceStatus.dayOff => 'Выходной',
     AttendanceStatus.excused => 'Уважительная',
+    AttendanceStatus.notCounted => 'Мало дозвонов',
     AttendanceStatus.onTime =>
       record.checkOutAt == null ? null : 'до ${formatTime(record.checkOutAt!)}',
   };
@@ -329,7 +330,9 @@ class _MonthSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = context.palette;
     final late = _count(AttendanceStatus.late);
-    final absent = _count(AttendanceStatus.absent);
+    // Не засчитанный по дозвонам день в расчёте идёт как прогул.
+    final absent =
+        _count(AttendanceStatus.absent) + _count(AttendanceStatus.notCounted);
 
     return FigureRow(
       items: [

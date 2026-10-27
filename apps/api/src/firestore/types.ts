@@ -105,7 +105,26 @@ export interface DeviceRequestDoc {
   resolveNote: string | null;
 }
 
-export type AttendanceStatus = 'ON_TIME' | 'LATE' | 'ABSENT' | 'DAY_OFF' | 'EXCUSED';
+export type AttendanceStatus =
+  | 'ON_TIME'
+  | 'LATE'
+  | 'ABSENT'
+  | 'DAY_OFF'
+  | 'EXCUSED'
+  | 'NOT_COUNTED';
+
+/**
+ * Итог проверки дозвонов за день. Хранится в самой записи, чтобы
+ * в табеле было видно, почему день не засчитан, а не только что.
+ */
+export interface CallCheck {
+  outbound: number;
+  answered: number;
+  rateBps: number;
+  /** Статус по приходу до проверки — к нему день вернётся, если звонки догрузят. */
+  statusBefore: 'ON_TIME' | 'LATE';
+  checkedAt: Timestamp;
+}
 /**
  * Откуда взялась запись в табеле.
  *
@@ -140,6 +159,8 @@ export interface AttendanceDoc {
 
   adjustedBy: string | null;
   adjustNote: string | null;
+  /** Есть только у дней, которые прошли проверку дозвонов. */
+  callCheck?: CallCheck;
   createdAt: Timestamp;
 }
 

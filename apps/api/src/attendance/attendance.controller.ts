@@ -16,8 +16,15 @@ import { RequirePermissions } from '../common/decorators/require-permissions.dec
 import { AttendanceService } from './attendance.service';
 import { AttendanceAdjustmentService } from './adjustment.service';
 import { AbsenceService } from './absence.service';
+import { CallRateService } from './call-rate.service';
 import { TerminalService } from './terminal.service';
-import { AdjustAttendanceDto, CheckInDto, CheckOutDto, MarkAbsencesDto } from './dto';
+import {
+  AdjustAttendanceDto,
+  CheckCallRateDto,
+  CheckInDto,
+  CheckOutDto,
+  MarkAbsencesDto,
+} from './dto';
 
 @Controller('attendance')
 export class AttendanceController {
@@ -26,6 +33,7 @@ export class AttendanceController {
     private readonly terminals: TerminalService,
     private readonly adjustments: AttendanceAdjustmentService,
     private readonly absences: AbsenceService,
+    private readonly callRate: CallRateService,
   ) {}
 
   /**
@@ -43,6 +51,22 @@ export class AttendanceController {
     @Body() dto: MarkAbsencesDto,
   ) {
     return this.absences.markForOrganization(user.organizationId, dto.workDate);
+  }
+
+  /**
+   * Перепроверить дозвоны за день.
+   *
+   * Нужен после ручной загрузки выгрузки Kcell: ночная проверка видела
+   * день без звонков, и с полными данными он может вернуться в зачёт.
+   */
+  @Post('check-call-rate')
+  @HttpCode(200)
+  @RequirePermissions('attendance.adjust')
+  checkCallRate(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CheckCallRateDto,
+  ) {
+    return this.callRate.checkForOrganization(user.organizationId, dto.workDate);
   }
 
   @Post('check-in')

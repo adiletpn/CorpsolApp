@@ -117,6 +117,18 @@ describe('сводка табеля для расчёта', () => {
     expect(result.penaltyMinor).toBe(700_000);
   });
 
+  it('не засчитанный по дозвонам день штрафуется как прогул', async () => {
+    const { firestore, service } = setup();
+
+    seedDay(firestore, '01', 'NOT_COUNTED');
+    seedRule(firestore, 'absence', { kind: 'ABSENCE_PENALTY', amountMinor: 500_000 });
+
+    const result = await service.calculate(director, USER, PERIOD.start, PERIOD.end);
+
+    // Пришёл, но не дозванивался — день не отработан.
+    expect(result.penaltyMinor).toBe(500_000);
+  });
+
   it('не берёт дни за пределами периода', async () => {
     const { firestore, service } = setup();
 

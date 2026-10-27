@@ -7,6 +7,7 @@ import { TerminalsController } from './terminals.controller';
 import { TerminalsService } from './terminals.service';
 import { AttendanceAdjustmentService } from './adjustment.service';
 import { AbsenceService } from './absence.service';
+import { CallRateService } from './call-rate.service';
 
 @Module({
   controllers: [AttendanceController, TerminalsController],
@@ -16,6 +17,7 @@ import { AbsenceService } from './absence.service';
     TerminalsService,
     AttendanceAdjustmentService,
     AbsenceService,
+    CallRateService,
   ],
   exports: [AttendanceService, TerminalService, TerminalsService, AbsenceService],
 })

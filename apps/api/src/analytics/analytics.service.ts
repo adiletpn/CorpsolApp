@@ -372,7 +372,10 @@ export class AnalyticsService {
       const summary = byUser.get(record.userId) ?? this.emptySummary();
 
       if (record.status === 'ON_TIME') summary.onTimeDays += 1;
-      if (record.status === 'ABSENT') summary.absentDays += 1;
+      // Не засчитанный по дозвонам день не отработан — штраф как за прогул.
+      if (record.status === 'ABSENT' || record.status === 'NOT_COUNTED') {
+        summary.absentDays += 1;
+      }
       if (record.status === 'LATE') {
         summary.lateDays += 1;
         summary.totalLateMinutes += record.lateMinutes;

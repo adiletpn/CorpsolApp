@@ -12,6 +12,7 @@ export const NOTIFICATION_KINDS = [
   'device_rebind_rejected',
   'payroll_ready',
   'plan_at_risk',
+  'day_not_counted',
 ] as const;
 
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
@@ -23,6 +24,7 @@ export const NOTIFICATION_TITLES: Record<NotificationKind, string> = {
   device_rebind_rejected: 'Смена телефона отклонена',
   payroll_ready: 'Расчёт за месяц готов',
   plan_at_risk: 'План под угрозой',
+  day_not_counted: 'День не засчитан',
 };
 
 /**
@@ -37,4 +39,5 @@ export const NOTIFICATION_NEEDS_ACTION: Record<NotificationKind, boolean> = {
   device_rebind_rejected: false,
   payroll_ready: false,
   plan_at_risk: true,
+  day_not_counted: false,
 };

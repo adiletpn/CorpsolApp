@@ -9,6 +9,7 @@ String attendanceStatusLabel(AttendanceStatus status) => switch (status) {
   AttendanceStatus.absent => 'Отсутствие',
   AttendanceStatus.dayOff => 'Выходной',
   AttendanceStatus.excused => 'Уважительная',
+  AttendanceStatus.notCounted => 'Не засчитан',
 };
 
 Color attendanceStatusColor(AttendanceStatus status, AppPalette palette) =>
@@ -18,6 +19,7 @@ Color attendanceStatusColor(AttendanceStatus status, AppPalette palette) =>
       AttendanceStatus.absent => palette.danger,
       AttendanceStatus.dayOff => palette.textMuted,
       AttendanceStatus.excused => palette.accent,
+      AttendanceStatus.notCounted => palette.danger,
     };
 
 /// Приписка к статусу для дней, которые сотрудник не отмечал сам.

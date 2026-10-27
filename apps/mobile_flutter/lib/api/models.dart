@@ -43,13 +43,14 @@ class AuthUser {
   );
 }
 
-enum AttendanceStatus { onTime, late, absent, dayOff, excused }
+enum AttendanceStatus { onTime, late, absent, dayOff, excused, notCounted }
 
 AttendanceStatus attendanceStatusFromJson(String value) => switch (value) {
   'LATE' => AttendanceStatus.late,
   'ABSENT' => AttendanceStatus.absent,
   'DAY_OFF' => AttendanceStatus.dayOff,
   'EXCUSED' => AttendanceStatus.excused,
+  'NOT_COUNTED' => AttendanceStatus.notCounted,
   _ => AttendanceStatus.onTime,
 };
 

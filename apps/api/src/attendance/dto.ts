@@ -86,3 +86,9 @@ export class MarkAbsencesDto {
   @Matches(DATE_KEY, { message: 'workDate должен быть в формате ГГГГ-ММ-ДД' })
   workDate!: string;
 }
+
+export class CheckCallRateDto {
+  /** День, за который проверить дозвоны, «ГГГГ-ММ-ДД». */
+  @Matches(DATE_KEY, { message: 'workDate должен быть в формате ГГГГ-ММ-ДД' })
+  workDate!: string;
+}

@@ -71,7 +71,14 @@ export const CHECK_IN_REJECTION_MESSAGES: Record<CheckInRejection, string> = {
   employee_inactive: 'Учётная запись неактивна.',
 };
 
-export const ATTENDANCE_STATUSES = ['ON_TIME', 'LATE', 'ABSENT', 'DAY_OFF', 'EXCUSED'] as const;
+export const ATTENDANCE_STATUSES = [
+  'ON_TIME',
+  'LATE',
+  'ABSENT',
+  'DAY_OFF',
+  'EXCUSED',
+  'NOT_COUNTED',
+] as const;
 export type AttendanceStatus = (typeof ATTENDANCE_STATUSES)[number];
 
 export interface CheckInRequest {
@@ -98,7 +105,16 @@ export const ATTENDANCE_STATUS_LABELS: Record<AttendanceStatus, string> = {
   ABSENT: 'Прогул',
   DAY_OFF: 'Выходной',
   EXCUSED: 'Уважительная причина',
+  NOT_COUNTED: 'Не засчитан',
 };
+
+/**
+ * Нижняя граница доли дозвонов по исходящим за день, в базисных пунктах.
+ *
+ * Менеджер, который пришёл, но не дозванивается до клиентов, день
+ * не отработал: такой день не засчитывается и в расчёте идёт как прогул.
+ */
+export const MIN_DAILY_CALL_RATE_BPS = 7500;
 
 /** Чем поставлена отметка. В выгрузке это главный признак ручного вмешательства. */
 export const CHECK_METHOD_LABELS: Record<string, string> = {
