@@ -1206,3 +1206,126 @@ p {
 .calendar .panel-row {
   border-top: 1px solid var(--border);
 }
+
+/* ---------- графики ---------- */
+
+.rings {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1px;
+  background: var(--border);
+}
+
+.ring {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 14px;
+  background: var(--surface);
+}
+
+.ring svg {
+  flex-shrink: 0;
+}
+
+.ring-track {
+  fill: none;
+  stroke: var(--surface-raised);
+}
+
+.ring-value {
+  fill: none;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.6s ease;
+}
+
+/* Процент — в центре кольца, цветом текста, а не метки. */
+.ring-percent {
+  position: absolute;
+  left: 14px;
+  width: 76px;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.ring figcaption {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ring-label {
+  font-size: 14.5px;
+  font-weight: 600;
+}
+
+.ring-caption {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 400;
+}
+
+.stacked {
+  padding: 16px;
+}
+
+.stacked-bar {
+  display: flex;
+  gap: 2px;
+  height: 12px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--surface-raised);
+}
+
+.stacked-segment {
+  min-width: 4px;
+  border-radius: 4px;
+}
+
+/* Штриховка — второй признак для пары, которую путают при дальтонизме. */
+.is-striped {
+  background-image: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--surface) 55%, transparent) 0 3px,
+    transparent 3px 6px
+  ) !important;
+}
+
+.stacked-legend {
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stacked-legend li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.stacked-swatch {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  border-radius: 3px;
+}
+
+.stacked-label {
+  flex: 1;
+  color: var(--text-muted);
+}
+
+.stacked-value {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
