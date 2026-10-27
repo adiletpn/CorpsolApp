@@ -8,7 +8,7 @@ import { Profile } from './screens/Profile';
 import { Work } from './screens/Work';
 import { useSession } from './session';
 import { tap } from './telegram';
-import { ErrorRetry, Icon, Spinner } from './ui';
+import { ErrorRetry, Icon, Splash } from './ui';
 
 /**
  * Пять вкладок, как у Telegram: шесть на плавающей панели читались
@@ -33,10 +33,9 @@ export function App() {
 
   return (
     <>
-      {/* Фон рисуется один раз под всеми вкладками: пятна не перескакивают. */}
-      <div className="ambient" />
+      {/* Фон — в index.html: он виден уже на заставке и не перерисовывается. */}
       {loading ? (
-        <Spinner />
+        <Splash />
       ) : !user ? (
         <Login />
       ) : !FIELD_ROLES.includes(user.role) ? (

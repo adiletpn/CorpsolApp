@@ -19,7 +19,15 @@
     />
   </head>
   <body>
-    <div id="root"></div>
+    <div class="ambient"></div>
+    <!-- Заставка до загрузки скриптов; React заменит её той же разметкой. -->
+    <div id="root">
+      <div class="splash">
+        <div class="splash-mark">C</div>
+        <div class="splash-name">CorpSol</div>
+        <div class="splash-bar"></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

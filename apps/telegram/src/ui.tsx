@@ -175,3 +175,17 @@ export const tone = {
   faint: 'var(--text-faint)',
   muted: 'var(--text-muted)',
 };
+
+/**
+ * Заставка, пока открывается сессия. Та же разметка стоит в index.html
+ * до загрузки скриптов — смена одной на другую не видна глазу.
+ */
+export function Splash() {
+  return (
+    <div className="splash">
+      <div className="splash-mark">C</div>
+      <div className="splash-name">CorpSol</div>
+      <div className="splash-bar" />
+    </div>
+  );
+}
