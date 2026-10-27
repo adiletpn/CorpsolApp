@@ -32,12 +32,12 @@ export function Work() {
           api.calls(month.from, month.to),
           api.leaderboard(month.from, month.to),
         ]);
-        return { plans, summary, calls: page.items, board };
+        return { plans, summary, calls: page.items, hasMore: page.nextBefore !== null, board };
       }}
       emptyMessage="Данных за месяц пока нет"
       emptyIcon="insights"
     >
-      {({ plans, summary, calls, board }) => {
+      {({ plans, summary, calls, hasMore, board }) => {
         const department = plans.filter((plan) => plan.scope === 'DEPARTMENT');
         const personal = plans.filter((plan) => plan.scope === 'USER');
         // Свежие сверху: вчерашний звонок нужен чаще, чем первый в месяце.
@@ -104,7 +104,10 @@ export function Work() {
             ) : null}
 
             <Gap size={3} />
-            <SectionLabel>Звонки</SectionLabel>
+            {/* Журнал — первые 40: без пометки казалось бы, что звонков всего столько. */}
+            <SectionLabel trailing={hasMore ? <span>последние {calls.length}</span> : null}>
+              Звонки
+            </SectionLabel>
             <Panel>
               {sorted.length === 0 ? (
                 <PanelRow title="За этот месяц звонков нет" trailing={<RowValue muted>—</RowValue>} />
