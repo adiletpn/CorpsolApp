@@ -5,6 +5,7 @@ import { api, type Call, type Plan, type RankedEntry } from '../api';
 import { formatDate, formatMoneyShort, initialsOf, monthRange, percent, timeLabel } from '../format';
 import { RingMeter } from '../charts';
 import { PeriodScreen } from '../PeriodScreen';
+import { SectionNav } from '../SectionNav';
 import { useSession } from '../session';
 import { Figure, FigureRow, Gap, HeroFigure, Icon, Panel, PanelRow, RowValue, SectionLabel, tone } from '../ui';
 
@@ -46,6 +47,14 @@ export function Work() {
 
         return (
           <>
+            <SectionNav
+              sections={[
+                ...(department.length + personal.length > 0 ? [{ id: 'work-plans', label: 'Планы' }] : []),
+                ...(board.entries.length > 0 ? [{ id: 'work-rating', label: 'Рейтинг' }] : []),
+                { id: 'work-calls', label: 'Звонки' },
+              ]}
+            />
+            <Gap size={1} />
             <HeroFigure
               label="Дозвонились"
               value={`${percent(summary.answered, summary.total)}%`}
@@ -61,7 +70,7 @@ export function Work() {
             {department.length > 0 ? (
               <>
                 <Gap size={3} />
-                <SectionLabel>План отдела</SectionLabel>
+                <SectionLabel id="work-plans">План отдела</SectionLabel>
                 <PlanRings plans={department} />
               </>
             ) : null}
@@ -69,7 +78,7 @@ export function Work() {
             {personal.length > 0 ? (
               <>
                 <Gap size={3} />
-                <SectionLabel>Ваш план</SectionLabel>
+                <SectionLabel id={department.length > 0 ? undefined : 'work-plans'}>Ваш план</SectionLabel>
                 <PlanRings plans={personal} />
               </>
             ) : null}
@@ -78,6 +87,7 @@ export function Work() {
               <>
                 <Gap size={3} />
                 <SectionLabel
+                  id="work-rating"
                   trailing={
                     board.self ? (
                       <span>
@@ -99,7 +109,7 @@ export function Work() {
 
             <Gap size={3} />
             {/* Журнал — первые 40: без пометки казалось бы, что звонков всего столько. */}
-            <SectionLabel trailing={hasMore ? <span>последние {calls.length}</span> : null}>
+            <SectionLabel id="work-calls" trailing={hasMore ? <span>последние {calls.length}</span> : null}>
               Звонки
             </SectionLabel>
             <Panel>
