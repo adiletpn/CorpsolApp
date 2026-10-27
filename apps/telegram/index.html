@@ -12,9 +12,13 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!-- Иконки — тот же набор Material, что во Flutter-приложении. -->
+    <!--
+      Иконки — тот же набор Material, что во Flutter-приложении, но только
+      нужные: icon_names урезает шрифт с 320 КБ до 12. Новую иконку надо
+      дописать в список, иначе вместо неё покажется её название.
+    -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400..500,0..1,0&icon_names=account_balance_wallet,arrow_forward,call,check,check_circle,cloud_off,error,handshake,headset_mic,home,inbox,insights,location_searching,logout,payments,person,phonelink_lock,qr_code_scanner,visibility,visibility_off&display=block"
       rel="stylesheet"
     />
   </head>
