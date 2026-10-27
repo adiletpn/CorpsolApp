@@ -3,13 +3,11 @@ import { createRoot } from 'react-dom/client';
 
 import { App } from './App';
 import { SessionProvider } from './session';
-import { colorScheme, prepareWindow } from './telegram';
+import { applyTheme, savedTheme } from './theme';
 import './styles.css';
 
-// Тема — от Telegram: светлый клиент со вспышкой тёмного окна выглядит как сбой.
-const scheme = colorScheme();
-document.documentElement.dataset.theme = scheme;
-prepareWindow(scheme === 'light' ? '#f4f4f7' : '#0b0b0f');
+// Тема — до первого кадра: светлый клиент со вспышкой тёмного окна выглядит как сбой.
+applyTheme(savedTheme());
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

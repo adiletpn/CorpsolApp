@@ -16,19 +16,10 @@ export function monthRange(date = new Date()): { from: string; to: string } {
   return { from: dateKey(first), to: dateKey(last) };
 }
 
-export function monthTitle(date = new Date()): string {
-  const title = date.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
-  return title.charAt(0).toUpperCase() + title.slice(1).replace(' г.', '');
-}
-
-/** «15 сент., вт» — для строк табеля. */
-export function dayLabel(key: string): string {
-  const [year, month, day] = key.split('-').map(Number);
-  return new Date(year, month - 1, day).toLocaleDateString('ru-RU', {
-    day: 'numeric',
-    month: 'short',
-    weekday: 'short',
-  });
+/** «27 октября» — как formatDate во Flutter. */
+export function formatDate(key: string): string {
+  const [year, month, day] = key.slice(0, 10).split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
 }
 
 export function timeLabel(iso: string | null): string {
@@ -36,32 +27,10 @@ export function timeLabel(iso: string | null): string {
   return new Date(iso).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 }
 
-export function todayTitle(date = new Date()): string {
-  const title = date.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
-  return title.charAt(0).toUpperCase() + title.slice(1);
-}
-
 /** Доля в процентах вниз до целого: 74,9% — это ещё не 75%. */
 export function percent(part: number, whole: number): number {
   if (whole <= 0) return 0;
   return Math.floor((part * 100) / whole);
-}
-
-export function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => word[0]?.toUpperCase())
-    .join('');
-}
-
-export function greeting(date = new Date()): string {
-  const hour = date.getHours();
-  if (hour < 5) return 'Доброй ночи';
-  if (hour < 12) return 'Доброе утро';
-  if (hour < 18) return 'Добрый день';
-  return 'Добрый вечер';
 }
 
 export function plural(value: number, one: string, few: string, many: string): string {

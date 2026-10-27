@@ -126,6 +126,16 @@ export interface CallsSummary {
   outboundAnswered: number;
 }
 
+export interface Call {
+  id: string;
+  clientPhone: string;
+  direction: 'INBOUND' | 'OUTBOUND';
+  status: 'ANSWERED' | 'NO_ANSWER' | 'BUSY' | 'FAILED';
+  callDate: string;
+  startedAt: string;
+  talkSeconds: number;
+}
+
 export interface Plan {
   id: string;
   scope: PlanScope;
@@ -142,6 +152,7 @@ export interface Plan {
 export interface Payroll {
   id: string;
   periodStart: string;
+  periodEnd: string;
   baseSalaryMinor: number;
   bonusMinor: number;
   penaltyMinor: number;
@@ -197,6 +208,7 @@ export const api = {
 
   attendance: (from: string, to: string) =>
     request<AttendanceRecord[]>(`/attendance/me?from=${from}&to=${to}`),
+  calls: (from: string, to: string) => request<Call[]>(`/calls?from=${from}&to=${to}`),
   callsSummary: (from: string, to: string) =>
     request<CallsSummary>(`/calls/summary?from=${from}&to=${to}`),
   plans: (periodStart: string) => request<Plan[]>(`/plans?periodStart=${periodStart}`),

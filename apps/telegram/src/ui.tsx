@@ -1,120 +1,177 @@
 import React from 'react';
 
-/** Общие элементы экранов. Оформление — в styles.css, здесь только разметка. */
+/**
+ * Элементы экранов — веб-двойники виджетов приложения на Flutter
+ * (widgets/ui.dart, figures.dart, list.dart). Названия те же, чтобы
+ * правку в одном легко было найти в другом.
+ */
 
-export function Card({
+/** Иконка из набора Material Symbols — того же, что у Flutter. */
+export function Icon({ name, style }: { name: string; style?: React.CSSProperties }) {
+  return (
+    <span className="icon" aria-hidden="true" style={style}>
+      {name}
+    </span>
+  );
+}
+
+export function ScreenHeader({
   title,
-  action,
-  children,
-  className = '',
+  subtitle,
+  trailing,
 }: {
-  title?: string;
-  action?: React.ReactNode;
-  children: React.ReactNode;
-  className?: string;
+  title: string;
+  subtitle?: string;
+  trailing?: React.ReactNode;
 }) {
   return (
-    <section className={`card ${className}`}>
-      {title || action ? (
-        <header className="card-header">
-          {title ? <h2 className="card-title">{title}</h2> : <span />}
-          {action}
-        </header>
-      ) : null}
-      {children}
+    <header className="header">
+      <div className="header-main">
+        <h1 className="header-title">{title}</h1>
+        {subtitle ? <p className="header-subtitle">{subtitle}</p> : null}
+      </div>
+      {trailing}
+    </header>
+  );
+}
+
+/** Главное число экрана на градиенте. Одно на экран. */
+export function HeroFigure({
+  label,
+  value,
+  caption,
+  icon,
+}: {
+  label: string;
+  value: string;
+  caption?: string;
+  icon?: string;
+}) {
+  return (
+    <section className="hero">
+      <div className="hero-top">
+        <span className="hero-label">{label}</span>
+        {icon ? <Icon name={icon} /> : null}
+      </div>
+      <div className="hero-value">{value}</div>
+      {caption ? <p className="hero-caption">{caption}</p> : null}
     </section>
   );
 }
 
-export function Figure({
-  value,
-  label,
-  tone,
-}: {
-  value: string;
-  label: string;
-  tone?: 'success' | 'warning' | 'danger';
-}) {
+/** Ряд чисел одной группой, разделённых волосяными линиями. */
+export function FigureRow({ children }: { children: React.ReactNode }) {
+  return <div className="figure-row">{children}</div>;
+}
+
+/** Цвет даётся только значимым числам: опозданиям, прогулам. */
+export function Figure({ value, label, color }: { value: string; label: string; color?: string }) {
   return (
     <div className="figure">
-      <div className={`figure-value ${tone ? `tone-${tone}` : ''}`}>{value}</div>
+      <div className="figure-value" style={color ? { color } : undefined}>
+        {value}
+      </div>
       <div className="figure-label">{label}</div>
     </div>
   );
 }
 
-export function Progress({ ratio, tone }: { ratio: number; tone?: 'success' | 'warning' | 'danger' }) {
-  const width = Math.max(0, Math.min(1, ratio)) * 100;
+export function SectionLabel({ children, trailing }: { children: React.ReactNode; trailing?: React.ReactNode }) {
   return (
-    <div className="progress">
-      <div className={`progress-bar ${tone ? `bg-${tone}` : ''}`} style={{ width: `${width}%` }} />
+    <div className="section-label">
+      <span>{children}</span>
+      {trailing}
     </div>
   );
 }
 
-export function Badge({
-  children,
-  tone = 'neutral',
-}: {
-  children: React.ReactNode;
-  tone?: 'neutral' | 'accent' | 'success' | 'warning' | 'danger';
-}) {
-  return <span className={`badge badge-${tone}`}>{children}</span>;
+/** Одна рамка на группу строк, а не на каждую строку. */
+export function Panel({ children }: { children: React.ReactNode }) {
+  return <div className="panel">{children}</div>;
 }
 
-export function Row({
+export function PanelRow({
   title,
   subtitle,
   trailing,
-  leading,
+  accent,
 }: {
   title: React.ReactNode;
   subtitle?: React.ReactNode;
   trailing?: React.ReactNode;
-  leading?: React.ReactNode;
+  /** Цветная засечка слева — только на отклонениях. */
+  accent?: string;
 }) {
   return (
-    <div className="row">
-      {leading ? <div className="row-leading">{leading}</div> : null}
-      <div className="row-main">
-        <div className="row-title">{title}</div>
-        {subtitle ? <div className="row-subtitle">{subtitle}</div> : null}
+    <div className="panel-row">
+      {accent ? <span className="panel-row-accent" style={{ background: accent }} /> : null}
+      <div className="panel-row-main">
+        <div className="panel-row-title">{title}</div>
+        {subtitle ? <div className="panel-row-subtitle">{subtitle}</div> : null}
       </div>
-      {trailing ? <div className="row-trailing">{trailing}</div> : null}
+      {trailing}
     </div>
   );
 }
 
-export function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="empty">{children}</p>;
-}
-
-export function Skeleton({ lines = 3 }: { lines?: number }) {
+export function RowValue({ children, color, muted }: { children: React.ReactNode; color?: string; muted?: boolean }) {
   return (
-    <div className="skeleton-group" aria-label="Загрузка">
-      {Array.from({ length: lines }, (_, index) => (
-        <div key={index} className="skeleton" />
-      ))}
-    </div>
+    <span className={`row-value ${muted ? 'is-muted' : ''}`} style={color ? { color } : undefined}>
+      {children}
+    </span>
   );
 }
 
-export function LoadError({ message, onRetry }: { message: string; onRetry(): void }) {
+export function EmptyState({ message, icon = 'inbox' }: { message: string; icon?: string }) {
   return (
-    <div className="load-error">
+    <div className="state">
+      <Icon name={icon} />
       <p>{message}</p>
-      <button className="button button-ghost" onClick={onRetry}>
+    </div>
+  );
+}
+
+export function ErrorRetry({ message, onRetry }: { message: string; onRetry(): void }) {
+  return (
+    <div className="state is-error">
+      <Icon name="cloud_off" />
+      <p>{message}</p>
+      <button className="filled-button is-primary" onClick={onRetry}>
         Повторить
       </button>
     </div>
   );
 }
 
-export function ScreenTitle({ title, subtitle }: { title: string; subtitle?: string }) {
+export function Spinner() {
+  return <div className="spinner" aria-label="Загрузка" />;
+}
+
+export function Message({
+  tone,
+  icon,
+  children,
+}: {
+  tone: 'danger' | 'success' | 'muted';
+  icon: string;
+  children: React.ReactNode;
+}) {
   return (
-    <header className="screen-title">
-      <h1>{title}</h1>
-      {subtitle ? <p>{subtitle}</p> : null}
-    </header>
+    <div className={`message is-${tone}`}>
+      <Icon name={icon} />
+      <div>{children}</div>
+    </div>
   );
 }
+
+export const Gap = ({ size = 2 }: { size?: 1 | 2 | 3 }) => <div className={`gap-${size}`} />;
+
+/** Цвета палитры для засечек и чисел — те же токены, что в styles.css. */
+export const tone = {
+  accent: 'var(--accent)',
+  success: 'var(--success)',
+  warning: 'var(--warning)',
+  danger: 'var(--danger)',
+  faint: 'var(--text-faint)',
+  muted: 'var(--text-muted)',
+};
