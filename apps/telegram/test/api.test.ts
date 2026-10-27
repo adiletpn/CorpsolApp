@@ -36,3 +36,17 @@ describe('ошибки сервера по-человечески', () => {
     expect(toError(418, {}).message).toBe('Не удалось выполнить запрос');
   });
 });
+
+describe('без интернета', () => {
+  it('сотрудник видит причину по-русски, а не «Failed to fetch»', async () => {
+    const { request } = await import('../src/api');
+    vi.stubGlobal('fetch', () => Promise.reject(new TypeError('Failed to fetch')));
+
+    await expect(request('/attendance/me')).rejects.toMatchObject({
+      code: 'offline',
+      message: 'Нет связи с интернетом. Проверьте сеть и повторите.',
+    });
+
+    vi.unstubAllGlobals();
+  });
+});

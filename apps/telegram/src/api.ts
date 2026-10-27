@@ -43,6 +43,8 @@ export async function request<T>(
 ): Promise<T> {
   const token = await auth.currentUser?.getIdToken();
 
+  // Без сети fetch бросает «Failed to fetch» или «Load failed» — по-английски
+  // и без подсказки. Сотруднику нужно знать, что дело в интернете.
   const response = await fetch(`${API_URL}${path}`, {
     method: init.method ?? 'GET',
     headers: {
@@ -51,6 +53,8 @@ export async function request<T>(
       ...telegramHeaders(),
     },
     body: init.body === undefined ? undefined : JSON.stringify(init.body),
+  }).catch(() => {
+    throw new ApiError(0, 'offline', 'Нет связи с интернетом. Проверьте сеть и повторите.');
   });
 
   const text = await response.text();
