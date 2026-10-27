@@ -1538,3 +1538,58 @@ p {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------- строка разделов экрана ---------- */
+
+/*
+ * Закреплена вверху и стеклянная, как нижняя панель: содержимое
+ * проезжает под ней размытым. Выходит за поля экрана, чтобы стекло
+ * шло от края до края.
+ */
+.section-nav {
+  position: sticky;
+  top: 0;
+  z-index: 9;
+  margin: 0 -16px;
+  padding: 10px 0;
+  background: var(--glass-fill);
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.section-nav-chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 0 16px;
+}
+
+.section-nav-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.section-nav-chip {
+  flex-shrink: 0;
+  padding: 7px 14px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.section-nav-chip.is-active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+
+/* Заголовок раздела останавливается под строкой, а не за ней. */
+.section-label[id],
+.anchor {
+  scroll-margin-top: 64px;
+}
