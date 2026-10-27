@@ -1,6 +1,11 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { applyAppearance, savedAppearance, saveAppearance } from '../src/theme';
+import {
+  applyAppearance,
+  savedAppearance,
+  saveAppearance,
+  syncAppearanceFromCloud,
+} from '../src/theme';
 
 beforeEach(() => {
   localStorage.clear();
@@ -56,5 +61,48 @@ describe('цвет окна', () => {
 
     expect(meta.getAttribute('content')).toBe('#f5f0e6');
     meta.remove();
+  });
+});
+
+describe('оформление на всех устройствах', () => {
+  const cloud = new Map<string, string>();
+
+  beforeEach(() => {
+    cloud.clear();
+    window.Telegram = {
+      WebApp: {
+        initData: 'query_id=1',
+        colorScheme: 'dark',
+        ready() {},
+        expand() {},
+        setHeaderColor() {},
+        setBackgroundColor() {},
+        CloudStorage: {
+          getItem: (key: string, done: (error: string | null, value?: string) => void) =>
+            done(null, cloud.get(key) ?? ''),
+          setItem: (key: string, value: string) => void cloud.set(key, value),
+        },
+      },
+    } as unknown as Window['Telegram'];
+  });
+
+  afterEach(() => {
+    delete window.Telegram;
+  });
+
+  it('выбор уходит в облако Telegram', () => {
+    saveAppearance({ theme: 'midnight', accent: 'rose' });
+
+    expect(JSON.parse(cloud.get('corpsol.appearance')!)).toEqual({ theme: 'midnight', accent: 'rose' });
+  });
+
+  it('выбор с другого устройства применяется при запуске', async () => {
+    // На телефоне выбрали «Полночь», на Mac локально ничего нет.
+    cloud.set('corpsol.appearance', JSON.stringify({ theme: 'midnight', accent: 'ocean' }));
+
+    await syncAppearanceFromCloud();
+
+    expect(document.documentElement.dataset.theme).toBe('midnight');
+    expect(savedAppearance()).toEqual({ theme: 'midnight', accent: 'ocean' });
   });
 });

@@ -28,6 +28,10 @@ interface TelegramWebApp {
   showScanQrPopup(params: { text?: string }, callback: (text: string) => boolean | void): void;
   closeScanQrPopup(): void;
   showAlert(message: string): void;
+  CloudStorage?: {
+    getItem(key: string, callback: (error: string | null, value?: string) => void): void;
+    setItem(key: string, value: string, callback?: (error: string | null) => void): void;
+  };
   enableClosingConfirmation?: () => void;
   disableClosingConfirmation?: () => void;
   HapticFeedback?: {
@@ -94,6 +98,30 @@ export function confirmClosing(enabled: boolean): void {
   const app = webApp();
   if (enabled) app?.enableClosingConfirmation?.();
   else app?.disableClosingConfirmation?.();
+}
+
+/**
+ * Облачное хранилище Telegram: значение видно на всех устройствах
+ * пользователя. Вне Telegram или в старом клиенте — тихо ничего.
+ */
+export function cloudGet(key: string): Promise<string | null> {
+  const storage = webApp()?.CloudStorage;
+  if (!storage) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    try {
+      storage.getItem(key, (error, value) => resolve(error ? null : value || null));
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+export function cloudSet(key: string, value: string): void {
+  try {
+    webApp()?.CloudStorage?.setItem(key, value);
+  } catch {
+    // Не сохранилось в облаке — останется на этом устройстве.
+  }
 }
 
 export function haptic(type: 'error' | 'success' | 'warning'): void {

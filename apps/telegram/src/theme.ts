@@ -1,4 +1,4 @@
-import { colorScheme, prepareWindow } from './telegram';
+import { cloudGet, cloudSet, colorScheme, prepareWindow } from './telegram';
 
 /**
  * Оформление: тема и акцентный цвет — как в настройках Mind AI.
@@ -54,9 +54,10 @@ export interface Appearance {
 
 const KEY = 'corpsol.appearance';
 
-export function savedAppearance(): Appearance {
+/** Разбор сохранённого выбора: чужое или испорченное — к умолчаниям. */
+function parse(raw: string | null): Appearance {
   try {
-    const saved = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Partial<Appearance>;
+    const saved = JSON.parse(raw ?? '{}') as Partial<Appearance>;
     return {
       theme: THEMES.includes(saved.theme as ThemeMode) ? (saved.theme as ThemeMode) : 'system',
       accent: ACCENTS.includes(saved.accent as Accent) ? (saved.accent as Accent) : 'brand',
@@ -64,6 +65,34 @@ export function savedAppearance(): Appearance {
   } catch {
     return { theme: 'system', accent: 'brand' };
   }
+}
+
+export function savedAppearance(): Appearance {
+  try {
+    return parse(localStorage.getItem(KEY));
+  } catch {
+    return parse(null);
+  }
+}
+
+/**
+ * Выбор с другого устройства. Локальная копия рисует первый кадр сразу,
+ * а облачная догоняет: выбрал «Полночь» на телефоне — она и на Mac.
+ */
+export async function syncAppearanceFromCloud(): Promise<void> {
+  const raw = await cloudGet(KEY);
+  if (!raw) return;
+
+  const cloud = parse(raw);
+  const local = savedAppearance();
+  if (cloud.theme === local.theme && cloud.accent === local.accent) return;
+
+  try {
+    localStorage.setItem(KEY, JSON.stringify(cloud));
+  } catch {
+    // Применим и без локальной копии.
+  }
+  applyAppearance(cloud);
 }
 
 /** Красит страницу и шапку Telegram под выбранное оформление. */
@@ -77,6 +106,7 @@ export function applyAppearance({ theme, accent }: Appearance): void {
 }
 
 export function saveAppearance(appearance: Appearance): void {
+  cloudSet(KEY, JSON.stringify(appearance));
   try {
     localStorage.setItem(KEY, JSON.stringify(appearance));
   } catch {
