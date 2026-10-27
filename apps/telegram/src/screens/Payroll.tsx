@@ -45,7 +45,7 @@ export function Payroll() {
   );
 }
 
-function PayrollCard({ sheet }: { sheet: PayrollSheet }) {
+export function PayrollCard({ sheet }: { sheet: PayrollSheet }) {
   return (
     <>
       <HeroFigure
