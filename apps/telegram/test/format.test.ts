@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { answeredToPass, dayPasses, monthRange, percent, plural } from '../src/format';
+import {
+  answeredToPass,
+  dayPasses,
+  formatDate,
+  monthRange,
+  percent,
+  plural,
+} from '../src/format';
 
 describe('зачёт дня по дозвонам', () => {
   it('ровно 75% — в зачёте', () => {
@@ -52,5 +59,16 @@ describe('склонение', () => {
 describe('границы месяца', () => {
   it('февраль високосного года', () => {
     expect(monthRange(new Date(2028, 1, 10))).toEqual({ from: '2028-02-01', to: '2028-02-29' });
+  });
+});
+
+describe('дата в строке табеля', () => {
+  it('пишется словами, как во Flutter', () => {
+    expect(formatDate('2026-10-27')).toBe('27 октября');
+  });
+
+  it('принимает и момент с временем', () => {
+    // unlockedAt у наград приходит полным ISO, а не датой.
+    expect(formatDate('2026-10-09T12:00:00.000Z')).toBe('9 октября');
   });
 });
