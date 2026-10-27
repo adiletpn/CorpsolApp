@@ -5,7 +5,7 @@ import { api, type Offer } from '../api';
 import { formatDate, monthRange } from '../format';
 import { StackedBar, chart } from '../charts';
 import { PeriodScreen } from '../PeriodScreen';
-import { Gap, HeroFigure, Panel, PanelRow, RowValue, SectionLabel, tone } from '../ui';
+import { Gap, HeroFigure, Panel, PanelRow, RowValue, tone } from '../ui';
 
 const STATUS_LABELS: Record<Offer['status'], string> = {
   SENT: 'Отправлен',
