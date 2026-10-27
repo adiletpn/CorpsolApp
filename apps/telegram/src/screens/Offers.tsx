@@ -77,7 +77,7 @@ const FILTERS: Array<{ key: Filter; label: string; match(offer: Offer): boolean 
  * Список с фильтром чипами: «что у меня в работе» — частый вопрос,
  * и листать ради него принятые и отказы незачем.
  */
-function OfferList({ offers }: { offers: Offer[] }) {
+export function OfferList({ offers }: { offers: Offer[] }) {
   const [filter, setFilter] = useState<Filter>('all');
   const active = FILTERS.find((item) => item.key === filter)!;
   const shown = offers.filter(active.match);
