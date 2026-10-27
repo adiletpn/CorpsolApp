@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 
 import { Home } from './screens/Home';
-import { Leaderboard } from './screens/Leaderboard';
 import { Login } from './screens/Login';
 import { Offers } from './screens/Offers';
 import { Payroll } from './screens/Payroll';
@@ -12,15 +11,14 @@ import { tap } from './telegram';
 import { ErrorRetry, Icon, Spinner } from './ui';
 
 /**
- * Вкладки — в порядке приложения на Flutter. Награды переехали
- * в профиль: шесть пунктов — предел для плавающей панели.
+ * Пять вкладок, как у Telegram: шесть на плавающей панели читались
+ * мелко и тесно. Рейтинг отдела живёт в «Работе», награды — в профиле.
  */
 const TABS = [
-  { key: 'home', label: 'Приход', icon: 'how_to_reg' },
+  { key: 'home', label: 'Главная', icon: 'home' },
+  { key: 'work', label: 'Работа', icon: 'insights' },
   { key: 'offers', label: 'Сделки', icon: 'handshake' },
   { key: 'payroll', label: 'Зарплата', icon: 'payments' },
-  { key: 'work', label: 'Работа', icon: 'insights' },
-  { key: 'rating', label: 'Рейтинг', icon: 'leaderboard' },
   { key: 'profile', label: 'Профиль', icon: 'person' },
 ] as const;
 
@@ -75,7 +73,6 @@ function Shell({ active, onSelect }: { active: TabKey; onSelect(key: TabKey): vo
           {active === 'offers' ? <Offers /> : null}
           {active === 'payroll' ? <Payroll /> : null}
           {active === 'work' ? <Work /> : null}
-          {active === 'rating' ? <Leaderboard /> : null}
           {active === 'profile' ? <Profile /> : null}
         </ScreenBoundary>
       </main>

@@ -1,9 +1,10 @@
 import { PLAN_METRIC_LABELS, formatMinor } from '@corpsol/shared';
 import React from 'react';
 
-import { api, type Call, type Plan } from '../api';
+import { api, type Call, type Plan, type RankedEntry } from '../api';
 import { formatDate, monthRange, percent, timeLabel } from '../format';
 import { PeriodScreen } from '../PeriodScreen';
+import { useSession } from '../session';
 import { Figure, FigureRow, Gap, HeroFigure, Panel, PanelRow, RowValue, SectionLabel, tone } from '../ui';
 
 const CALL_STATUS_LABELS: Record<Call['status'], string> = {
@@ -13,25 +14,30 @@ const CALL_STATUS_LABELS: Record<Call['status'], string> = {
   FAILED: 'Сбой',
 };
 
+/** Медальные цвета первой тройки — как во Flutter. */
+const MEDALS: Record<number, string> = { 1: '#FFC53D', 2: '#A8AEBF', 3: '#CD7F32' };
+
 export function Work() {
+  const { user } = useSession();
   const month = monthRange();
 
   return (
     <PeriodScreen
       title="Работа"
-      subtitle="План отдела и ваши звонки за месяц"
+      subtitle="Планы, рейтинг отдела и звонки за месяц"
       load={async () => {
-        const [plans, summary, page] = await Promise.all([
+        const [plans, summary, page, board] = await Promise.all([
           api.plans(month.from),
           api.callsSummary(month.from, month.to),
           api.calls(month.from, month.to),
+          api.leaderboard(month.from, month.to),
         ]);
-        return { plans, summary, calls: page.items };
+        return { plans, summary, calls: page.items, board };
       }}
       emptyMessage="Данных за месяц пока нет"
       emptyIcon="insights"
     >
-      {({ plans, summary, calls }) => {
+      {({ plans, summary, calls, board }) => {
         const department = plans.filter((plan) => plan.scope === 'DEPARTMENT');
         const personal = plans.filter((plan) => plan.scope === 'USER');
         // Свежие сверху: вчерашний звонок нужен чаще, чем первый в месяце.
@@ -70,6 +76,28 @@ export function Work() {
                 <Panel>
                   {personal.map((plan) => (
                     <PlanRow key={plan.id} plan={plan} />
+                  ))}
+                </Panel>
+              </>
+            ) : null}
+
+            {board.entries.length > 0 ? (
+              <>
+                <Gap size={3} />
+                <SectionLabel
+                  trailing={
+                    board.self ? (
+                      <span>
+                        вы {board.self.rank}-й · {board.self.points} баллов
+                      </span>
+                    ) : null
+                  }
+                >
+                  Рейтинг отдела
+                </SectionLabel>
+                <Panel>
+                  {board.entries.map((entry) => (
+                    <EntryRow key={entry.userId} entry={entry} isSelf={entry.userId === user?.id} />
                   ))}
                 </Panel>
               </>
@@ -127,6 +155,25 @@ function CallRow({ call }: { call: Call }) {
       subtitle={`${formatDate(call.callDate)} · ${timeLabel(call.startedAt)}${call.direction === 'INBOUND' ? ' · входящий' : ''}`}
       accent={answered ? undefined : tone.faint}
       trailing={answered ? <RowValue>{`${minutes}:${seconds}`}</RowValue> : <RowValue muted>{CALL_STATUS_LABELS[call.status]}</RowValue>}
+    />
+  );
+}
+
+/** Первая тройка — медальным цветом, своя строка — акцентом. */
+function EntryRow({ entry, isSelf }: { entry: RankedEntry; isSelf: boolean }) {
+  const medal = MEDALS[entry.rank];
+
+  return (
+    <PanelRow
+      title={isSelf ? `${entry.fullName} · вы` : entry.fullName}
+      subtitle={medal ? `${entry.rank} место` : undefined}
+      accent={isSelf ? tone.accent : medal}
+      trailing={
+        <span>
+          {!medal && !isSelf ? <span className="rank">{entry.rank}</span> : null}
+          <RowValue color={isSelf ? tone.accent : undefined}>{entry.points}</RowValue>
+        </span>
+      }
     />
   );
 }
