@@ -205,6 +205,15 @@ export interface Achievement {
   unlockedAt: string | null;
 }
 
+export interface Notification {
+  id: string;
+  kind: string;
+  title: string;
+  body: string;
+  createdAt: string;
+  readAt: string | null;
+}
+
 export const api = {
   /** Первый запрос после входа: закрепляет аккаунт за Telegram. */
   openSession: () => request<AuthUser>('/auth/session', { method: 'POST', body: {} }),
@@ -237,4 +246,9 @@ export const api = {
       `/gamification/leaderboard?from=${from}&to=${to}`,
     ),
   achievements: () => request<Achievement[]>('/gamification/achievements'),
+
+  /** Уведомления сотруднику: «день не засчитан», «расчёт готов», ответ по заявке. */
+  notifications: () => request<Notification[]>('/notifications'),
+  unreadCount: () => request<{ count: number }>('/notifications/unread-count'),
+  markAllRead: () => request<{ marked: number }>('/notifications/read-all', { method: 'POST' }),
 };
