@@ -72,6 +72,8 @@ export function applyAppearance({ theme, accent }: Appearance): void {
   document.documentElement.dataset.theme = resolved;
   document.documentElement.dataset.accent = accent;
   prepareWindow(BACKGROUNDS[resolved]);
+  // Цвет полосы браузера и переключателя задач — под фон темы.
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', BACKGROUNDS[resolved]);
 }
 
 export function saveAppearance(appearance: Appearance): void {

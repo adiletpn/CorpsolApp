@@ -45,3 +45,16 @@ describe('оформление', () => {
     expect(['light', 'dark']).toContain(document.documentElement.dataset.theme);
   });
 });
+
+describe('цвет окна', () => {
+  it('meta theme-color следует за темой', () => {
+    const meta = document.createElement('meta');
+    meta.name = 'theme-color';
+    document.head.appendChild(meta);
+
+    applyAppearance({ theme: 'sepia', accent: 'brand' });
+
+    expect(meta.getAttribute('content')).toBe('#f5f0e6');
+    meta.remove();
+  });
+});
