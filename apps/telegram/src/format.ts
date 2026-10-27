@@ -76,3 +76,17 @@ export function greeting(date = new Date()): string {
   if (hour < 18) return 'Добрый день';
   return 'Добрый вечер';
 }
+
+/**
+ * Короткая сумма для тесных мест: «1,9 млн ₸», «750 тыс ₸». Полная
+ * «1 880 000 ₸» в подписи кольца рвалась на четыре строки.
+ */
+export function formatMoneyShort(amountMinor: number): string {
+  const tenge = amountMinor / 100;
+  const short = (value: number) =>
+    value.toLocaleString('ru-RU', { maximumFractionDigits: value < 10 ? 1 : 0 });
+
+  if (Math.abs(tenge) >= 1_000_000) return `${short(tenge / 1_000_000)} млн ₸`;
+  if (Math.abs(tenge) >= 1_000) return `${short(tenge / 1_000)} тыс ₸`;
+  return `${Math.round(tenge).toLocaleString('ru-RU')} ₸`;
+}

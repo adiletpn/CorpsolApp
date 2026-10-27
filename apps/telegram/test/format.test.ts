@@ -4,6 +4,7 @@ import {
   answeredToPass,
   dayPasses,
   formatDate,
+  formatMoneyShort,
   greeting,
   initialsOf,
   monthRange,
@@ -103,5 +104,18 @@ describe('приветствие на главной', () => {
   it('полдень — уже день', () => {
     // Граница: «доброе утро» в 12:00 звучит запоздало.
     expect(greeting(new Date(2026, 9, 27, 12))).toBe('Добрый день');
+  });
+});
+
+describe('короткая сумма', () => {
+  it.each([
+    [188000000, '1,9 млн ₸'],
+    [700000000, '7 млн ₸'],
+    [75000000, '750 тыс ₸'],
+    [4500000, '45 тыс ₸'],
+    [99900, '999 ₸'],
+  ])('%i тиынов → «%s»', (minor, text) => {
+    // Разделители — неразрывные: сравниваем без них.
+    expect(formatMoneyShort(minor).replace(/\s/g, ' ')).toBe(text);
   });
 });
