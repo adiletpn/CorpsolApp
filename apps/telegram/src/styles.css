@@ -1409,3 +1409,31 @@ p {
 .podium-place.is-rank-3 .podium-step {
   height: 32px;
 }
+
+/* ---------- журнал звонков ---------- */
+
+.call-icon {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+}
+
+.call-icon .icon {
+  font-size: 18px;
+}
+
+.call-icon.is-out {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+}
+.call-icon.is-in {
+  background: color-mix(in srgb, var(--chart-good) 16%, transparent);
+  color: var(--chart-good);
+}
+.call-icon.is-missed {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--danger);
+}

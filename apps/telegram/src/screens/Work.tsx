@@ -6,7 +6,7 @@ import { formatDate, initialsOf, monthRange, percent, timeLabel } from '../forma
 import { RingMeter } from '../charts';
 import { PeriodScreen } from '../PeriodScreen';
 import { useSession } from '../session';
-import { Figure, FigureRow, Gap, HeroFigure, Panel, PanelRow, RowValue, SectionLabel, tone } from '../ui';
+import { Figure, FigureRow, Gap, HeroFigure, Icon, Panel, PanelRow, RowValue, SectionLabel, tone } from '../ui';
 
 const CALL_STATUS_LABELS: Record<Call['status'], string> = {
   ANSWERED: 'Отвечен',
@@ -144,17 +144,27 @@ function PlanRings({ plans }: { plans: Plan[] }) {
   );
 }
 
-/** Засечка только у недозвонов — отвеченный звонок это норма. */
+/**
+ * Значок говорит, что за звонок: исходящий, входящий или без ответа.
+ * Подпись «входящий» в строке читали через раз — значок виден сразу.
+ */
 function CallRow({ call }: { call: Call }) {
   const answered = call.status === 'ANSWERED';
   const minutes = Math.floor(call.talkSeconds / 60);
   const seconds = String(call.talkSeconds % 60).padStart(2, '0');
+  const kind = !answered ? 'missed' : call.direction === 'INBOUND' ? 'in' : 'out';
+  const icon = { missed: 'call_missed_outgoing', in: 'call_received', out: 'call_made' }[kind];
+  const label = { missed: 'без ответа', in: 'входящий', out: 'исходящий' }[kind];
 
   return (
     <PanelRow
+      leading={
+        <span className={`call-icon is-${kind}`} role="img" aria-label={label}>
+          <Icon name={icon} />
+        </span>
+      }
       title={call.clientPhone}
-      subtitle={`${formatDate(call.callDate)} · ${timeLabel(call.startedAt)}${call.direction === 'INBOUND' ? ' · входящий' : ''}`}
-      accent={answered ? undefined : tone.faint}
+      subtitle={`${formatDate(call.callDate)} · ${timeLabel(call.startedAt)}`}
       trailing={answered ? <RowValue>{`${minutes}:${seconds}`}</RowValue> : <RowValue muted>{CALL_STATUS_LABELS[call.status]}</RowValue>}
     />
   );
