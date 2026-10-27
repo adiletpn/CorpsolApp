@@ -91,3 +91,17 @@ jobs:
           build-args: |
             NEXT_PUBLIC_API_URL=http://localhost:3001/api
             NEXT_PUBLIC_FIREBASE_PROJECT_ID=corpsol-local
+
+      # Мини-апп для Telegram — статика за nginx. Адрес сервера в сборке
+      # условный: проверяется сама сборка, а не связь с бэкендом.
+      - name: Мини-апп
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/telegram/Dockerfile
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VITE_API_URL=http://localhost:3001/api
+            VITE_FIREBASE_PROJECT_ID=corpsol-local
