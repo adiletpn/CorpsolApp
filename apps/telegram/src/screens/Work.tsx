@@ -21,12 +21,12 @@ export function Work() {
       title="Работа"
       subtitle="План отдела и ваши звонки за месяц"
       load={async () => {
-        const [plans, summary, calls] = await Promise.all([
+        const [plans, summary, page] = await Promise.all([
           api.plans(month.from),
           api.callsSummary(month.from, month.to),
           api.calls(month.from, month.to),
         ]);
-        return { plans, summary, calls };
+        return { plans, summary, calls: page.items };
       }}
       emptyMessage="Данных за месяц пока нет"
       emptyIcon="insights"

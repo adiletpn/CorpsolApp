@@ -57,3 +57,13 @@ export function answeredToPass(outbound: number, answered: number): number {
   const bps = MIN_DAILY_CALL_RATE_BPS;
   return Math.max(1, Math.ceil((bps * outbound - 10_000 * answered) / (10_000 - bps)));
 }
+
+/** «Адилет Серикбаев» → «АС» — для аватара. */
+export function initialsOf(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase())
+    .join('');
+}

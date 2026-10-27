@@ -220,7 +220,9 @@ export const api = {
 
   attendance: (from: string, to: string) =>
     request<AttendanceRecord[]>(`/attendance/me?from=${from}&to=${to}`),
-  calls: (from: string, to: string) => request<Call[]>(`/calls?from=${from}&to=${to}`),
+  /** Журнал звонков отдаётся страницами — берём первую, свежие сверху. */
+  calls: (from: string, to: string) =>
+    request<{ items: Call[]; nextBefore: string | null }>(`/calls?from=${from}&to=${to}&limit=40`),
   callsSummary: (from: string, to: string) =>
     request<CallsSummary>(`/calls/summary?from=${from}&to=${to}`),
   plans: (periodStart: string) => request<Plan[]>(`/plans?periodStart=${periodStart}`),

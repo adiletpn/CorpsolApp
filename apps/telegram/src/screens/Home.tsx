@@ -7,6 +7,7 @@ import {
   dateKey,
   dayPasses,
   formatDate,
+  initialsOf,
   monthRange,
   percent,
   plural,
@@ -21,7 +22,6 @@ import {
   readPosition,
   scanQr,
 } from '../telegram';
-import { THEME_ICONS, THEME_LABELS, nextTheme, savedTheme } from '../theme';
 import {
   EmptyState,
   ErrorRetry,
@@ -70,11 +70,11 @@ type Notice =
   | { kind: 'error'; text: string; hint?: string; settings?: boolean }
   | { kind: 'success'; text: string };
 
-export function Home() {
-  const { user, signOut } = useSession();
+/** Аватар в шапке ведёт в профиль — там тема, награды и выход. */
+export function Home({ onOpenProfile }: { onOpenProfile(): void }) {
+  const { user } = useSession();
   const today = dateKey();
   const month = monthRange();
-  const [theme, setTheme] = useState(savedTheme);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [leaving, setLeaving] = useState(false);
 
@@ -150,19 +150,9 @@ export function Home() {
         title={user?.fullName ?? ''}
         subtitle={user?.role === 'ROP' ? 'Руководитель отдела продаж' : 'Менеджер отдела продаж'}
         trailing={
-          <>
-            <button
-              className="text-button"
-              onClick={() => setTheme(nextTheme(theme))}
-              aria-label={THEME_LABELS[theme]}
-              title={THEME_LABELS[theme]}
-            >
-              <Icon name={THEME_ICONS[theme]} />
-            </button>
-            <button className="text-button" onClick={signOut}>
-              Выйти
-            </button>
-          </>
+          <button className="avatar-button" onClick={onOpenProfile} aria-label="Профиль">
+            {initialsOf(user?.fullName ?? '')}
+          </button>
         }
       />
       <Gap size={3} />

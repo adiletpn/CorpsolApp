@@ -1,27 +1,30 @@
 import React, { useState } from 'react';
 
-import { Achievements } from './screens/Achievements';
 import { Home } from './screens/Home';
 import { Leaderboard } from './screens/Leaderboard';
 import { Login } from './screens/Login';
 import { Offers } from './screens/Offers';
 import { Payroll } from './screens/Payroll';
+import { Profile } from './screens/Profile';
 import { Work } from './screens/Work';
 import { useSession } from './session';
 import { tap } from './telegram';
-import { Icon, Spinner } from './ui';
+import { ErrorRetry, Icon, Spinner } from './ui';
 
-/** Вкладки и их порядок — как в приложении на Flutter, переучиваться не нужно. */
+/**
+ * Вкладки — в порядке приложения на Flutter. Награды переехали
+ * в профиль: шесть пунктов — предел для плавающей панели.
+ */
 const TABS = [
-  { key: 'home', label: 'Приход', icon: 'how_to_reg', screen: Home },
-  { key: 'offers', label: 'Сделки', icon: 'handshake', screen: Offers },
-  { key: 'payroll', label: 'Зарплата', icon: 'payments', screen: Payroll },
-  { key: 'work', label: 'Работа', icon: 'insights', screen: Work },
-  { key: 'rating', label: 'Рейтинг', icon: 'leaderboard', screen: Leaderboard },
-  { key: 'awards', label: 'Награды', icon: 'emoji_events', screen: Achievements },
+  { key: 'home', label: 'Приход', icon: 'how_to_reg' },
+  { key: 'offers', label: 'Сделки', icon: 'handshake' },
+  { key: 'payroll', label: 'Зарплата', icon: 'payments' },
+  { key: 'work', label: 'Работа', icon: 'insights' },
+  { key: 'rating', label: 'Рейтинг', icon: 'leaderboard' },
+  { key: 'profile', label: 'Профиль', icon: 'person' },
 ] as const;
 
-type TabKey = (typeof TABS)[number]['key'];
+export type TabKey = (typeof TABS)[number]['key'];
 
 /** Приложение для тех, у кого есть смены; остальным — панель в браузере. */
 const FIELD_ROLES = ['MOP', 'ROP'];
@@ -56,31 +59,66 @@ export function App() {
 }
 
 function Shell({ active, onSelect }: { active: TabKey; onSelect(key: TabKey): void }) {
-  const Screen = TABS.find((tab) => tab.key === active)!.screen;
+  const index = TABS.findIndex((tab) => tab.key === active);
+
+  function select(key: TabKey) {
+    if (key !== active) tap();
+    onSelect(key);
+    window.scrollTo({ top: 0 });
+  }
 
   return (
     <>
-      <main className="screen" key={active}>
-        <Screen />
+      <main className="screen">
+        <ScreenBoundary key={active}>
+          {active === 'home' ? <Home onOpenProfile={() => select('profile')} /> : null}
+          {active === 'offers' ? <Offers /> : null}
+          {active === 'payroll' ? <Payroll /> : null}
+          {active === 'work' ? <Work /> : null}
+          {active === 'rating' ? <Leaderboard /> : null}
+          {active === 'profile' ? <Profile /> : null}
+        </ScreenBoundary>
       </main>
 
-      <nav className="tabbar">
+      <nav
+        className="tabbar"
+        style={{ '--tabs': TABS.length, '--index': index } as React.CSSProperties}
+      >
+        <span className="tab-lens" aria-hidden="true" />
         {TABS.map((tab) => (
           <button
             key={tab.key}
             className={`tab ${active === tab.key ? 'is-active' : ''}`}
-            onClick={() => {
-              if (tab.key !== active) tap();
-              onSelect(tab.key);
-            }}
+            onClick={() => select(tab.key)}
           >
-            <span className="tab-pill">
-              <Icon name={tab.icon} />
-            </span>
+            <Icon name={tab.icon} />
             {tab.label}
           </button>
         ))}
       </nav>
     </>
   );
+}
+
+/**
+ * Сбой в одном экране не должен оставлять чёрное окно: React при ошибке
+ * отрисовки снимает всё дерево. Ловим её здесь и предлагаем повторить.
+ */
+class ScreenBoundary extends React.Component<{ children: React.ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.error(error);
+  }
+
+  render() {
+    if (this.state.failed) {
+      return <ErrorRetry message="Не удалось показать экран" onRetry={() => this.setState({ failed: false })} />;
+    }
+    return this.props.children;
+  }
 }

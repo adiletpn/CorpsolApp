@@ -18,7 +18,11 @@
   --ambient-a: rgba(59, 91, 255, 0.22);
   --ambient-b: rgba(124, 77, 255, 0.22);
   --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-fill: rgba(28, 28, 36, 0.55);
+  --glass-highlight: rgba(255, 255, 255, 0.14);
+  --glass-shadow: 0 10px 36px rgba(0, 0, 0, 0.45);
   --gradient: linear-gradient(135deg, #3b5bff, #7c4dff);
+  --on-accent: #ffffff;
   --radius-sm: 12px;
   --radius-md: 18px;
   --radius-lg: 24px;
@@ -40,7 +44,79 @@
   --ambient-a: rgba(110, 139, 255, 0.16);
   --ambient-b: rgba(176, 139, 255, 0.16);
   --glass-border: rgba(16, 24, 40, 0.08);
+  --glass-fill: rgba(255, 255, 255, 0.6);
+  --glass-highlight: rgba(255, 255, 255, 0.9);
+  --glass-shadow: 0 10px 32px rgba(20, 24, 60, 0.14);
   color-scheme: light;
+}
+
+/* Темы и акценты — из настроек Mind AI (ChatBotAi/web/style.css). */
+:root[data-theme='sepia'] {
+  --background: #f5f0e6;
+  --surface: #fffcf5;
+  --surface-raised: #efe7d8;
+  --border: rgba(70, 45, 10, 0.1);
+  --text: #2b261f;
+  --text-muted: #6e655a;
+  --text-faint: #a99f90;
+  --accent: #9a5b2c;
+  --success: #16834f;
+  --warning: #a8670c;
+  --danger: #cc3340;
+  --ambient-a: rgba(212, 136, 15, 0.14);
+  --ambient-b: rgba(154, 91, 44, 0.12);
+  --glass-border: rgba(70, 45, 10, 0.1);
+  --glass-fill: rgba(255, 252, 245, 0.62);
+  --glass-highlight: rgba(255, 255, 255, 0.8);
+  --glass-shadow: 0 10px 32px rgba(70, 45, 10, 0.14);
+  --gradient: linear-gradient(135deg, #b0703c, #7d4520);
+  color-scheme: light;
+}
+
+:root[data-theme='midnight'] {
+  --background: #0c1220;
+  --surface: #141c2e;
+  --surface-raised: #1c263c;
+  --border: rgba(255, 255, 255, 0.08);
+  --text: #e5eaf5;
+  --text-muted: #95a1ba;
+  --text-faint: #5c6884;
+  --accent: #6ea8ff;
+  --success: #4ccf8b;
+  --warning: #f0b44c;
+  --danger: #ff7b86;
+  --ambient-a: rgba(110, 168, 255, 0.2);
+  --ambient-b: rgba(76, 107, 255, 0.18);
+  --glass-fill: rgba(20, 28, 46, 0.58);
+  --gradient: linear-gradient(135deg, #4c8dff, #3b5bff);
+  color-scheme: dark;
+}
+
+/* Свой акцент перекрывает фирменный градиент: из цвета и его тени. */
+:root[data-accent='indigo'] {
+  --accent: #6366f1;
+}
+:root[data-accent='emerald'] {
+  --accent: #10a26b;
+}
+:root[data-accent='ocean'] {
+  --accent: #0e8fd6;
+}
+:root[data-accent='amber'] {
+  --accent: #d4880f;
+}
+:root[data-accent='rose'] {
+  --accent: #e0466a;
+}
+:root[data-accent='graphite'] {
+  --accent: var(--text);
+  --on-accent: var(--background);
+}
+
+:root[data-accent]:not([data-accent='brand']) {
+  --gradient: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 72%, #000));
+  --ambient-a: color-mix(in srgb, var(--accent) 20%, transparent);
+  --ambient-b: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 * {
@@ -140,53 +216,71 @@ p {
 
 .tabbar {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: 50%;
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(calc(100% - 20px), 520px);
+  height: 64px;
+  padding: 4px;
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  padding: 0 4px env(safe-area-inset-bottom);
-  background: color-mix(in srgb, var(--background) 72%, transparent);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border-top: 1px solid var(--glass-border);
+  grid-template-columns: repeat(var(--tabs), 1fr);
+  border-radius: 32px;
+  /* Стекло: размытие с насыщенностью, полупрозрачная заливка, блик по
+     верхней кромке и мягкая тень — панель висит над содержимым. */
+  background: var(--glass-fill);
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    var(--glass-shadow),
+    inset 0 1px 0 var(--glass-highlight);
   z-index: 10;
 }
 
+/* Линза под активной вкладкой переезжает с лёгкой пружиной. */
+.tab-lens {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc((100% - 8px) / var(--tabs));
+  border-radius: 28px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  transform: translateX(calc(var(--index) * 100%));
+  transition: transform 0.42s cubic-bezier(0.3, 1.35, 0.5, 1);
+}
+
 .tab {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 8px 0;
+  justify-content: center;
+  gap: 2px;
   border: none;
   background: none;
-  color: var(--text-faint);
-  font-size: 11.5px;
-  font-weight: 500;
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-weight: 600;
   cursor: pointer;
+  transition: color 0.2s, transform 0.15s;
 }
 
-/* Плашка под иконкой: активная вкладка видна и без цвета текста. */
-.tab-pill {
-  display: grid;
-  place-items: center;
-  padding: 5px 16px;
-  border-radius: 999px;
-  transition: background 0.18s;
+.tab:active {
+  transform: scale(0.92);
 }
 
 .tab .icon {
-  font-size: 21px;
+  font-size: 23px;
 }
 
 .tab.is-active {
   color: var(--accent);
-  font-weight: 700;
 }
 
-.tab.is-active .tab-pill {
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
+.tab.is-active .icon {
+  font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
 }
 
 /* ---------- заголовок экрана ---------- */
@@ -234,7 +328,7 @@ p {
   display: block;
   text-align: left;
   border: none;
-  color: #fff;
+  color: var(--on-accent);
   background: var(--gradient);
   border-radius: var(--radius-lg);
   padding: 24px;
@@ -264,7 +358,7 @@ p {
   display: grid;
   place-items: center;
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.2);
+  background: color-mix(in srgb, var(--on-accent) 20%, transparent);
 }
 
 .scan-badge .icon {
@@ -280,7 +374,7 @@ p {
 
 .scan-caption {
   margin-top: 14px;
-  color: rgba(255, 255, 255, 0.82);
+  color: color-mix(in srgb, var(--on-accent) 82%, transparent);
   font-size: 14.5px;
   font-weight: 400;
 }
@@ -291,7 +385,7 @@ p {
   background: var(--gradient);
   border-radius: var(--radius-lg);
   padding: 24px;
-  color: #fff;
+  color: var(--on-accent);
   box-shadow: 0 12px 32px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
@@ -302,7 +396,7 @@ p {
 
 .hero-label {
   flex: 1;
-  color: rgba(255, 255, 255, 0.75);
+  color: color-mix(in srgb, var(--on-accent) 75%, transparent);
   font-size: 11.5px;
   font-weight: 700;
   letter-spacing: 1.4px;
@@ -310,7 +404,7 @@ p {
 }
 
 .hero-top .icon {
-  color: rgba(255, 255, 255, 0.9);
+  color: color-mix(in srgb, var(--on-accent) 90%, transparent);
 }
 
 .hero-value {
@@ -324,7 +418,7 @@ p {
 
 .hero-caption {
   margin-top: 6px;
-  color: rgba(255, 255, 255, 0.8);
+  color: color-mix(in srgb, var(--on-accent) 80%, transparent);
   font-size: 14px;
   font-weight: 400;
 }
@@ -512,7 +606,7 @@ p {
 
 .filled-button.is-primary {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .filled-button:disabled {
@@ -636,7 +730,7 @@ p {
   place-items: center;
   border-radius: var(--radius-md);
   background: var(--gradient);
-  color: #fff;
+  color: var(--on-accent);
   box-shadow: 0 10px 28px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
@@ -699,7 +793,7 @@ p {
   border: none;
   border-radius: var(--radius-md);
   background: var(--gradient);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 16px;
   font-weight: 700;
   cursor: pointer;
@@ -718,8 +812,8 @@ p {
 }
 
 .spinner.is-light {
-  border-color: rgba(255, 255, 255, 0.35);
-  border-top-color: #fff;
+  border-color: color-mix(in srgb, var(--on-accent) 35%, transparent);
+  border-top-color: var(--on-accent);
 }
 
 .login-footnote {
@@ -737,4 +831,146 @@ p {
 
 .center {
   text-align: center;
+}
+
+/* ---------- профиль ---------- */
+
+.avatar-button {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: var(--gradient);
+  color: var(--on-accent);
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.profile-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0 4px;
+  text-align: center;
+}
+
+.profile-avatar {
+  width: 88px;
+  height: 88px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 10px;
+  border-radius: 50%;
+  background: var(--gradient);
+  color: var(--on-accent);
+  font-size: 32px;
+  font-weight: 800;
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.profile-name {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+}
+
+.theme-cards {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  padding: 14px;
+}
+
+.theme-card {
+  padding: 5px 5px 8px;
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  background: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.theme-card.is-active {
+  border-color: var(--accent);
+  color: var(--text);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+/* Превью: фон темы и полоска акцента. */
+.theme-preview {
+  position: relative;
+  height: 48px;
+  margin-bottom: 6px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+}
+
+.theme-preview::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 30%;
+  bottom: 8px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--gradient);
+}
+
+.theme-preview.is-system {
+  background: linear-gradient(110deg, #f2f3f9 50%, #0a0a0e 50%);
+}
+.theme-preview.is-light {
+  background: #f2f3f9;
+}
+.theme-preview.is-dark {
+  background: #0a0a0e;
+}
+.theme-preview.is-sepia {
+  background: #f5f0e6;
+}
+.theme-preview.is-midnight {
+  background: #0c1220;
+}
+
+.accents {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 16px 16px;
+}
+
+.accent-dot {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 3px solid var(--surface);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--border);
+  cursor: pointer;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+
+.accent-dot.is-active {
+  box-shadow: 0 0 0 2px var(--text);
+  transform: scale(1.06);
+}
+
+.panel-button {
+  width: 100%;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tone-danger-text {
+  color: var(--danger);
 }
