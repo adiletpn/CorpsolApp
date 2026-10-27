@@ -2,6 +2,7 @@ import type { Role } from '@corpsol/shared';
 
 import { DevicesService } from '../src/devices/devices.service';
 import { NotificationsService } from '../src/notifications/notifications.service';
+import { COLLECTIONS } from '../src/firestore/collections';
 import type { UserDoc } from '../src/firestore/types';
 import { FakeFirestore, fakeFirebase } from './fake-firestore';
 
@@ -58,5 +59,28 @@ describe('привязка для тех, кто телефон предъяви
     await expect(
       devices.resolveForRequest('mop-2', user('MOP'), phone('shared-phone')),
     ).rejects.toThrow();
+  });
+});
+
+describe('заявка на смену Telegram', () => {
+  it('HR видит в уведомлении, что просят закрепить Telegram, а не телефон', async () => {
+    const firestore = new FakeFirestore();
+    const firebase = fakeFirebase(firestore);
+    const devices = new DevicesService(firebase, new NotificationsService(firebase));
+    firestore.seed(COLLECTIONS.users, 'mop-1', { organizationId: 'org-1', fullName: 'Асель Ким', role: 'MOP', status: 'ACTIVE' });
+    firestore.seed(COLLECTIONS.users, 'hr-1', { organizationId: 'org-1', fullName: 'ЧР', role: 'HR', status: 'ACTIVE' });
+
+    await devices.resolveForRequest('mop-1', user('MOP'), { deviceId: 'telegram-1', platform: 'telegram-ios' });
+    await expect(
+      devices.resolveForRequest('mop-1', user('MOP'), {
+        deviceId: 'telegram-2',
+        platform: 'telegram-macos',
+        model: '@asel_work',
+      }),
+    ).rejects.toThrow();
+
+    const [notification] = firestore.all(COLLECTIONS.notifications);
+    // «@asel_work» без пояснения HR не понял бы.
+    expect(notification.body).toBe('Асель Ким просит закрепить Telegram · Mac @asel_work');
   });
 });

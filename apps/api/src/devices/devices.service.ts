@@ -1,6 +1,6 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Timestamp } from 'firebase-admin/firestore';
-import type { Role } from '@corpsol/shared';
+import { devicePlatformLabel, type Role } from '@corpsol/shared';
 
 import { FirebaseService } from '../firebase/firebase.service';
 import { COLLECTIONS, deviceDocId } from '../firestore/collections';
@@ -182,7 +182,10 @@ export class DevicesService {
     if (organizationId) {
       await this.notifications.notifyRole(organizationId, ['HR', 'SUPER_ADMIN'], {
         kind: 'device_rebind_requested',
-        body: `${fullName} просит закрепить ${descriptor.model ?? 'новый телефон'}`,
+        // «@asel» без пояснения непонятно — добавляем, что это за устройство.
+        body: `${fullName} просит закрепить ${[devicePlatformLabel(descriptor.platform), descriptor.model]
+          .filter(Boolean)
+          .join(' ')}`,
         refType: 'DeviceRequest',
         refId: created.id,
       });
