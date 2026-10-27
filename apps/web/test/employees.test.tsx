@@ -144,3 +144,17 @@ describe('заведение сотрудника: временный парол
     expect(screen.queryByText('Xk7-mQ2-pLv')).not.toBeInTheDocument();
   });
 });
+
+describe('передача пароля сотруднику', () => {
+  it('пароль копируется в буфер одной кнопкой', async () => {
+    const user = await createEmployee('300000');
+    // userEvent ставит свой буфер обмена — следим уже за ним.
+    const writeText = vi.spyOn(navigator.clipboard, 'writeText');
+    await screen.findByText('Xk7-mQ2-pLv');
+    await user.click(screen.getByRole('button', { name: 'Скопировать' }));
+
+    // Переписанный руками пароль путает «l» и «1» — копия точная.
+    expect(writeText).toHaveBeenCalledWith('Xk7-mQ2-pLv');
+    expect(await screen.findByRole('button', { name: 'Скопировано' })).toBeInTheDocument();
+  });
+});
