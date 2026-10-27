@@ -160,12 +160,30 @@ describe('сводка по звонкам', () => {
     expect(summary.talkMinutes).toBe(0);
   });
 
+  it('исходящие считает отдельно — по ним решается, засчитан ли день', async () => {
+    const { firestore, service } = setup();
+    seedCall(firestore, 'out-ok', { direction: 'OUTBOUND', status: 'ANSWERED', talkSeconds: 60 });
+    seedCall(firestore, 'out-miss', { direction: 'OUTBOUND', status: 'NO_ANSWER', talkSeconds: 0 });
+    seedCall(firestore, 'in-ok', { direction: 'INBOUND', status: 'ANSWERED', talkSeconds: 60 });
+
+    const summary = await service.summary(actor('MOP'));
+
+    expect(summary.outbound).toBe(2);
+    expect(summary.outboundAnswered).toBe(1);
+  });
+
   it('на пустом периоде возвращает нули, а не ошибку', async () => {
     const { service } = setup();
 
     const summary = await service.summary(actor('MOP'));
 
-    expect(summary).toEqual({ total: 0, answered: 0, talkMinutes: 0 });
+    expect(summary).toEqual({
+      total: 0,
+      answered: 0,
+      talkMinutes: 0,
+      outbound: 0,
+      outboundAnswered: 0,
+    });
   });
 });
 

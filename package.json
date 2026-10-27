@@ -6,7 +6,8 @@
   "workspaces": [
     "packages/*",
     "apps/api",
-    "apps/web"
+    "apps/web",
+    "apps/telegram"
   ],
   "engines": {
     "node": ">=20"
@@ -16,6 +17,7 @@
     "dev:api": "npm run start:dev -w @corpsol/api",
     "dev:web": "npm run dev -w @corpsol/web",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "npm test -w @corpsol/api && npm test -w @corpsol/web"
+    "test": "npm test -w @corpsol/api && npm test -w @corpsol/web && npm test -w @corpsol/telegram",
+    "dev:telegram": "npm run dev -w @corpsol/telegram"
   }
 }

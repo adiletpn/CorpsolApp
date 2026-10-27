@@ -14,6 +14,7 @@ COPY package.json package-lock.json tsconfig.base.json ./
 COPY packages/shared/package.json packages/shared/
 COPY apps/web/package.json apps/web/
 COPY apps/api/package.json apps/api/
+COPY apps/telegram/package.json apps/telegram/
 
 RUN npm ci
 

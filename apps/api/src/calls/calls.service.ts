@@ -22,6 +22,9 @@ export interface CallsSummary {
   total: number;
   answered: number;
   talkMinutes: number;
+  /** Исходящие отдельно: по ним считается, засчитан ли день. */
+  outbound: number;
+  outboundAnswered: number;
 }
 
 @Injectable()
@@ -118,10 +121,13 @@ export class CallsService {
 
     const answered = calls.filter((call) => call.status === 'ANSWERED');
     const talkSeconds = answered.reduce((total, call) => total + call.talkSeconds, 0);
+    const outbound = calls.filter((call) => call.direction === 'OUTBOUND');
 
     return {
       total: calls.length,
       answered: answered.length,
+      outbound: outbound.length,
+      outboundAnswered: outbound.filter((call) => call.status === 'ANSWERED').length,
       // Минуты округляем вниз: показывать 5 минут при четырёх с половиной
       // значит завышать результат в отчётах.
       talkMinutes: Math.floor(talkSeconds / 60),

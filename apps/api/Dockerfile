@@ -12,8 +12,10 @@ WORKDIR /repo
 COPY package.json package-lock.json tsconfig.base.json ./
 COPY packages/shared/package.json packages/shared/
 COPY apps/api/package.json apps/api/
-# Панель в образ бэкенда не входит, но npm ci по корню требует её манифест.
+# Панель и мини-апп в образ бэкенда не входят, но npm ci по корню
+# требует манифесты всех рабочих пространств.
 COPY apps/web/package.json apps/web/
+COPY apps/telegram/package.json apps/telegram/
 
 RUN npm ci
 
