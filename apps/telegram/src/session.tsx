@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 
 import { ApiError, api, type AuthUser } from './api';
 import { auth } from './firebase';
+import { clearLoadCache } from './useLoad';
 
 interface SessionState {
   user: AuthUser | null;
@@ -59,6 +60,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     async signOut() {
       await api.closeSession().catch(() => undefined);
       await firebaseSignOut(auth);
+      clearLoadCache();
       setUser(null);
     },
   };

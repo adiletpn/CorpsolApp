@@ -32,7 +32,7 @@ import { useLoad } from '../useLoad';
 /** Профиль: кто я, мои награды, оформление и выход. */
 export function Profile() {
   const { user, signOut } = useSession();
-  const achievements = useLoad(api.achievements);
+  const achievements = useLoad(api.achievements, 'achievements');
 
   if (!user) return null;
 

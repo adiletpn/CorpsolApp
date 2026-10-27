@@ -24,7 +24,8 @@ export function PeriodScreen<T>({
   emptyIcon?: string;
   children: (data: T) => React.ReactNode;
 }) {
-  const { data, loading, error, reload } = useLoad(load);
+  // Заголовок у каждого экрана свой — он же ключ кеша.
+  const { data, loading, error, reload } = useLoad(load, title);
   const hasData = data !== null && !(isEmpty?.(data) ?? false);
 
   return (

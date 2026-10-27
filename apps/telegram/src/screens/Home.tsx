@@ -84,7 +84,7 @@ export function Home({ onOpenProfile }: { onOpenProfile(): void }) {
       api.callsSummary(today, today),
     ]);
     return { records, calls };
-  });
+  }, 'home');
 
   const records = data.data?.records ?? [];
   const todayRecord = records.find((record) => record.workDate === today) ?? null;
