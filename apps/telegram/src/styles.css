@@ -1090,3 +1090,114 @@ p {
   font-size: 10.5px;
   font-weight: 800;
 }
+
+/* ---------- табель календарём ---------- */
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  padding: 14px 12px 8px;
+}
+
+.calendar-weekday {
+  padding-bottom: 2px;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.calendar-day {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1.5px solid transparent;
+  border-radius: 12px;
+  background: var(--surface-raised);
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: transform 0.12s, border-color 0.15s;
+}
+
+.calendar-day:active {
+  transform: scale(0.92);
+}
+
+/* Цвет — заливкой с оттенком статуса: число остаётся читаемым. */
+.calendar-day.is-success {
+  background: color-mix(in srgb, var(--success) 18%, transparent);
+  color: var(--success);
+}
+.calendar-day.is-warning {
+  background: color-mix(in srgb, var(--warning) 20%, transparent);
+  color: var(--warning);
+}
+.calendar-day.is-danger {
+  background: color-mix(in srgb, var(--danger) 18%, transparent);
+  color: var(--danger);
+}
+.calendar-day.is-accent {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+.calendar-day.is-muted {
+  background: transparent;
+  color: var(--text-faint);
+}
+
+.calendar-day.is-today {
+  border-color: var(--text-muted);
+}
+
+.calendar-day.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.calendar-day.is-future {
+  background: transparent;
+  color: var(--text-faint);
+  opacity: 0.5;
+  cursor: default;
+}
+
+.calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  padding: 2px 16px 12px;
+  color: var(--text-muted);
+  font-size: 11.5px;
+}
+
+.calendar-legend span::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 5px;
+  border-radius: 3px;
+  vertical-align: 0;
+}
+
+.calendar-legend .is-success::before {
+  background: var(--success);
+}
+.calendar-legend .is-warning::before {
+  background: var(--warning);
+}
+.calendar-legend .is-danger::before {
+  background: var(--danger);
+}
+.calendar-legend .is-muted::before {
+  background: var(--text-faint);
+}
+
+.calendar .panel-row {
+  border-top: 1px solid var(--border);
+}
