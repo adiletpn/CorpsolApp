@@ -100,7 +100,7 @@ function Shell({ active, onSelect }: { active: TabKey; onSelect(key: TabKey): vo
  * Сбой в одном экране не должен оставлять чёрное окно: React при ошибке
  * отрисовки снимает всё дерево. Ловим её здесь и предлагаем повторить.
  */
-class ScreenBoundary extends React.Component<{ children: React.ReactNode }, { failed: boolean }> {
+export class ScreenBoundary extends React.Component<{ children: React.ReactNode }, { failed: boolean }> {
   state = { failed: false };
 
   static getDerivedStateFromError() {
