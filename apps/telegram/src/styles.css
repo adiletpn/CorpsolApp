@@ -460,6 +460,13 @@ p {
   flex: 1;
 }
 
+.section-label .link-button {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
 .panel {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -681,7 +688,7 @@ p {
   color: var(--text-muted);
 }
 
-.message .link-button {
+.link-button {
   margin-top: 8px;
   padding: 0;
   border: none;
@@ -1058,4 +1065,9 @@ p {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+/* В уведомлении суть в тексте — переносим, а не режем многоточием. */
+.notifications .panel-row-subtitle {
+  white-space: normal;
 }

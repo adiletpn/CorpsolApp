@@ -1,8 +1,8 @@
 import { ROLE_LABELS } from '@corpsol/shared';
 import React, { useState } from 'react';
 
-import { api, type Achievement } from '../api';
-import { formatDate, initialsOf } from '../format';
+import { api, type Achievement, type Notification } from '../api';
+import { formatDate, initialsOf, timeLabel } from '../format';
 import { useSession } from '../session';
 import {
   ACCENTS,
@@ -33,6 +33,7 @@ import { useLoad } from '../useLoad';
 export function Profile() {
   const { user, signOut } = useSession();
   const achievements = useLoad(api.achievements, 'achievements');
+  const notifications = useLoad(api.notifications, 'notifications');
 
   if (!user) return null;
 
@@ -45,6 +46,13 @@ export function Profile() {
           {ROLE_LABELS[user.role]} · {user.email}
         </p>
       </div>
+
+      {notifications.data && notifications.data.length > 0 ? (
+        <>
+          <Gap size={3} />
+          <Notifications items={notifications.data} onRead={notifications.reload} />
+        </>
+      ) : null}
 
       <Gap size={3} />
       <Awards items={achievements.data} loading={achievements.loading} />
@@ -59,6 +67,48 @@ export function Profile() {
           <PanelRow title={<span className="tone-danger-text">Выйти</span>} trailing={<Icon name="logout" style={{ color: tone.danger }} />} />
         </button>
       </Panel>
+    </>
+  );
+}
+
+/**
+ * Уведомления: «день не засчитан», «расчёт готов», ответ по заявке.
+ * Непрочитанные — с засечкой и сверху, прочитанные спокойно ниже.
+ */
+function Notifications({ items, onRead }: { items: Notification[]; onRead(): void }) {
+  const unread = items.filter((item) => !item.readAt).length;
+
+  async function readAll() {
+    tap();
+    await api.markAllRead().catch(() => undefined);
+    onRead();
+  }
+
+  return (
+    <>
+      <SectionLabel
+        trailing={
+          unread > 0 ? (
+            <button className="link-button" onClick={readAll}>
+              Прочитать все
+            </button>
+          ) : null
+        }
+      >
+        Уведомления{unread > 0 ? ` · ${unread}` : ''}
+      </SectionLabel>
+      <div className="notifications">
+      <Panel>
+        {items.slice(0, 10).map((item) => (
+          <PanelRow
+            key={item.id}
+            title={item.title}
+            subtitle={`${item.body} · ${formatDate(item.createdAt)}, ${timeLabel(item.createdAt)}`}
+            accent={item.readAt ? undefined : tone.accent}
+          />
+        ))}
+      </Panel>
+      </div>
     </>
   );
 }
