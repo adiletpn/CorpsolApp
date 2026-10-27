@@ -16,7 +16,12 @@ export class AuthController {
   @Post('session')
   @HttpCode(200)
   openSession(@CurrentUser() user: AuthenticatedUser, @Body() dto: OpenSessionDto) {
-    return this.auth.openSession(user.id, dto.device);
+    // Мини-апп устройство в теле не шлёт: его аккаунт Telegram уже проверен
+    // и закреплён защитой запроса по подписанной строке запуска.
+    const device =
+      dto.device ??
+      (user.deviceId ? { deviceId: user.deviceId, platform: 'telegram' } : undefined);
+    return this.auth.openSession(user.id, device);
   }
 
   @Post('logout')

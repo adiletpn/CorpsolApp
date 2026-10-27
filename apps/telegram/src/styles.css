@@ -706,8 +706,20 @@ p {
   box-shadow: 0 10px 28px color-mix(in srgb, var(--accent) 28%, transparent);
 }
 
+.submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
 .submit:disabled {
-  opacity: 0.7;
+  opacity: 0.85;
+}
+
+.spinner.is-light {
+  border-color: rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
 }
 
 .login-footnote {

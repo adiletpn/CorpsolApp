@@ -6,7 +6,7 @@ import type {
 } from '@corpsol/shared';
 
 import { auth } from './firebase';
-import { deviceId, devicePlatform, telegramVersion } from './telegram';
+import { devicePlatform, initData, telegramVersion } from './telegram';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api';
 
@@ -23,16 +23,17 @@ export class ApiError extends Error {
 }
 
 /**
- * Заголовки устройства уходят с каждым запросом: Firebase пускает в
- * аккаунт с любого числа устройств, и запрет «один аккаунт — один телефон»
- * держится только на серверной проверке этих значений.
+ * Строка запуска Telegram уходит с каждым запросом: Firebase пускает в
+ * аккаунт откуда угодно, и запрет «один аккаунт — один Telegram» держится
+ * только на серверной проверке её подписи.
  */
-async function deviceHeaders(): Promise<Record<string, string>> {
+function telegramHeaders(): Record<string, string> {
+  const launch = initData();
   const version = telegramVersion();
   return {
-    'x-device-id': await deviceId(),
+    ...(launch ? { 'x-telegram-init-data': launch } : {}),
     'x-device-platform': devicePlatform(),
-    ...(version ? { 'x-device-os': `Telegram ${version}` } : {}),
+    ...(version ? { 'x-app-version': `Telegram ${version}` } : {}),
   };
 }
 
@@ -47,7 +48,7 @@ export async function request<T>(
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(await deviceHeaders()),
+      ...telegramHeaders(),
     },
     body: init.body === undefined ? undefined : JSON.stringify(init.body),
   });
@@ -74,9 +75,11 @@ function safeParse(text: string): unknown {
  */
 const CODE_MESSAGES: Record<string, string> = {
   device_mismatch:
-    'Аккаунт закреплён за другим телефоном. Заявка на смену телефона отправлена руководителю — после одобрения войдите снова.',
-  device_taken: 'Этот телефон уже закреплён за другим сотрудником.',
-  device_required: 'Откройте приложение в Telegram на телефоне.',
+    'Аккаунт закреплён за другим Telegram. Заявка на смену отправлена руководителю — после одобрения войдите снова.',
+  device_taken: 'Этот Telegram уже закреплён за другим сотрудником.',
+  device_required: 'Откройте приложение через бота в Telegram.',
+  telegram_invalid: 'Не удалось подтвердить аккаунт Telegram. Закройте приложение и откройте заново.',
+  telegram_not_configured: 'Вход через Telegram ещё не настроен. Сообщите администратору.',
   employee_inactive: 'Учётная запись неактивна. Обратитесь к руководителю.',
 };
 
@@ -199,12 +202,8 @@ export interface Achievement {
 }
 
 export const api = {
-  /** Первый запрос после входа: закрепляет аккаунт за телефоном. */
-  openSession: async () =>
-    request<AuthUser>('/auth/session', {
-      method: 'POST',
-      body: { device: { deviceId: await deviceId(), platform: devicePlatform() } },
-    }),
+  /** Первый запрос после входа: закрепляет аккаунт за Telegram. */
+  openSession: () => request<AuthUser>('/auth/session', { method: 'POST', body: {} }),
   closeSession: () => request<void>('/auth/logout', { method: 'POST' }),
 
   checkIn: (body: { qr: string; lat: number; lng: number; accuracyMeters: number }) =>

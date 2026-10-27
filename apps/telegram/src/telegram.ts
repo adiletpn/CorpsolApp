@@ -3,21 +3,14 @@
  *
  * Скрипт telegram-web-app.js подключается в index.html и кладёт объект
  * в window.Telegram.WebApp. Вне Telegram (в обычном браузере при
- * разработке) его нет — тогда работают запасные пути: геолокация браузера,
- * localStorage, а сканер QR недоступен.
+ * разработке) его нет — тогда геолокация берётся из браузера, сканер QR
+ * недоступен, а сотрудника-менеджера сервер не пустит: нет аккаунта Telegram.
  */
 
 interface LocationData {
   latitude: number;
   longitude: number;
   horizontal_accuracy: number | null;
-}
-
-type StorageCallback = (error: string | null, value?: string | null) => void;
-
-interface KeyValueStorage {
-  getItem(key: string, callback: StorageCallback): void;
-  setItem(key: string, value: string, callback?: (error: string | null) => void): void;
 }
 
 interface TelegramWebApp {
@@ -48,8 +41,6 @@ interface TelegramWebApp {
     getLocation(callback: (data: LocationData | null) => void): void;
     openSettings(): void;
   };
-  SecureStorage?: KeyValueStorage;
-  DeviceStorage?: KeyValueStorage;
 }
 
 declare global {
@@ -215,79 +206,15 @@ export function openLocationSettings(): void {
   webApp()?.LocationManager?.openSettings();
 }
 
-function storageGet(storage: KeyValueStorage, key: string): Promise<string | null> {
-  return new Promise((resolve) => {
-    try {
-      storage.getItem(key, (error, value) => resolve(error ? null : (value ?? null)));
-    } catch {
-      resolve(null);
-    }
-  });
-}
-
-function storageSet(storage: KeyValueStorage, key: string, value: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    try {
-      storage.setItem(key, value, (error) => resolve(!error));
-    } catch {
-      resolve(false);
-    }
-  });
-}
-
-const DEVICE_KEY = 'corpsol.deviceId';
-
-function randomId(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(32));
-  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
-}
-
-let cachedDeviceId: Promise<string> | null = null;
-
 /**
- * Идентификатор телефона для привязки «один аккаунт — один телефон».
- *
- * Системного идентификатора железа Telegram не даёт, поэтому создаём
- * случайный и прячем в SecureStorage — это Keychain на iOS и Keystore
- * на Android, он живёт на самом устройстве. Сотрудник не перенесёт его
- * на другой телефон, а вход с компьютера даст «новое устройство».
+ * Подписанная строка запуска. По ней сервер узнаёт аккаунт Telegram:
+ * подпись считается от токена бота, поэтому чужой аккаунт не подставить.
  */
-export function deviceId(): Promise<string> {
-  cachedDeviceId ??= resolveDeviceId();
-  return cachedDeviceId;
+export function initData(): string | null {
+  return webApp()?.initData || null;
 }
 
-async function resolveDeviceId(): Promise<string> {
-  const app = webApp();
-  const stores = [app?.SecureStorage, app?.DeviceStorage].filter(
-    (store): store is KeyValueStorage => Boolean(store),
-  );
-
-  for (const store of stores) {
-    const existing = await storageGet(store, DEVICE_KEY);
-    if (existing) return existing;
-  }
-
-  try {
-    const existing = localStorage.getItem(DEVICE_KEY);
-    if (existing && stores.length === 0) return existing;
-  } catch {
-    // Хранилище браузера может быть закрыто — тогда только хранилища Telegram.
-  }
-
-  const created = randomId();
-  for (const store of stores) {
-    if (await storageSet(store, DEVICE_KEY, created)) break;
-  }
-  try {
-    localStorage.setItem(DEVICE_KEY, created);
-  } catch {
-    // См. выше.
-  }
-  return created;
-}
-
-/** Платформа для карточки устройства в панели: «telegram-ios», «telegram-android». */
+/** Где открыт мини-апп — для карточки устройства в панели: «telegram-ios», «telegram-macos». */
 export function devicePlatform(): string {
   return `telegram-${webApp()?.platform ?? 'web'}`;
 }

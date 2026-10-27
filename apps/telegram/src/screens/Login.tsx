@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { signInErrorText, useSession } from '../session';
 import { Gap, Icon, Message, Panel } from '../ui';
@@ -11,6 +11,12 @@ export function Login() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // После пароля сервер ещё сверяет Telegram — кнопка ждёт до конца,
+  // а не гаснет на полпути, будто ничего не произошло.
+  useEffect(() => {
+    if (blocked) setBusy(false);
+  }, [blocked]);
+
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (busy) return;
@@ -18,9 +24,9 @@ export function Login() {
     setError(null);
     try {
       await signIn(email, password);
+      // Успех: экран сменится сам, когда сервер откроет сессию.
     } catch (cause) {
       setError(signInErrorText(cause));
-    } finally {
       setBusy(false);
     }
   }
@@ -90,12 +96,18 @@ export function Login() {
 
         <div style={{ height: 24 }} />
         <button className="submit" type="submit" disabled={busy}>
-          {busy ? 'Входим…' : 'Войти'}
+          {busy ? (
+            <>
+              <span className="spinner is-small is-light" /> Входим…
+            </>
+          ) : (
+            'Войти'
+          )}
         </button>
         <div style={{ height: 32 }} />
         <p className="login-footnote">
           <Icon name="phonelink_lock" />
-          Вход только с закреплённого телефона
+          Вход только со своего Telegram
         </p>
       </form>
     </main>

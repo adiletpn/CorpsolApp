@@ -2,6 +2,7 @@ import {
   CanActivate,
   ExecutionContext,
   Injectable,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
@@ -14,6 +15,8 @@ import { COLLECTIONS } from '../firestore/collections';
 import type { UserDoc } from '../firestore/types';
 import { DevicesService } from '../devices/devices.service';
 import type { DeviceDescriptorDto } from './dto';
+import { AUTH_ERRORS } from './auth.errors';
+import { verifyInitData } from './telegram-init-data';
 
 /**
  * Профиль сотрудника кешируется на короткий срок, чтобы каждый запрос
@@ -89,8 +92,20 @@ export class FirebaseAuthGuard implements CanActivate {
     return header.slice('Bearer '.length).trim() || null;
   }
 
-  /** Мобильный клиент представляет устройство заголовками на каждом запросе. */
+  /**
+   * Мобильный клиент представляет устройство заголовками на каждом запросе.
+   *
+   * Мини-апп Telegram вместо телефона предъявляет аккаунт Telegram:
+   * сотрудник заходит и с телефона, и с компьютера, а за коллегу не
+   * войдёт — аккаунт Telegram у каждого свой. Номер берётся только из
+   * строки запуска с проверенной подписью, а не со слов клиента.
+   */
   private extractDevice(request: Request): DeviceDescriptorDto | undefined {
+    const initData = request.headers['x-telegram-init-data'];
+    if (typeof initData === 'string' && initData) {
+      return this.telegramDevice(request, initData);
+    }
+
     const deviceId = request.headers['x-device-id'];
     const platform = request.headers['x-device-platform'];
 
@@ -101,6 +116,27 @@ export class FirebaseAuthGuard implements CanActivate {
       platform: typeof platform === 'string' && platform ? platform : 'unknown',
       model: this.header(request, 'x-device-model'),
       osVersion: this.header(request, 'x-device-os'),
+      appVersion: this.header(request, 'x-app-version'),
+    };
+  }
+
+  private telegramDevice(request: Request, initData: string): DeviceDescriptorDto {
+    const botToken = process.env.TELEGRAM_BOT_TOKEN?.trim();
+    if (!botToken) {
+      throw new ServiceUnavailableException({ code: AUTH_ERRORS.TELEGRAM_NOT_CONFIGURED });
+    }
+
+    const telegramUser = verifyInitData(initData, botToken);
+    if (!telegramUser) {
+      throw new UnauthorizedException({ code: AUTH_ERRORS.TELEGRAM_INVALID });
+    }
+
+    const name = [telegramUser.firstName, telegramUser.lastName].filter(Boolean).join(' ');
+    return {
+      deviceId: `telegram-${telegramUser.id}`,
+      platform: this.header(request, 'x-device-platform') ?? 'telegram',
+      // В панели «Устройства» видно, какой Telegram закреплён за сотрудником.
+      model: telegramUser.username ? `@${telegramUser.username}` : name || undefined,
       appVersion: this.header(request, 'x-app-version'),
     };
   }
