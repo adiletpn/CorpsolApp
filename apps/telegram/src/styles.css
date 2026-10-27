@@ -163,37 +163,20 @@ p {
 
 /* ---------- фон: пятна у шапки, под ними стекло ---------- */
 
+/*
+ * Пятна — радиальными градиентами, а не filter: blur. Размытие на
+ * фиксированном слое дорого для телефона, а iOS ещё и вырезает в нём
+ * прямоугольник под любой анимацией — так выглядела полоса на заставке.
+ */
 .ambient {
   position: fixed;
   inset: 0;
   z-index: -1;
-  overflow: hidden;
-  background: var(--background);
   pointer-events: none;
-}
-
-.ambient::before,
-.ambient::after {
-  content: '';
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(90px);
-}
-
-.ambient::before {
-  width: 380px;
-  height: 380px;
-  top: -180px;
-  left: -120px;
-  background: var(--ambient-a);
-}
-
-.ambient::after {
-  width: 300px;
-  height: 300px;
-  top: -80px;
-  right: -160px;
-  background: var(--ambient-b);
+  background:
+    radial-gradient(420px 420px at 0% -12%, var(--ambient-a), transparent 70%),
+    radial-gradient(360px 360px at 105% 0%, var(--ambient-b), transparent 70%),
+    var(--background);
 }
 
 /* ---------- каркас ---------- */
