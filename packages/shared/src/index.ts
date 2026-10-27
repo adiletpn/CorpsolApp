@@ -10,3 +10,4 @@ export * from './phone';
 export * from './achievements';
 export * from './csv';
 export * from './notifications';
+export * from './devices';
