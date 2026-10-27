@@ -32,9 +32,17 @@ export function Button({
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'ghost' | 'danger' }) {
   const palette = {
-    primary: { background: 'var(--accent)', color: 'var(--background)' },
-    ghost: { background: 'var(--surface-muted)', color: 'var(--text)' },
-    danger: { background: 'var(--danger)', color: 'var(--background)' },
+    primary: {
+      background: 'var(--accent)',
+      color: '#ffffff',
+      boxShadow: '0 8px 24px -10px var(--accent)',
+    },
+    ghost: {
+      background: 'var(--surface-muted)',
+      color: 'var(--text)',
+      borderColor: 'var(--border)',
+    },
+    danger: { background: 'var(--danger-soft)', color: 'var(--danger)' },
   }[variant];
 
   return (
@@ -80,14 +88,15 @@ export function Badge({
   children: React.ReactNode;
   tone?: 'neutral' | 'success' | 'warning' | 'danger';
 }) {
-  const color = {
-    neutral: 'var(--text-muted)',
-    success: 'var(--success)',
-    warning: 'var(--warning)',
-    danger: 'var(--danger)',
+  // Мягкая заливка вместо контура: метка читается, но не спорит с цифрами.
+  const [color, background] = {
+    neutral: ['var(--text-muted)', 'var(--surface-muted)'],
+    success: ['var(--success)', 'var(--success-soft)'],
+    warning: ['var(--warning)', 'var(--warning-soft)'],
+    danger: ['var(--danger)', 'var(--danger-soft)'],
   }[tone];
 
-  return <span style={{ ...styles.badge, color, borderColor: color }}>{children}</span>;
+  return <span style={{ ...styles.badge, color, background }}>{children}</span>;
 }
 
 /** Плитка с крупным числом: сводки отчётов собираются из них. */
@@ -125,55 +134,62 @@ export function ErrorText({ children }: { children: React.ReactNode }) {
 const styles: Record<string, React.CSSProperties> = {
   card: {
     background: 'var(--surface)',
-    borderRadius: 16,
+    border: '1px solid var(--border)',
+    borderRadius: 20,
     padding: 24,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   cardHeader: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 18,
     gap: 12,
   },
-  cardTitle: { fontSize: 18, margin: 0, fontWeight: 600 },
+  cardTitle: { fontSize: 16, margin: 0, fontWeight: 600, letterSpacing: '-0.01em' },
   button: {
-    border: 'none',
-    borderRadius: 10,
+    border: '1px solid transparent',
+    borderRadius: 12,
     padding: '10px 18px',
     fontSize: 14,
     fontWeight: 600,
     cursor: 'pointer',
   },
   field: { display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 },
-  fieldLabel: { fontSize: 13, color: 'var(--text-muted)' },
+  fieldLabel: { fontSize: 13, fontWeight: 500, color: 'var(--text-muted)' },
   fieldHint: { fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 },
   input: {
     background: 'var(--surface-muted)',
-    border: '1px solid var(--border)',
-    borderRadius: 10,
-    padding: '10px 12px',
+    border: '1px solid var(--border-strong)',
+    borderRadius: 12,
+    padding: '11px 14px',
     color: 'var(--text)',
     fontSize: 15,
     width: '100%',
   },
   badge: {
     display: 'inline-block',
-    border: '1px solid',
     borderRadius: 999,
-    padding: '2px 10px',
+    padding: '3px 10px',
     fontSize: 12,
     fontWeight: 600,
+    whiteSpace: 'nowrap',
   },
-  statsRow: { display: 'flex', gap: 16, flexWrap: 'wrap' },
+  statsRow: { display: 'flex', gap: 12, flexWrap: 'wrap' },
   stat: {
     background: 'var(--surface-muted)',
-    borderRadius: 12,
-    padding: 16,
+    border: '1px solid var(--border)',
+    borderRadius: 16,
+    padding: '16px 18px',
     minWidth: 150,
     flex: 1,
   },
-  statValue: { fontSize: 26, fontWeight: 700 },
+  statValue: {
+    fontSize: 28,
+    fontWeight: 700,
+    letterSpacing: '-0.03em',
+    fontVariantNumeric: 'tabular-nums',
+  },
   statLabel: { fontSize: 13, color: 'var(--text-muted)', marginTop: 2 },
   statHint: { fontSize: 11, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.4 },
   empty: { color: 'var(--text-muted)', fontSize: 14, margin: 0 },

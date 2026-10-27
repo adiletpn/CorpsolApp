@@ -1,14 +1,27 @@
+/*
+ * Палитра панели. Экраны берут только эти токены, поэтому оформление
+ * меняется здесь, а не в каждом компоненте. Та же система, что
+ * в мини-аппе для Telegram: глубокий фон, карточки с тонкой рамкой,
+ * индиго-акцент.
+ */
 :root {
-  --background: #0f172a;
-  --surface: #1e293b;
-  --surface-muted: #334155;
-  --border: #334155;
-  --text: #f8fafc;
-  --text-muted: #94a3b8;
-  --accent: #38bdf8;
-  --success: #34d399;
-  --warning: #fbbf24;
-  --danger: #f87171;
+  --background: #0b0b0f;
+  --surface: #131318;
+  --surface-muted: #1b1b22;
+  --surface-hover: #202029;
+  --border: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.12);
+  --text: #f4f4f6;
+  --text-muted: #8c8c99;
+  --accent: #7c7cf8;
+  --accent-soft: rgba(124, 124, 248, 0.14);
+  --success: #3ecf8e;
+  --success-soft: rgba(62, 207, 142, 0.13);
+  --warning: #f5b544;
+  --warning-soft: rgba(245, 181, 68, 0.13);
+  --danger: #f2696b;
+  --danger-soft: rgba(242, 105, 107, 0.13);
+  color-scheme: dark;
 }
 
 * {
@@ -21,10 +34,90 @@ body {
   padding: 0;
   background: var(--background);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 15px;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Мягкое свечение в углу — как у современных панелей, без отвлечения от цифр. */
+body {
+  background:
+    radial-gradient(900px 600px at 100% -10%, rgba(124, 124, 248, 0.08), transparent 60%),
+    var(--background);
+  background-attachment: fixed;
 }
 
 a {
   color: var(--accent);
+}
+
+h1 {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+h2,
+h3 {
+  letter-spacing: -0.01em;
+}
+
+button {
+  font-family: inherit;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s,
+    opacity 0.15s,
+    transform 0.1s;
+}
+
+button:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+input,
+select,
+textarea {
+  font-family: inherit;
+  outline: none;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+/* Таблицы экранов: строка подсвечивается под курсором, цифры не пляшут. */
+table {
+  font-variant-numeric: tabular-nums;
+}
+
+tbody tr {
+  transition: background 0.12s;
+}
+
+tbody tr:hover {
+  background: var(--surface-hover);
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
 }

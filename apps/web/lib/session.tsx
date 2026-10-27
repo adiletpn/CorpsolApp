@@ -26,7 +26,7 @@ const SessionContext = createContext<SessionState | null>(null);
  */
 export class ManagerNotAllowed extends Error {
   constructor() {
-    super('Панель доступна руководителям. Менеджеры работают в мобильном приложении.');
+    super('Панель доступна руководителям. Менеджеры работают в приложении в Telegram.');
   }
 }
 

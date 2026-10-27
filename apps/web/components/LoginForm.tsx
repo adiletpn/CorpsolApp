@@ -53,7 +53,9 @@ export function LoginForm() {
   return (
     <main style={styles.main}>
       <form style={styles.form} onSubmit={submit}>
-        <h1 style={styles.title}>CorpSol</h1>
+        <div style={styles.title}>
+          corp<span style={{ color: 'var(--accent)' }}>sol</span>
+        </div>
         <p style={styles.subtitle}>Панель руководителей</p>
 
         <Field label="Рабочий email">
@@ -83,8 +85,8 @@ export function LoginForm() {
         </div>
 
         <p style={styles.notice}>
-          Менеджеры отмечают приход в мобильном приложении — там действует
-          привязка к устройству.
+          Менеджеры отмечают приход в приложении в Telegram — там действует
+          привязка к телефону.
         </p>
       </form>
     </main>
@@ -101,12 +103,14 @@ const styles: Record<string, React.CSSProperties> = {
   },
   form: {
     background: 'var(--surface)',
-    borderRadius: 20,
-    padding: 32,
+    border: '1px solid var(--border-strong)',
+    borderRadius: 24,
+    padding: 36,
     width: '100%',
-    maxWidth: 400,
+    maxWidth: 420,
+    boxShadow: '0 24px 80px -24px rgba(124, 124, 248, 0.25)',
   },
-  title: { fontSize: 32, margin: 0, textAlign: 'center' },
+  title: { fontSize: 40, fontWeight: 800, letterSpacing: '-0.05em', textAlign: 'center' },
   subtitle: {
     fontSize: 15,
     color: 'var(--text-muted)',

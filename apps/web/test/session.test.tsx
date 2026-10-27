@@ -7,7 +7,7 @@ describe('менеджер в панели', () => {
     const failure = new ManagerNotAllowed();
 
     // Сотрудник не должен гадать, почему его не пустили.
-    expect(failure.message).toContain('мобильном приложении');
+    expect(failure.message).toContain('Telegram');
   });
 
   it('это ошибка, а не тихий возврат пустой сессии', () => {
