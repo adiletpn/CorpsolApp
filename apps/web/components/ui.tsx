@@ -148,7 +148,10 @@ const styles: Record<string, React.CSSProperties> = {
   },
   cardTitle: { fontSize: 16, margin: 0, fontWeight: 600, letterSpacing: '-0.01em' },
   button: {
-    border: '1px solid transparent',
+    // По свойствам, а не сокращением: вариант кнопки переопределяет цвет рамки.
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: 'transparent',
     borderRadius: 12,
     padding: '10px 18px',
     fontSize: 14,

@@ -29,6 +29,33 @@
       ]
     },
     {
+      "//": "Табель сотрудника диапазоном без сортировки — расчёт зарплаты, сводка, достижения. Такой запрос идёт по возрастанию даты, индекс по убыванию ему не подходит",
+      "collectionGroup": "attendance",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "workDate", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "Табель отдела диапазоном без сортировки — расчёт зарплаты, сводка, достижения. Такой запрос идёт по возрастанию даты, индекс по убыванию ему не подходит",
+      "collectionGroup": "attendance",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "departmentId", "order": "ASCENDING" },
+        { "fieldPath": "workDate", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "Табель компании диапазоном без сортировки — расчёт зарплаты, сводка, достижения. Такой запрос идёт по возрастанию даты, индекс по убыванию ему не подходит",
+      "collectionGroup": "attendance",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "organizationId", "order": "ASCENDING" },
+        { "fieldPath": "workDate", "order": "ASCENDING" }
+      ]
+    },
+    {
       "//": "Звонки сотрудника за период",
       "collectionGroup": "calls",
       "queryScope": "COLLECTION",

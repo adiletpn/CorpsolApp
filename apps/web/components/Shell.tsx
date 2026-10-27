@@ -144,7 +144,12 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     gap: 11,
     background: 'transparent',
-    border: '1px solid transparent',
+    // Рамка расписана по свойствам: React, снимая borderColor активного
+    // пункта, не восстанавливает его из сокращения border — рамка
+    // становилась цвета текста.
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: 'transparent',
     borderRadius: 12,
     color: 'var(--text-muted)',
     cursor: 'pointer',
