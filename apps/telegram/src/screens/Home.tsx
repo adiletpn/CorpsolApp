@@ -80,11 +80,13 @@ export function Home({ onOpenProfile }: { onOpenProfile(): void }) {
   const [leaving, setLeaving] = useState(false);
 
   const data = useLoad(async () => {
-    const [records, calls] = await Promise.all([
+    const [records, calls, unread] = await Promise.all([
       api.attendance(month.from, month.to),
       api.callsSummary(today, today),
+      // Счётчик — подсказка, а не данные экрана: его сбой не ломает главную.
+      api.unreadCount().catch(() => ({ count: 0 })),
     ]);
-    return { records, calls };
+    return { records, calls, unread: unread.count };
   }, 'home');
 
   const records = data.data?.records ?? [];
@@ -155,8 +157,13 @@ export function Home({ onOpenProfile }: { onOpenProfile(): void }) {
           <p className="greeting-hello">{greeting()},</p>
           <h1 className="greeting-name">{user?.fullName ?? ''}</h1>
         </div>
-        <button className="avatar-button" onClick={onOpenProfile} aria-label="Профиль">
+        <button
+          className="avatar-button"
+          onClick={onOpenProfile}
+          aria-label={data.data?.unread ? `Профиль, новых уведомлений: ${data.data.unread}` : 'Профиль'}
+        >
           {initialsOf(user?.fullName ?? '')}
+          {data.data?.unread ? <span className="avatar-badge">{data.data.unread}</span> : null}
         </button>
       </header>
       <Gap size={3} />

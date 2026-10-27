@@ -829,6 +829,7 @@ p {
 /* ---------- профиль ---------- */
 
 .avatar-button {
+  position: relative;
   width: 44px;
   height: 44px;
   flex-shrink: 0;
@@ -1070,4 +1071,22 @@ p {
 /* В уведомлении суть в тексте — переносим, а не режем многоточием. */
 .notifications .panel-row-subtitle {
   white-space: normal;
+}
+
+/* Новые уведомления — числом на аватаре, как непрочитанные в Telegram. */
+.avatar-badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 2px solid var(--background);
+  background: var(--danger);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 800;
 }
