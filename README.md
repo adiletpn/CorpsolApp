@@ -2,13 +2,15 @@
 
 [![Проверки](https://github.com/adiletpn/CorpsolApp/actions/workflows/ci.yml/badge.svg)](https://github.com/adiletpn/CorpsolApp/actions/workflows/ci.yml)
 
-Монорепозиторий: единый бэкенд, веб-панель для руководителей и мобильное приложение для менеджеров.
+Монорепозиторий: единый бэкенд, веб-панель для руководителей и приложение для менеджеров —
+мини-апп в Telegram (прежнее приложение на Flutter ещё в репозитории).
 
 ```
 apps/api       NestJS + Firebase (Firestore, Auth) — вся бизнес-логика и интеграции
 apps/web       веб-панель: супер-админ, директор, HR, РОП
-apps/mobile_flutter  Flutter — приложение МОПа (скан QR, табель, работа,
-               сделки, зарплата, рейтинг, награды)
+apps/telegram  мини-апп МОПа в Telegram: приход по QR, табель, дозвоны,
+               планы, рейтинг, сделки, зарплата, награды, оформление
+apps/mobile_flutter  Flutter — прежнее приложение МОПа, тот же набор экранов
 packages/shared общие роли, права, геометрия геозоны, формат QR
 ```
 
