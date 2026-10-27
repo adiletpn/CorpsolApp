@@ -4,6 +4,7 @@ import {
   answeredToPass,
   dayPasses,
   formatDate,
+  greeting,
   initialsOf,
   monthRange,
   percent,
@@ -86,5 +87,21 @@ describe('инициалы для аватара', () => {
 
   it('лишние пробелы не дают пустых букв', () => {
     expect(initialsOf('  Мадина   Касымова ')).toBe('МК');
+  });
+});
+
+describe('приветствие на главной', () => {
+  it.each([
+    [3, 'Доброй ночи'],
+    [9, 'Доброе утро'],
+    [14, 'Добрый день'],
+    [20, 'Добрый вечер'],
+  ])('в %i часов — «%s»', (hour, text) => {
+    expect(greeting(new Date(2026, 9, 27, hour))).toBe(text);
+  });
+
+  it('полдень — уже день', () => {
+    // Граница: «доброе утро» в 12:00 звучит запоздало.
+    expect(greeting(new Date(2026, 9, 27, 12))).toBe('Добрый день');
   });
 });
