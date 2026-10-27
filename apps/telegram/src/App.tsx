@@ -78,6 +78,7 @@ function Shell({ active, onSelect }: { active: TabKey; onSelect(key: TabKey): vo
 
       <nav
         className="tabbar"
+        aria-label="Разделы"
         style={{ '--tabs': TABS.length, '--index': index } as React.CSSProperties}
       >
         <span className="tab-lens" aria-hidden="true" />
@@ -85,6 +86,9 @@ function Shell({ active, onSelect }: { active: TabKey; onSelect(key: TabKey): vo
           <button
             key={tab.key}
             className={`tab ${active === tab.key ? 'is-active' : ''}`}
+            // Экранный диктор иначе не скажет, какая вкладка открыта:
+            // активность видна только цветом и линзой.
+            aria-current={active === tab.key ? 'page' : undefined}
             onClick={() => select(tab.key)}
           >
             <Icon name={tab.icon} />
