@@ -14,6 +14,7 @@ import {
   timeLabel,
 } from '../format';
 import { MonthCalendar } from '../MonthCalendar';
+import { Anchor, SectionNav } from '../SectionNav';
 import { useSession } from '../session';
 import {
   LocationError,
@@ -163,8 +164,18 @@ export function Home({ onOpenProfile }: { onOpenProfile(): void }) {
           {data.data?.unread ? <span className="avatar-badge">{data.data.unread}</span> : null}
         </button>
       </header>
-      <Gap size={3} />
+      <Gap size={2} />
+      <SectionNav
+        sections={[
+          { id: 'home-today', label: 'Сегодня' },
+          // Дозвоны — правило менеджера: у руководителя этого блока нет.
+          ...(user?.role === 'MOP' ? [{ id: 'home-calls', label: 'Дозвоны' }] : []),
+          { id: 'home-month', label: 'Табель' },
+        ]}
+      />
+      <Gap size={1} />
 
+      <Anchor id="home-today" />
       <CheckInCard record={todayRecord} busy={leaving} onScan={checkIn} onCheckOut={checkOut} />
 
       {notice ? (
@@ -185,7 +196,7 @@ export function Home({ onOpenProfile }: { onOpenProfile(): void }) {
       ) : null}
 
       <Gap size={3} />
-      <SectionLabel>Табель за месяц</SectionLabel>
+      <SectionLabel id="home-month">Табель за месяц</SectionLabel>
       {data.error && records.length === 0 ? (
         <ErrorRetry message="Не удалось загрузить табель" onRetry={data.reload} />
       ) : data.loading && records.length === 0 ? (
@@ -319,7 +330,7 @@ function CallsToday({ outbound, answered }: { outbound: number; answered: number
 
   return (
     <>
-      <SectionLabel>Дозвоны сегодня</SectionLabel>
+      <SectionLabel id="home-calls">Дозвоны сегодня</SectionLabel>
       <Panel>
         <PanelRow
           title={outbound === 0 ? 'Исходящих пока нет' : `${answered} из ${outbound} исходящих`}
