@@ -10,6 +10,22 @@
     <title>CorpSol</title>
     <!-- Скрипт Telegram подключается до приложения: он создаёт window.Telegram.WebApp. -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!--
+      Тема — до первого кадра: иначе светлая тема мигает тёмной заставкой.
+      Та же логика, что applyAppearance в src/theme.ts, без зависимостей.
+    -->
+    <script>
+      try {
+        var saved = JSON.parse(localStorage.getItem('corpsol.appearance') || '{}');
+        var app = window.Telegram && window.Telegram.WebApp;
+        var system = app && app.initData ? app.colorScheme : 'dark';
+        var theme = !saved.theme || saved.theme === 'system' ? system : saved.theme;
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.dataset.accent = saved.accent || 'brand';
+      } catch (error) {}
+    </script>
+    <!-- Соединение с сервером открывается, пока грузятся скрипты. -->
+    <link rel="preconnect" href="__API_ORIGIN__" crossorigin />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!--
