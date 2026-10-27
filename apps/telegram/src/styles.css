@@ -23,6 +23,9 @@
   --glass-shadow: 0 10px 36px rgba(0, 0, 0, 0.45);
   --gradient: linear-gradient(135deg, #3b5bff, #7c4dff);
   --on-accent: #ffffff;
+  /* Зелёный для заливок графиков: статусный #30d158 слишком светлый
+     для тёмного фона (валидатор: L 0.76 вне полосы), этот проходит. */
+  --chart-good: #22a447;
   --radius-sm: 12px;
   --radius-md: 18px;
   --radius-lg: 24px;
@@ -47,6 +50,7 @@
   --glass-fill: rgba(255, 255, 255, 0.6);
   --glass-highlight: rgba(255, 255, 255, 0.9);
   --glass-shadow: 0 10px 32px rgba(20, 24, 60, 0.14);
+  --chart-good: var(--success);
   color-scheme: light;
 }
 
@@ -70,6 +74,7 @@
   --glass-highlight: rgba(255, 255, 255, 0.8);
   --glass-shadow: 0 10px 32px rgba(70, 45, 10, 0.14);
   --gradient: linear-gradient(135deg, #b0703c, #7d4520);
+  --chart-good: var(--success);
   color-scheme: light;
 }
 
