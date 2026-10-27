@@ -6,7 +6,6 @@ import {
   answeredToPass,
   dateKey,
   dayPasses,
-  formatDate,
   greeting,
   initialsOf,
   monthRange,
@@ -14,6 +13,7 @@ import {
   plural,
   timeLabel,
 } from '../format';
+import { MonthCalendar } from '../MonthCalendar';
 import { useSession } from '../session';
 import {
   LocationError,
@@ -25,7 +25,6 @@ import {
   scanQr,
 } from '../telegram';
 import {
-  EmptyState,
   ErrorRetry,
   Figure,
   FigureRow,
@@ -91,8 +90,6 @@ export function Home({ onOpenProfile }: { onOpenProfile(): void }) {
 
   const records = data.data?.records ?? [];
   const todayRecord = records.find((record) => record.workDate === today) ?? null;
-  // Свежие смены сверху: вчерашний день нужен чаще, чем первое число месяца.
-  const sorted = [...records].sort((a, b) => b.workDate.localeCompare(a.workDate));
 
   async function checkIn() {
     if (!canScanQr()) {
@@ -193,13 +190,9 @@ export function Home({ onOpenProfile }: { onOpenProfile(): void }) {
         <ErrorRetry message="Не удалось загрузить табель" onRetry={data.reload} />
       ) : data.loading && records.length === 0 ? (
         <Spinner />
-      ) : sorted.length === 0 ? (
-        <EmptyState message="За этот месяц отметок пока нет" />
       ) : (
         <Panel>
-          {sorted.map((record) => (
-            <AttendanceRow key={record.id} record={record} />
-          ))}
+          <MonthCalendar records={records} />
         </Panel>
       )}
     </>
@@ -362,28 +355,4 @@ function statusNote(record: AttendanceRecord): string | undefined {
     case 'ON_TIME':
       return record.checkOutAt ? `до ${timeLabel(record.checkOutAt)}` : undefined;
   }
-}
-
-/**
- * Строка табеля. Засечка и подпись статуса — только у отклонений:
- * обычная смена говорит сама за себя временем прихода.
- */
-function AttendanceRow({ record }: { record: AttendanceRecord }) {
-  const normal = record.status === 'ON_TIME';
-  const color = STATUS_COLOR[record.status];
-
-  return (
-    <PanelRow
-      title={formatDate(record.workDate)}
-      subtitle={statusNote(record)}
-      accent={normal ? undefined : color}
-      trailing={
-        record.checkInAt ? (
-          <RowValue color={normal ? undefined : color}>{timeLabel(record.checkInAt)}</RowValue>
-        ) : (
-          <RowValue muted>—</RowValue>
-        )
-      }
-    />
-  );
 }
