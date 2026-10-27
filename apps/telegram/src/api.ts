@@ -84,7 +84,7 @@ const CODE_MESSAGES: Record<string, string> = {
 };
 
 /** Nest кладёт наш объект ошибки в поле message — разворачиваем его. */
-function toError(status: number, json: unknown): ApiError {
+export function toError(status: number, json: unknown): ApiError {
   let body: Record<string, unknown> = {};
   if (json && typeof json === 'object') {
     const nested = (json as Record<string, unknown>).message;
