@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 
 import { api, type Achievement, type Notification } from '../api';
 import { formatDate, initialsOf, timeLabel } from '../format';
+import { SectionNav } from '../SectionNav';
 import { useSession } from '../session';
 import {
   ACCENTS,
@@ -46,6 +47,16 @@ export function Profile() {
         </p>
       </div>
 
+      <Gap size={2} />
+      <SectionNav
+        sections={[
+          ...(notifications.data?.length ? [{ id: 'profile-notifications', label: 'Уведомления' }] : []),
+          { id: 'profile-awards', label: 'Награды' },
+          { id: 'profile-theme', label: 'Тема' },
+          { id: 'profile-account', label: 'Аккаунт' },
+        ]}
+      />
+
       {notifications.data && notifications.data.length > 0 ? (
         <>
           <Gap size={3} />
@@ -60,7 +71,7 @@ export function Profile() {
       <AppearancePicker />
 
       <Gap size={3} />
-      <SectionLabel>Аккаунт</SectionLabel>
+      <SectionLabel id="profile-account">Аккаунт</SectionLabel>
       <Panel>
         <button className="panel-button" onClick={signOut}>
           <PanelRow title={<span className="tone-danger-text">Выйти</span>} trailing={<Icon name="logout" style={{ color: tone.danger }} />} />
@@ -86,6 +97,7 @@ function Notifications({ items, onRead }: { items: Notification[]; onRead(): voi
   return (
     <>
       <SectionLabel
+        id="profile-notifications"
         trailing={
           unread > 0 ? (
             <button className="link-button" onClick={readAll}>
@@ -121,7 +133,7 @@ function Awards({ items, loading }: { items: Achievement[] | null; loading: bool
 
   return (
     <>
-      <SectionLabel>Награды</SectionLabel>
+      <SectionLabel id="profile-awards">Награды</SectionLabel>
       <FigureRow>
         <Figure value={`${unlocked.length} из ${items.length}`} label="получено" />
         <Figure value={String(points)} label="баллов за награды" color={points > 0 ? tone.warning : undefined} />
@@ -159,7 +171,7 @@ function AppearancePicker() {
 
   return (
     <>
-      <SectionLabel>Тема</SectionLabel>
+      <SectionLabel id="profile-theme">Тема</SectionLabel>
       <Panel>
         <div className="theme-cards">
           {THEMES.map((theme) => (

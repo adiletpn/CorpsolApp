@@ -62,7 +62,8 @@ describe('уведомления в профиле', () => {
     api.notifications.mockResolvedValue([]);
     render(<Profile />);
 
-    await screen.findByText('Тема');
+    // «Тема» теперь и в строке разделов, и заголовком — ждём заголовок.
+    await waitFor(() => expect(document.getElementById('profile-theme')).toBeTruthy());
     expect(screen.queryByText(/Уведомления/)).toBeNull();
   });
 });
