@@ -231,9 +231,12 @@ export function Employees() {
           <p style={styles.passwordHint}>
             {created.fullName} · {created.email}
           </p>
-          <Button variant="ghost" onClick={() => setCreated(null)}>
-            Скрыть
-          </Button>
+          <div style={styles.passwordActions}>
+            <CopyButton text={created.temporaryPassword} />
+            <Button variant="ghost" onClick={() => setCreated(null)}>
+              Скрыть
+            </Button>
+          </div>
         </Card>
       ) : null}
 
@@ -325,9 +328,30 @@ export function Employees() {
   );
 }
 
+/**
+ * Пароль переписывали руками — и путали «l» с «1». Копирование убирает
+ * опечатку при передаче сотруднику.
+ */
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Буфер обмена закрыт браузером — пароль по-прежнему виден на экране.
+    }
+  };
+
+  return <Button onClick={copy}>{copied ? 'Скопировано' : 'Скопировать'}</Button>;
+}
+
 const styles: Record<string, React.CSSProperties> = {
   title: { fontSize: 26, margin: '0 0 24px' },
   actions: { display: 'flex', gap: 8, justifyContent: 'flex-end' },
+  passwordActions: { display: 'flex', gap: 8 },
   formGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
