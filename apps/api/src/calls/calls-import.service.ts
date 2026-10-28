@@ -53,12 +53,17 @@ export class CallsImportService {
     source: CallDoc['source'],
     matchBy: MatchBy = 'phone',
     timezone = 'Asia/Almaty',
+    /**
+     * Чьи привязки сверять, если не совпадает с источником: звонок из API
+     * Kcell — источник KCELL, но сотрудник опознаётся по логину (KCELL_USER).
+     */
+    identityProvider: string = source,
   ): Promise<ImportSummary> {
     if (calls.length === 0) {
       return { imported: 0, duplicates: 0, unmatched: [] };
     }
 
-    const index = await this.buildIndex(organizationId, source, matchBy);
+    const index = await this.buildIndex(organizationId, identityProvider, matchBy);
 
     const unmatchedCounts = new Map<string, number>();
     let imported = 0;
@@ -72,7 +77,9 @@ export class CallsImportService {
       const existing = await this.findExisting(source, chunk);
 
       for (const call of chunk) {
-        const key = matchBy === 'phone' ? normalizePhone(call.employeeKey) : call.employeeKey;
+        // Внешние ключи привязки хранятся в нижнем регистре («Dina» → «dina»).
+        const key =
+          matchBy === 'phone' ? normalizePhone(call.employeeKey) : call.employeeKey.trim().toLowerCase();
         const match = key ? index.get(key) : undefined;
 
         if (!match) {
@@ -133,7 +140,7 @@ export class CallsImportService {
    */
   private async buildIndex(
     organizationId: string,
-    source: CallDoc['source'],
+    identityProvider: string,
     matchBy: MatchBy,
   ): Promise<Map<string, EmployeeRef>> {
     const index = new Map<string, EmployeeRef>();
@@ -155,7 +162,7 @@ export class CallsImportService {
 
     const identities = await this.db
       .collection(COLLECTIONS.externalIdentities)
-      .where('provider', '==', source)
+      .where('provider', '==', identityProvider)
       .get();
 
     for (const doc of identities.docs) {

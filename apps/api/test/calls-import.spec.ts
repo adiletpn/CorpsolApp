@@ -158,3 +158,48 @@ describe('пустая выгрузка', () => {
     expect(result).toEqual({ imported: 0, duplicates: 0, unmatched: [] });
   });
 });
+
+describe('звонки из АТС по логину сотрудника', () => {
+  const seedLogin = (firestore: FakeFirestore, userId: string, provider: string, key: string) =>
+    firestore.seed(COLLECTIONS.externalIdentities, `${provider}_${key}`, {
+      userId,
+      provider,
+      externalKey: key,
+      organizationId: ORG,
+    });
+
+  it('звонок Kcell находит сотрудника по логину АТС', async () => {
+    const { firestore, service } = setup([{ id: 'u1', departmentId: 'dep-1' }]);
+    seedLogin(firestore, 'u1', 'KCELL_USER', 'dina');
+
+    // Источник — KCELL, а привязки — по логину: это разные вещи.
+    const result = await service.importCalls(
+      ORG,
+      [call({ employeeKey: 'Dina' })],
+      'KCELL',
+      'externalKey',
+      'Asia/Almaty',
+      'KCELL_USER',
+    );
+
+    expect(result.imported).toBe(1);
+    expect(firestore.all(COLLECTIONS.calls)[0]).toMatchObject({ userId: 'u1', source: 'KCELL' });
+  });
+
+  it('рабочие номера выгрузки не путаются с логинами', async () => {
+    const { firestore, service } = setup([{ id: 'u1' }]);
+    seedLogin(firestore, 'u1', 'KCELL', '+77012345678');
+
+    const result = await service.importCalls(
+      ORG,
+      [call({ employeeKey: '+77012345678' })],
+      'KCELL',
+      'externalKey',
+      'Asia/Almaty',
+      'KCELL_USER',
+    );
+
+    expect(result.imported).toBe(0);
+    expect(result.unmatched).toEqual([{ employeeKey: '+77012345678', count: 1 }]);
+  });
+});

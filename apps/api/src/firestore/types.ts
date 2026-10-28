@@ -232,7 +232,7 @@ export interface PlanDoc {
   createdAt: Timestamp;
 }
 
-export type CallSource = 'BITRIX' | 'KCELL' | 'MANUAL';
+export type CallSource = 'BITRIX' | 'KCELL' | 'SIPUNI' | 'MANUAL';
 
 export interface CallDoc {
   userId: string;
