@@ -20,6 +20,8 @@ export interface Employee {
   officeId: string | null;
   phone: string | null;
   baseSalaryMinor: number;
+  /** Ранг из таблицы; null — оклад и правила, без рангов. */
+  gradeCode: string | null;
   hiredAt: string;
   terminatedAt: string | null;
 }
