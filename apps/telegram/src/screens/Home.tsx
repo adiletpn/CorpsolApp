@@ -64,8 +64,19 @@ const CHECK_IN_HINTS: Record<string, string> = {
  */
 export function fenceStrikeHint(details: Record<string, unknown>): string | undefined {
   const days = typeof details.fenceDays === 'number' ? details.fenceDays : null;
-  if (days === null) return undefined;
-  if (details.reprimanded === true || days >= 3) {
+  const away = typeof details.distanceMeters === 'number' ? `До офиса ${formatDistance(details.distanceMeters)}. ` : '';
+  if (days === null) return away ? away.trim() : undefined;
+  return away + fenceDaysText(days, details.reprimanded === true);
+}
+
+/** «850 м», «2,4 км» — расстояние до офиса в отказе. */
+export function formatDistance(meters: number): string {
+  if (meters < 1000) return `${Math.round(meters)} м`;
+  return `${(meters / 1000).toFixed(1).replace('.', ',')} км`;
+}
+
+function fenceDaysText(days: number, reprimanded: boolean): string {
+  if (reprimanded || days >= 3) {
     return `Попытка записана. Это ${days}-й день в этом месяце с отметкой не из офиса — выговор, руководитель уведомлён.`;
   }
   return `Попытка записана: ${days}-й день из 3 в этом месяце. На третий — выговор.`;

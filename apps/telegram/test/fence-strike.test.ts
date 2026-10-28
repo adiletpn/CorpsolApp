@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../src/firebase', () => ({ auth: { currentUser: null } }));
 
-const { fenceStrikeHint } = await import('../src/screens/Home');
+const { fenceStrikeHint, formatDistance } = await import('../src/screens/Home');
 
 describe('попытка отметиться не из офиса', () => {
   it('первый и второй день — предупреждение, сколько осталось до выговора', () => {
@@ -22,7 +22,19 @@ describe('попытка отметиться не из офиса', () => {
     expect(hint).not.toContain('из 3');
   });
 
-  it('старый сервер без счётчика — подсказки нет', () => {
-    expect(fenceStrikeHint({ distanceMeters: 2400 })).toBeUndefined();
+  it('расстояние до офиса — первым, чтобы отказ не выглядел сбоем', () => {
+    expect(fenceStrikeHint({ distanceMeters: 2400, fenceDays: 1, reprimanded: false })).toBe(
+      'До офиса 2,4 км. Попытка записана: 1-й день из 3 в этом месяце. На третий — выговор.',
+    );
+  });
+
+  it('без счётчика — только расстояние', () => {
+    expect(fenceStrikeHint({ distanceMeters: 850 })).toBe('До офиса 850 м.');
+    expect(fenceStrikeHint({})).toBeUndefined();
+  });
+
+  it('метры и километры', () => {
+    expect(formatDistance(140.6)).toBe('141 м');
+    expect(formatDistance(1050)).toBe('1,1 км');
   });
 });
