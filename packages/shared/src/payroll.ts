@@ -52,6 +52,12 @@ export interface PayrollInput {
    */
   extraBonusLines?: PayrollLine[];
   /**
+   * Ручные правки директора: плюс — доплата, минус — удержание, у каждой
+   * причина в заголовке. Предел удержаний на них не действует: он
+   * защищает от автоматики, а здесь решение принял человек.
+   */
+  manualLines?: PayrollLine[];
+  /**
    * Предел удержаний как доля оклада в базисных пунктах.
    * По умолчанию половина: удержать у человека больше половины заработка
    * за месяц нельзя, каким бы ни было число опозданий.
@@ -61,7 +67,7 @@ export interface PayrollInput {
 
 export interface PayrollLine {
   ruleId: string;
-  kind: BonusRuleKind | 'WEEKLY_OFFERS';
+  kind: BonusRuleKind | 'WEEKLY_OFFERS' | 'MANUAL';
   title: string;
   amountMinor: number;
 }
@@ -201,7 +207,14 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     input.baseSalaryMinor,
     input.maxDeductionBps ?? DEFAULT_MAX_DEDUCTION_BPS,
   );
-  const penaltyMinor = Math.min(rawPenaltyMinor, maxDeduction);
+  let penaltyMinor = Math.min(rawPenaltyMinor, maxDeduction);
+
+  for (const line of input.manualLines ?? []) {
+    if (line.amountMinor === 0) continue;
+    if (line.amountMinor > 0) bonusMinor += line.amountMinor;
+    else penaltyMinor += -line.amountMinor;
+    lines.push(line);
+  }
 
   // Итог не может быть отрицательным: сотрудник не должен компании
   // по результатам месяца, каким бы ни был расчёт.
