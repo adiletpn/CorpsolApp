@@ -24,6 +24,9 @@ const SENSITIVE_ACTIONS = new Set([
   // меняют зарплату в обход этого правила.
   'employee.grade',
   'grades.update',
+  // Ручная доплата или удержание — сумма мимо всех правил.
+  'payroll.adjust',
+  'payroll.adjust_removed',
 ]);
 
 /**

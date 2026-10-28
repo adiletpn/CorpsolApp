@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query } from '@nestjs/common';
 import { IsBoolean } from 'class-validator';
 
 import { CurrentUser, type AuthenticatedUser } from '../common/decorators/current-user.decorator';
@@ -6,7 +6,7 @@ import { RequirePermissions } from '../common/decorators/require-permissions.dec
 import { PayrollService } from './payroll.service';
 import { BonusRulesService } from './bonus-rules.service';
 import { GradesService } from './grades.service';
-import { AssignGradeDto, CalculatePayrollDto, CreateBonusRuleDto, UpdateGradesDto } from './dto';
+import { AddAdjustmentDto, AssignGradeDto, CalculatePayrollDto, CreateBonusRuleDto, UpdateGradesDto } from './dto';
 
 class SetActiveDto {
   @IsBoolean()
@@ -36,6 +36,25 @@ export class PayrollController {
   @RequirePermissions('payroll.read.self')
   myGrade(@CurrentUser() user: AuthenticatedUser) {
     return this.grades.progress(user.organizationId, user.id);
+  }
+
+  @Get('adjustments')
+  @RequirePermissions('payroll.manage')
+  listAdjustments(@CurrentUser() user: AuthenticatedUser, @Query('periodStart') periodStart: string) {
+    return this.payroll.listAdjustments(user, periodStart);
+  }
+
+  @Post('adjustments')
+  @HttpCode(200)
+  @RequirePermissions('payroll.manage')
+  addAdjustment(@CurrentUser() user: AuthenticatedUser, @Body() dto: AddAdjustmentDto) {
+    return this.payroll.addAdjustment(user, dto.userId, dto.periodStart, dto.amountMinor, dto.reason);
+  }
+
+  @Delete('adjustments/:id')
+  @RequirePermissions('payroll.manage')
+  removeAdjustment(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.payroll.removeAdjustment(user, id);
   }
 
   @Put('grades')

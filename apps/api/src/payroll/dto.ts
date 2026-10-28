@@ -127,3 +127,23 @@ export class AssignGradeDto {
   @IsNotEmpty()
   code!: string;
 }
+
+export class AddAdjustmentDto {
+  @IsString()
+  @IsNotEmpty()
+  userId!: string;
+
+  @Matches(/^\d{4}-\d{2}-01$/, { message: 'Период — первое число месяца, ГГГГ-ММ-01' })
+  periodStart!: string;
+
+  /** Плюс — доплата, минус — удержание; в тиынах. */
+  @IsInt()
+  @Min(-100_000_000_00)
+  @Max(100_000_000_00)
+  amountMinor!: number;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(200)
+  reason!: string;
+}
