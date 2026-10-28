@@ -53,6 +53,8 @@ async function linkNumber(number: string) {
   await screen.findByText('Асель Ким');
 
   await user.selectOptions(screen.getByLabelText('Сотрудник'), 'uid-1');
+  // Телефон — ключ загрузки файла Kcell; по умолчанию выбран логин АТС.
+  await user.selectOptions(screen.getByLabelText('Источник'), 'KCELL');
   await user.type(screen.getByLabelText(/Рабочий номер/), number);
   await user.click(screen.getByRole('button', { name: /закрепить/i }));
 
@@ -114,5 +116,34 @@ describe('снятие привязки', () => {
     // Снятие молча означало бы, что звонки перестали распределяться
     // и никто не заметил.
     expect(confirm).toHaveBeenCalled();
+  });
+});
+
+describe('ключ зависит от источника', () => {
+  it('по умолчанию — логин Kcell: так раскладываются звонки АТС', async () => {
+    render(<WorkNumbers />);
+    await screen.findByText('Асель Ким');
+
+    // Подсказка входит в подпись поля — ищем по началу.
+    expect(screen.getByLabelText(/^Логин Kcell/)).toBeInTheDocument();
+  });
+
+  it('у Sipuni поле — внутренний номер', async () => {
+    const user = userEvent.setup();
+    render(<WorkNumbers />);
+    await screen.findByText('Асель Ким');
+
+    await user.selectOptions(screen.getByLabelText('Источник'), 'SIPUNI');
+
+    expect(screen.getByLabelText(/^Внутренний номер/)).toHaveAttribute('placeholder', '236');
+  });
+
+  it('логин в списке — как есть, а не как телефон', async () => {
+    links = [{ provider: 'KCELL_USER', workNumber: 'dina', userId: 'uid-1', fullName: 'Асель Ким', id: 'l1' }];
+    render(<WorkNumbers />);
+
+    const cell = await screen.findByText('dina');
+    // Подпись источника есть и в списке выбора — проверяем строку таблицы.
+    expect(cell.closest('tr')).toHaveTextContent('Kcell — логин в АТС');
   });
 });
