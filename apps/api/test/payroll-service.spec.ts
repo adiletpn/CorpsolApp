@@ -1,7 +1,7 @@
 import { Timestamp } from 'firebase-admin/firestore';
 
 import { GradesService } from '../src/payroll/grades.service';
-import { PayrollService } from '../src/payroll/payroll.service';
+import { PayrollService, monthEnd } from '../src/payroll/payroll.service';
 import { NotificationsService } from '../src/notifications/notifications.service';
 import { COLLECTIONS, payrollDocId } from '../src/firestore/collections';
 import type { PlansService } from '../src/plans/plans.service';
@@ -398,5 +398,73 @@ describe('расчёт по рангу', () => {
 
     expect(result.baseSalaryMinor).toBe(SALARY);
     expect(result.lines).toEqual([]);
+  });
+});
+
+describe('ручные правки директора', () => {
+  it('доплата попадает в лист строкой с причиной, сумма пересчитана сразу', async () => {
+    const { service } = setup();
+
+    const sheet = await service.addAdjustment(director, USER, PERIOD.start, 2_000_000, '  Наставничество  ');
+
+    expect(sheet.totalMinor).toBe(SALARY + 2_000_000);
+    expect(sheet.lines).toContainEqual(
+      expect.objectContaining({ kind: 'MANUAL', title: 'Наставничество', amountMinor: 2_000_000 }),
+    );
+  });
+
+  it('удержание вычитается и остаётся при следующем пересчёте', async () => {
+    const { service } = setup();
+    await service.addAdjustment(director, USER, PERIOD.start, -1_000_000, 'Порча гарнитуры');
+
+    const recalculated = await service.calculate(director, USER, PERIOD.start, PERIOD.end);
+
+    expect(recalculated.penaltyMinor).toBe(1_000_000);
+    expect(recalculated.totalMinor).toBe(SALARY - 1_000_000);
+  });
+
+  it('снятая правка уходит из суммы', async () => {
+    const { service } = setup();
+    await service.addAdjustment(director, USER, PERIOD.start, 2_000_000, 'Ошибочно');
+    const [adjustment] = await service.listAdjustments(director, PERIOD.start);
+
+    const sheet = await service.removeAdjustment(director, adjustment.id);
+
+    expect(sheet.totalMinor).toBe(SALARY);
+    expect(await service.listAdjustments(director, PERIOD.start)).toEqual([]);
+  });
+
+  it('в утверждённый лист правку не внести', async () => {
+    const { service } = setup();
+    await service.calculate(director, USER, PERIOD.start, PERIOD.end);
+    await service.approve(director, USER, PERIOD.start);
+
+    await expect(service.addAdjustment(director, USER, PERIOD.start, 100_000, 'Поздно')).rejects.toThrow(/утверждён/);
+  });
+
+  it('правка пишется в журнал с автором, суммой и причиной', async () => {
+    const { firestore, service } = setup();
+
+    await service.addAdjustment(director, USER, PERIOD.start, -500_000, 'Опоздание на планёрку');
+
+    const [event] = firestore.all(COLLECTIONS.auditEvents);
+    expect(event).toMatchObject({
+      action: 'payroll.adjust',
+      actorId: 'director',
+      metadata: { userId: USER, amountMinor: -500_000, reason: 'Опоздание на планёрку' },
+    });
+  });
+
+  it('сотрудника чужой организации не правим', async () => {
+    const { service } = setup();
+
+    await expect(
+      service.addAdjustment({ ...director, organizationId: 'org-2' }, USER, PERIOD.start, 100_000, 'x'),
+    ).rejects.toThrow(/не найден/);
+  });
+
+  it('конец месяца для периода — с учётом високосного февраля', () => {
+    expect(monthEnd('2026-09-01')).toBe('2026-09-30');
+    expect(monthEnd('2028-02-01')).toBe('2028-02-29');
   });
 });
