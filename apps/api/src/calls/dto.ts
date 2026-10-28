@@ -1,3 +1,4 @@
+import { IDENTITY_PROVIDERS, type IdentityProvider } from './identity-keys';
 import {
   IsIn,
   IsISO8601,
@@ -36,8 +37,8 @@ export class LinkWorkNumberDto {
   @MaxLength(32)
   workNumber!: string;
 
-  @IsIn(['KCELL', 'BITRIX'])
-  provider!: 'KCELL' | 'BITRIX';
+  @IsIn(IDENTITY_PROVIDERS)
+  provider!: IdentityProvider;
 }
 
 export class ListCallsQueryDto {

@@ -98,7 +98,8 @@ describe('один номер — один сотрудник', () => {
     const { firestore, service } = setup();
 
     await service.link(admin, 'mop-1', '+77071112233', 'KCELL');
-    await service.link(admin, 'mop-2', '+77071112233', 'BITRIX');
+    // В Bitrix24 ключ — номер пользователя портала, цифры без «+».
+    await service.link(admin, 'mop-2', '77071112233', 'BITRIX');
 
     // Нумерация Kcell и Bitrix24 независимы, пересечение случайно.
     expect(firestore.all(COLLECTIONS.externalIdentities)).toHaveLength(2);
@@ -214,5 +215,29 @@ describe('снятие привязки', () => {
       /не найдена/,
     );
     expect(firestore.read(COLLECTIONS.externalIdentities, id)).toBeDefined();
+  });
+});
+
+describe('ключ не только телефон', () => {
+  it('пользователь Bitrix24 закрепляется по своему номеру в портале', async () => {
+    const { service } = setup();
+
+    // Импорт из Bitrix сопоставляет звонки по ID пользователя портала.
+    // Раньше «12» отклонялось как «не похоже на номер телефона».
+    const link = await service.link(admin, 'mop-1', '12', 'BITRIX');
+
+    expect(link.workNumber).toBe('12');
+  });
+
+  it('для Bitrix24 подсказка про идентификатор, а не про телефон', async () => {
+    const { service } = setup();
+
+    await expect(service.link(admin, 'mop-1', 'Иван Петров', 'BITRIX')).rejects.toThrow(/Идентификатор/);
+  });
+
+  it('у выгрузки Kcell ключ по-прежнему телефон', async () => {
+    const { service } = setup();
+
+    await expect(service.link(admin, 'mop-1', '12', 'KCELL')).rejects.toThrow(/номер телефона/);
   });
 });

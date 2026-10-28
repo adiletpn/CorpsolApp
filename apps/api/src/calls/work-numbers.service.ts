@@ -1,16 +1,16 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { normalizePhone } from '@corpsol/shared';
 
 import { FirebaseService } from '../firebase/firebase.service';
 import { COLLECTIONS, externalIdentityDocId } from '../firestore/collections';
 import type { UserDoc } from '../firestore/types';
 import type { AuthenticatedUser } from '../common/decorators/current-user.decorator';
+import { identityKeyHint, normalizeIdentityKey, type IdentityProvider } from './identity-keys';
 
 export interface WorkNumberLink {
   id: string;
   userId: string;
   fullName: string;
-  provider: 'KCELL' | 'BITRIX';
+  provider: IdentityProvider;
   workNumber: string;
 }
 
@@ -33,11 +33,11 @@ export class WorkNumbersService {
     actor: AuthenticatedUser,
     userId: string,
     workNumber: string,
-    provider: 'KCELL' | 'BITRIX',
+    provider: IdentityProvider,
   ): Promise<WorkNumberLink> {
-    const normalized = normalizePhone(workNumber);
+    const normalized = normalizeIdentityKey(provider, workNumber);
     if (!normalized) {
-      throw new BadRequestException(`Не похоже на номер телефона: «${workNumber}»`);
+      throw new BadRequestException(identityKeyHint(provider, workNumber));
     }
 
     const user = await this.loadUser(actor, userId);
@@ -60,9 +60,9 @@ export class WorkNumbersService {
     return { id, userId, fullName: user.fullName, provider, workNumber: normalized };
   }
 
-  async unlink(actor: AuthenticatedUser, provider: 'KCELL' | 'BITRIX', workNumber: string): Promise<void> {
-    const normalized = normalizePhone(workNumber);
-    if (!normalized) throw new BadRequestException('Не похоже на номер телефона');
+  async unlink(actor: AuthenticatedUser, provider: IdentityProvider, workNumber: string): Promise<void> {
+    const normalized = normalizeIdentityKey(provider, workNumber);
+    if (!normalized) throw new BadRequestException(identityKeyHint(provider, workNumber));
 
     const ref = this.db
       .collection(COLLECTIONS.externalIdentities)
@@ -87,7 +87,7 @@ export class WorkNumbersService {
 
     const links = snapshot.docs.map((doc) => ({
       id: doc.id,
-      ...(doc.data() as { userId: string; provider: 'KCELL' | 'BITRIX'; externalKey: string }),
+      ...(doc.data() as { userId: string; provider: IdentityProvider; externalKey: string }),
     }));
 
     if (links.length === 0) return [];

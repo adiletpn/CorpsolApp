@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, Post, Query } from '@nestjs/co
 
 import { CurrentUser, type AuthenticatedUser } from '../common/decorators/current-user.decorator';
 import { RequirePermissions } from '../common/decorators/require-permissions.decorator';
+import type { IdentityProvider } from './identity-keys';
 import { CallsService } from './calls.service';
 import { CallsImportService } from './calls-import.service';
 import { WorkNumbersService } from './work-numbers.service';
@@ -125,7 +126,7 @@ export class CallsController {
   @RequirePermissions('integration.manage')
   unlinkWorkNumber(
     @CurrentUser() user: AuthenticatedUser,
-    @Query('provider') provider: 'KCELL' | 'BITRIX',
+    @Query('provider') provider: IdentityProvider,
     @Query('workNumber') workNumber: string,
   ) {
     return this.workNumbers.unlink(user, provider, workNumber);
