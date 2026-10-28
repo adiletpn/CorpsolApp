@@ -90,3 +90,72 @@ describe('перевод сотрудника на ранг', () => {
     expect((await service.tierFor(ORG, { gradeCode: null })).code).toBe('A');
   });
 });
+
+describe('прогресс ранга для менеджера', () => {
+  const offers = (firestore: FakeFirestore, dates: string[], status = 'ACCEPTED', userId = 'mop-1') =>
+    dates.forEach((sentDate, index) =>
+      firestore.seed(COLLECTIONS.offers, `${userId}-${sentDate}-${status}-${index}`, {
+        organizationId: ORG,
+        userId,
+        sentDate,
+        status,
+      }),
+    );
+
+  // Среда, 28 октября 2026, полдень по Алматы. Неделя — 26.10–01.11.
+  const NOW = new Date('2026-10-28T07:00:00Z');
+
+  it('неделя с понедельника, ставка по полосе, сколько до плана', async () => {
+    const { firestore, service } = setup();
+    offers(firestore, ['2026-10-26', '2026-10-27', '2026-10-27', '2026-10-28']);
+    offers(firestore, ['2026-10-25']); // воскресенье прошлой недели
+    offers(firestore, ['2026-10-28'], 'SENT');
+
+    const progress = await service.progress(ORG, 'mop-1', NOW);
+
+    expect(progress?.week).toEqual({
+      start: '2026-10-26',
+      end: '2026-11-01',
+      count: 4,
+      band: 'under',
+      rateMinor: 4_500_00,
+      amountMinor: 4 * 4_500_00,
+      toPlan: 2,
+    });
+    expect(progress?.monthCount).toBe(5);
+    expect(progress?.next).toEqual({ code: 'B', name: 'Б', monthPlan: 30, left: 25 });
+  });
+
+  it('сверх плана — вся неделя по старшей ставке', async () => {
+    const { firestore, service } = setup();
+    offers(firestore, Array.from({ length: 8 }, () => '2026-10-27'));
+
+    const progress = await service.progress(ORG, 'mop-1', NOW);
+
+    expect(progress?.week).toMatchObject({ band: 'over', amountMinor: 8 * 5_500_00, toPlan: 0 });
+  });
+
+  it('неделя на стыке месяцев: регистрации прошлого месяца в неделе считаются', async () => {
+    const { firestore, service } = setup();
+    offers(firestore, ['2026-09-28', '2026-09-30', '2026-10-01']);
+
+    const progress = await service.progress(ORG, 'mop-1', new Date('2026-10-02T07:00:00Z'));
+
+    expect(progress?.week.count).toBe(3);
+    expect(progress?.monthCount).toBe(1);
+  });
+
+  it('у старшего ранга следующего нет', async () => {
+    const { firestore, service } = setup();
+    firestore.seed(COLLECTIONS.users, 'mop-1', { organizationId: ORG, fullName: 'Дина', role: 'MOP', gradeCode: 'C' });
+
+    expect((await service.progress(ORG, 'mop-1', NOW))?.next).toBeNull();
+  });
+
+  it('без ранга — null: человек на окладе и правилах', async () => {
+    const { firestore, service } = setup();
+    firestore.seed(COLLECTIONS.users, 'mop-2', { organizationId: ORG, fullName: 'Ярослав', role: 'MOP', gradeCode: null });
+
+    expect(await service.progress(ORG, 'mop-2', NOW)).toBeNull();
+  });
+});
