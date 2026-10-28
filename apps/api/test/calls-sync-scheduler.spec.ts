@@ -20,10 +20,23 @@ function setup(options: { failFor?: string[] } = {}) {
     },
   };
 
+  const pbx = {
+    syncKcell: async (organizationId: string) => {
+      synced.push(`${organizationId}:KCELL`);
+      return { imported: 5 };
+    },
+    syncSipuni: async (organizationId: string) => {
+      if (options.failFor?.includes(`${organizationId}:SIPUNI`)) throw new Error('Sipuni недоступен');
+      synced.push(`${organizationId}:SIPUNI`);
+      return { imported: 2 };
+    },
+  };
+
   const scheduler = new CallsSyncScheduler(
     firebase,
     bitrix as never,
     new JobLockService(firebase),
+    pbx as never,
   );
 
   return { firestore, scheduler, synced };
@@ -48,13 +61,13 @@ describe('автоматический добор звонков', () => {
     expect(synced).toEqual(['org-1', 'org-2']);
   });
 
-  it('организация без Bitrix пропускается', async () => {
+  it('Kcell без ключа API пропускается', async () => {
     const { firestore, scheduler, synced } = setup();
     seedIntegration(firestore, 'org-1', 'KCELL');
 
     await scheduler.syncAll(AT);
 
-    // Выгрузка Kcell приходит файлом, тянуть по сети нечего.
+    // Без ключа API выгрузка Kcell приходит файлом, тянуть по сети нечего.
     expect(synced).toEqual([]);
   });
 
@@ -108,5 +121,51 @@ describe('автоматический добор звонков', () => {
 
     const [run] = firestore.all(COLLECTIONS.jobRuns);
     expect(run?.marked).toBe(3);
+  });
+});
+
+describe('звонки из АТС по расписанию', () => {
+  const seedPbx = (firestore: FakeFirestore, organizationId: string, provider: 'KCELL' | 'SIPUNI') =>
+    firestore.seed(COLLECTIONS.integrations, `${organizationId}_${provider}`, {
+      organizationId,
+      provider,
+      isActive: true,
+      credentials: { any: 'value' },
+    });
+
+  it('Kcell и Sipuni одной организации добираются оба', async () => {
+    const { firestore, scheduler, synced } = setup();
+    seedIntegration(firestore, 'org-1');
+    seedPbx(firestore, 'org-1', 'KCELL');
+    seedPbx(firestore, 'org-1', 'SIPUNI');
+
+    const results = await scheduler.syncAll(AT);
+
+    expect(synced).toEqual(['org-1', 'org-1:KCELL', 'org-1:SIPUNI']);
+    expect(results.map((item) => item.source)).toEqual(['BITRIX', 'KCELL', 'SIPUNI']);
+  });
+
+  it('сбой Sipuni не срывает Kcell', async () => {
+    const { firestore, scheduler, synced } = setup({ failFor: ['org-1:SIPUNI'] });
+    seedPbx(firestore, 'org-1', 'SIPUNI');
+    seedPbx(firestore, 'org-1', 'KCELL');
+
+    await scheduler.syncAll(AT);
+
+    expect(synced).toContain('org-1:KCELL');
+  });
+
+  it('отключённая АТС не добирается', async () => {
+    const { firestore, scheduler, synced } = setup();
+    firestore.seed(COLLECTIONS.integrations, 'org-1_KCELL', {
+      organizationId: 'org-1',
+      provider: 'KCELL',
+      isActive: false,
+      credentials: null,
+    });
+
+    await scheduler.syncAll(AT);
+
+    expect(synced).toEqual([]);
   });
 });
