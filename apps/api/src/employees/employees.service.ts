@@ -26,6 +26,8 @@ export interface EmployeeView {
   officeId: string | null;
   phone: string | null;
   baseSalaryMinor: number;
+  /** Ранг из таблицы; null — зарплата по окладу и правилам, без рангов. */
+  gradeCode: string | null;
   hiredAt: string;
   terminatedAt: string | null;
 }
@@ -332,6 +334,7 @@ export class EmployeesService {
       officeId: doc.officeId,
       phone: doc.phone ?? null,
       baseSalaryMinor: doc.baseSalaryMinor,
+      gradeCode: doc.gradeCode ?? null,
       hiredAt: doc.hiredAt.toDate().toISOString(),
       terminatedAt: doc.terminatedAt?.toDate().toISOString() ?? null,
     };

@@ -586,6 +586,15 @@ describe('карточка одного сотрудника', () => {
 
     expect(found.baseSalaryMinor).toBe(33_333_333);
   });
+
+  it('ранг отдаётся, а без ранга — null, не пропуск поля', async () => {
+    const { firestore, service } = setup();
+    seedEmployee(firestore, 'mop-1', { gradeCode: 'B' });
+    seedEmployee(firestore, 'mop-2', {});
+
+    expect((await service.findOne(actor('HR'), 'mop-1')).gradeCode).toBe('B');
+    expect((await service.findOne(actor('HR'), 'mop-2')).gradeCode).toBeNull();
+  });
 });
 
 describe('журнал кадровых действий', () => {
