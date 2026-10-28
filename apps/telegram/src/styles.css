@@ -1671,3 +1671,9 @@ p {
   color: var(--text);
   cursor: pointer;
 }
+
+/* Нечётное кольцо — последнее или единственное — во всю ширину,
+   а не рядом с пустой клеткой. */
+.rings > .ring:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
