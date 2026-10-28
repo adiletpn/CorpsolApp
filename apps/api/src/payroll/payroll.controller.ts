@@ -31,6 +31,13 @@ export class PayrollController {
     return this.grades.tiers(user.organizationId);
   }
 
+  /** Прогноз своей зарплаты за месяц на сегодня — для мини-приложения. */
+  @Get('forecast/me')
+  @RequirePermissions('payroll.read.self')
+  myForecast(@CurrentUser() user: AuthenticatedUser) {
+    return this.payroll.forecast(user);
+  }
+
   /** Свой ранг и неделя — для мини-приложения. */
   @Get('grades/me')
   @RequirePermissions('payroll.read.self')

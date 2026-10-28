@@ -19,6 +19,7 @@ import type {
   AttendanceDoc,
   BonusRuleDoc,
   OfferDoc,
+  OrganizationDoc,
   PayrollAdjustmentDoc,
   PayrollDoc,
   UserDoc,
@@ -26,6 +27,7 @@ import type {
 import { PlansService } from '../plans/plans.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { GradesService } from './grades.service';
+import { localWorkDateKey } from '../common/utils/time';
 import type { AuthenticatedUser } from '../common/decorators/current-user.decorator';
 
 export interface PayrollAdjustmentView {
@@ -74,20 +76,55 @@ export class PayrollService {
     periodEnd: string,
   ): Promise<PayrollView> {
     const user = await this.loadUser(actor, userId);
+    const result = await this.compute(user, userId, periodStart, periodEnd);
+    return this.persist(user, userId, periodStart, periodEnd, result);
+  }
 
+  /**
+   * Прогноз на сегодня: тот же расчёт за месяц по сегодняшний день,
+   * но без записи листа. Сотрудник видит, к чему идёт, каждый день;
+   * утверждённая сумма — только та, что в листе.
+   */
+  async forecast(actor: AuthenticatedUser, now = new Date()) {
+    const user = await this.loadUser(actor, actor.id);
+    const timezone =
+      ((await this.db.collection(COLLECTIONS.organizations).doc(user.organizationId).get()).data() as
+        | OrganizationDoc
+        | undefined)?.timezone ?? 'Asia/Almaty';
+    const today = localWorkDateKey(now, timezone);
+    const periodStart = `${today.slice(0, 7)}-01`;
+
+    const result = await this.compute(user, actor.id, periodStart, today);
+    return {
+      periodStart,
+      asOf: today,
+      baseSalaryMinor: result.baseSalaryMinor,
+      bonusMinor: result.bonusMinor,
+      penaltyMinor: result.penaltyMinor,
+      totalMinor: result.totalMinor,
+      lines: result.lines,
+    };
+  }
+
+  private async compute(
+    user: UserDoc,
+    userId: string,
+    periodStart: string,
+    periodEnd: string,
+  ): Promise<PayrollResult> {
     const [rules, attendance, planProgress, adjustments] = await Promise.all([
-      this.loadRules(actor.organizationId, user.departmentId),
+      this.loadRules(user.organizationId, user.departmentId),
       this.summarizeAttendance(userId, periodStart, periodEnd),
-      this.plans.progressForUser(actor.organizationId, userId, periodStart),
-      this.loadAdjustments(actor.organizationId, userId, periodStart),
+      this.plans.progressForUser(user.organizationId, userId, periodStart),
+      this.loadAdjustments(user.organizationId, userId, periodStart),
     ]);
 
     // С рангом оклад и недельные бонусы — из таблицы рангов; без ранга
     // сотрудник считается по-старому, по окладу из карточки.
-    const tier = user.gradeCode ? await this.grades.tierFor(actor.organizationId, user) : null;
+    const tier = user.gradeCode ? await this.grades.tierFor(user.organizationId, user) : null;
     const extraBonusLines = tier ? await this.weeklyOfferLines(userId, periodStart, tier) : [];
 
-    const result = calculatePayroll({
+    return calculatePayroll({
       baseSalaryMinor: tier ? tier.baseSalaryMinor : user.baseSalaryMinor,
       attendance,
       planProgress,
@@ -100,8 +137,6 @@ export class PayrollService {
         amountMinor: adjustment.amountMinor,
       })),
     });
-
-    return this.persist(user, userId, periodStart, periodEnd, result);
   }
 
   /**
