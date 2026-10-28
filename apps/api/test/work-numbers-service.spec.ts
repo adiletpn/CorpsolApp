@@ -241,3 +241,29 @@ describe('ключ не только телефон', () => {
     await expect(service.link(admin, 'mop-1', '12', 'KCELL')).rejects.toThrow(/номер телефона/);
   });
 });
+
+describe('привязка к АТС', () => {
+  it('логин Kcell — без учёта регистра', async () => {
+    const { service } = setup();
+
+    // API Kcell подписывает звонок логином сотрудника в АТС.
+    const link = await service.link(admin, 'mop-1', 'Dina', 'KCELL_USER');
+
+    expect(link.workNumber).toBe('dina');
+  });
+
+  it('внутренний номер Sipuni', async () => {
+    const { service } = setup();
+
+    const link = await service.link(admin, 'mop-1', '236', 'SIPUNI');
+
+    expect(link.workNumber).toBe('236');
+  });
+
+  it('один внутренний номер Sipuni — один сотрудник', async () => {
+    const { service } = setup();
+    await service.link(admin, 'mop-1', '236', 'SIPUNI');
+
+    await expect(service.link(admin, 'mop-2', '236', 'SIPUNI')).rejects.toThrow(/другим сотрудником/);
+  });
+});

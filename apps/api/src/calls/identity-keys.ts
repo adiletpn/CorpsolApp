@@ -3,12 +3,13 @@ import { normalizePhone } from '@corpsol/shared';
 /**
  * Чем источник звонков опознаёт сотрудника.
  *
- * Выгрузка Kcell — рабочим номером телефона, Bitrix24 — номером
- * пользователя портала («12»). Прогонять всё через нормализацию
+ * Выгрузка Kcell — рабочим номером телефона, API Kcell — логином
+ * сотрудника в АТС («dina»), Sipuni — внутренним номером («236»),
+ * Bitrix24 — номером пользователя портала («12»). Прогонять всё через нормализацию
  * телефона нельзя: «12» она отбрасывает, и привязать пользователя
  * Bitrix было невозможно.
  */
-export const IDENTITY_PROVIDERS = ['KCELL', 'BITRIX'] as const;
+export const IDENTITY_PROVIDERS = ['KCELL', 'KCELL_USER', 'SIPUNI', 'BITRIX'] as const;
 export type IdentityProvider = (typeof IDENTITY_PROVIDERS)[number];
 
 const PHONE_KEYED: ReadonlySet<IdentityProvider> = new Set(['KCELL']);
