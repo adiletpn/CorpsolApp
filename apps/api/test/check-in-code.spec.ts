@@ -1,6 +1,6 @@
 import { encodeQrPayload, encodeStartCode, extractStartParam, parseCheckInCode } from '@corpsol/shared';
 
-const printed = { v: 1 as const, t: 'sJ6jXi8CaJk31Bd3zQhH', c: 3, s: 'WHcG-H4OHy_zRdb', p: 1 as const };
+const printed = { v: 1 as const, t: 'sJ6jXi8CaJk31Bd3zQhH', c: 3, s: 'WHcG-H4OHy_zRdb6', p: 1 as const };
 
 describe('код отметки в любом виде', () => {
   it('ссылка t.me с листка — её открывает обычная камера', () => {
@@ -10,11 +10,15 @@ describe('код отметки в любом виде', () => {
   });
 
   it('сам параметр запуска — его получает мини-апп, открытый камерой', () => {
-    expect(parseCheckInCode('q3-sJ6jXi8CaJk31Bd3zQhH-WHcG-H4OHy_zRdb')).toEqual(printed);
+    expect(parseCheckInCode('q3-sJ6jXi8CaJk31Bd3zQhH-WHcG-H4OHy_zRdb6')).toEqual(printed);
   });
 
   it('подпись с дефисом не путается с разделителями', () => {
-    expect(parseCheckInCode(encodeStartCode({ ...printed, s: 'a-b-c-d-e-f-g-h' }))?.s).toBe('a-b-c-d-e-f-g-h');
+    expect(parseCheckInCode(encodeStartCode({ ...printed, s: 'a-b-c-d-e-f-g-hh' }))?.s).toBe('a-b-c-d-e-f-g-hh');
+  });
+
+  it('дефис в имени терминала тоже не мешает', () => {
+    expect(parseCheckInCode(encodeStartCode({ ...printed, t: 'term-1' }))?.t).toBe('term-1');
   });
 
   it('живой код экрана в JSON по-прежнему читается', () => {

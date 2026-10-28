@@ -5,6 +5,7 @@ import {
   QR_ACCEPTED_DRIFT_WINDOWS,
   QR_PAYLOAD_VERSION,
   QR_PERIOD_SECONDS,
+  QR_SIGNATURE_LENGTH,
   currentQrCounter,
   encodeQrPayload,
   type QrPayload,
@@ -13,8 +14,6 @@ import {
 import { FirebaseService } from '../firebase/firebase.service';
 import { COLLECTIONS } from '../firestore/collections';
 import type { TerminalDoc } from '../firestore/types';
-
-const SIGNATURE_LENGTH = 16;
 
 @Injectable()
 export class TerminalService {
@@ -45,7 +44,7 @@ export class TerminalService {
     return createHmac('sha256', secret)
       .update(printed ? `${terminalId}.printed.${counter}` : `${terminalId}.${counter}`)
       .digest('base64url')
-      .slice(0, SIGNATURE_LENGTH);
+      .slice(0, QR_SIGNATURE_LENGTH);
   }
 
   /**
@@ -53,14 +52,18 @@ export class TerminalService {
    * листка защищает геозона, а не время. Номер печати — в подписи,
    * поэтому перепечатка делает старый листок недействительным.
    */
-  printedCode(terminalId: string, secret: string, version: number): string {
-    return encodeQrPayload({
+  printedPayload(terminalId: string, secret: string, version: number): QrPayload {
+    return {
       v: QR_PAYLOAD_VERSION,
       t: terminalId,
       c: version,
       s: this.sign(secret, terminalId, version, true),
       p: 1,
-    });
+    };
+  }
+
+  printedCode(terminalId: string, secret: string, version: number): string {
+    return encodeQrPayload(this.printedPayload(terminalId, secret, version));
   }
 
   /** Текущий QR для экрана терминала. Экран перезапрашивает его каждые 30 секунд. */

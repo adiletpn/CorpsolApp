@@ -42,12 +42,16 @@ export function parseQrPayload(raw: string): QrPayload | null {
   }
 }
 
+/** Длина подписи кода: усечённый HMAC в base64url. */
+export const QR_SIGNATURE_LENGTH = 16;
+
 /**
  * Печатный код в виде параметра запуска мини-аппа: «q<печать>-<терминал>-<подпись>».
  * Telegram пускает в startapp только латиницу, цифры, «_» и «-», поэтому
- * не JSON. Подпись — последняя: в base64url сама может содержать «-».
+ * не JSON. Подпись отрезается с конца по длине: и в ней, и в имени
+ * терминала может встретиться «-».
  */
-const START_CODE = /^q(\d{1,9})-([A-Za-z0-9]{1,64})-([A-Za-z0-9_-]{8,64})$/;
+const START_CODE = new RegExp(`^q(\\d{1,9})-([A-Za-z0-9_-]{1,64})-([A-Za-z0-9_-]{${QR_SIGNATURE_LENGTH}})$`);
 
 export function encodeStartCode(payload: QrPayload): string {
   return `q${payload.c}-${payload.t}-${payload.s}`;
