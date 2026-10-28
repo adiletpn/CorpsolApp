@@ -20,6 +20,10 @@ const SENSITIVE_ACTIONS = new Set([
   'attendance.adjust',
   'device.unbind',
   'employee.terminate',
+  // Ранг ставится сам по итогу месяца; ручной перевод и правка ставок
+  // меняют зарплату в обход этого правила.
+  'employee.grade',
+  'grades.update',
 ]);
 
 /**

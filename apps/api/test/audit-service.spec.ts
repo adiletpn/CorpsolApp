@@ -181,6 +181,17 @@ describe('отбор ручных обходов контроля', () => {
     expect(events[0].action).toBe('device.unbind');
   });
 
+  it('ручной перевод на ранг и правка ставок — обходы, ночной пересмотр — нет', async () => {
+    const { firestore, service } = setup();
+    seedEvent(firestore, 'grade', { action: 'employee.grade' });
+    seedEvent(firestore, 'tiers', { action: 'grades.update' });
+    seedEvent(firestore, 'monthly', { action: 'grades.monthly' });
+
+    const events = await service.list(director, { sensitiveOnly: true });
+
+    expect(events.map((item) => item.action).sort()).toEqual(['employee.grade', 'grades.update']);
+  });
+
   it('заведение сотрудника обходом не считается', async () => {
     const { service } = mixed();
 
