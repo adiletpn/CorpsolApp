@@ -19,6 +19,12 @@ export const qrPayloadSchema = z.object({
   c: z.number().int().nonnegative(),
   /** Усечённый HMAC от (secret, terminalId, counter). */
   s: z.string().min(8),
+  /**
+   * Печатный код — листок на двери вместо экрана. Тогда c — номер
+   * печати: новая печать отменяет старый листок. Подпись у печатного
+   * кода своя, живой код за печатный не выдать и наоборот.
+   */
+  p: z.literal(1).optional(),
 });
 
 export type QrPayload = z.infer<typeof qrPayloadSchema>;
