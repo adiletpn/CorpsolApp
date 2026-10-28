@@ -157,8 +157,10 @@ export function Home({ onOpenProfile }: { onOpenProfile(): void }) {
         const strike = cause.code === 'outside_fence' ? fenceStrikeHint(cause.details) : undefined;
         setNotice({ kind: 'error', text: cause.message, hint: strike ? `${hint ?? ''} ${strike}`.trim() : hint });
       } else {
-        // Любая другая ошибка — тоже вслух: тишина после скана выглядит как поломка.
-        setNotice({ kind: 'error', text: 'Не получилось отметиться. Попробуйте ещё раз.' });
+        // Любая другая ошибка — тоже вслух: тишина после скана выглядит как
+        // поломка. Причина — в подсказке: по ней видно, что чинить.
+        const reason = cause instanceof Error ? `${cause.name}: ${cause.message}` : String(cause);
+        setNotice({ kind: 'error', text: 'Не получилось отметиться. Попробуйте ещё раз.', hint: `Причина: ${reason}` });
       }
     } finally {
       confirmClosing(false);
