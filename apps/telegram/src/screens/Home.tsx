@@ -120,7 +120,9 @@ export function Home({ onOpenProfile }: { onOpenProfile(): void }) {
 
   /** Отметка: кодом со сканера или кодом из ссылки, которой открыли мини-апп. */
   async function checkIn(codeFromLink?: string) {
-    let qr = codeFromLink ?? null;
+    // Только строка: событие нажатия, переданное сюда по ошибке, ушло
+    // бы на сервер вместо кода и сломало отправку.
+    let qr = typeof codeFromLink === 'string' ? codeFromLink : null;
     if (!qr) {
       if (!canScanQr()) {
         setNotice({ kind: 'error', text: 'Отметка — по QR-коду терминала. Откройте приложение в Telegram на телефоне.' });
@@ -219,7 +221,7 @@ export function Home({ onOpenProfile }: { onOpenProfile(): void }) {
       <Gap size={1} />
 
       <Anchor id="home-today" />
-      <CheckInCard record={todayRecord} busy={leaving} onScan={checkIn} onCheckOut={checkOut} />
+      <CheckInCard record={todayRecord} busy={leaving} onScan={() => void checkIn()} onCheckOut={checkOut} />
 
       {notice ? (
         <>
