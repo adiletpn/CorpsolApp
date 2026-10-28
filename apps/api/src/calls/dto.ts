@@ -72,3 +72,31 @@ export class SyncBitrixDto {
   @IsISO8601()
   since?: string;
 }
+
+export class ConnectKcellDto {
+  /** Адрес API кабинета: https://компания.vpbx.kcell.kz/crmapi/v1 */
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(200)
+  baseUrl!: string;
+
+  /** Ключ из «Интеграция с CRM → REST API». Наружу больше не отдаётся. */
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(200)
+  apiKey!: string;
+}
+
+export class ConnectSipuniDto {
+  /** Номер аккаунта Sipuni — цифры из кабинета. */
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(20)
+  user!: string;
+
+  /** Секрет из «Настройки → API». Наружу больше не отдаётся. */
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(200)
+  secret!: string;
+}

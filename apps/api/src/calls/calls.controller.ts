@@ -9,7 +9,15 @@ import { WorkNumbersService } from './work-numbers.service';
 import { parseKcellExport } from './kcell-parser';
 import { IntegrationsService } from './integrations.service';
 import { BitrixSyncService } from './bitrix-sync.service';
-import { ConnectBitrixDto, ImportCallsDto, LinkWorkNumberDto, SyncBitrixDto } from './dto';
+import { PbxSyncService } from './pbx-sync.service';
+import {
+  ConnectBitrixDto,
+  ConnectKcellDto,
+  ConnectSipuniDto,
+  ImportCallsDto,
+  LinkWorkNumberDto,
+  SyncBitrixDto,
+} from './dto';
 
 @Controller('calls')
 export class CallsController {
@@ -19,6 +27,7 @@ export class CallsController {
     private readonly workNumbers: WorkNumbersService,
     private readonly integrations: IntegrationsService,
     private readonly bitrixSync: BitrixSyncService,
+    private readonly pbxSync: PbxSyncService,
   ) {}
 
   /**
@@ -107,6 +116,49 @@ export class CallsController {
       user.organizationId,
       dto.since ? new Date(dto.since) : undefined,
     );
+  }
+
+  @Post('integrations/kcell')
+  @HttpCode(200)
+  @RequirePermissions('integration.manage')
+  connectKcell(@CurrentUser() user: AuthenticatedUser, @Body() dto: ConnectKcellDto) {
+    return this.integrations.connectKcell(user, { baseUrl: dto.baseUrl, apiKey: dto.apiKey });
+  }
+
+  @Post('integrations/sipuni')
+  @HttpCode(200)
+  @RequirePermissions('integration.manage')
+  connectSipuni(@CurrentUser() user: AuthenticatedUser, @Body() dto: ConnectSipuniDto) {
+    return this.integrations.connectSipuni(user, { user: dto.user, secret: dto.secret });
+  }
+
+  @Delete('integrations/kcell')
+  @HttpCode(204)
+  @RequirePermissions('integration.manage')
+  disconnectKcell(@CurrentUser() user: AuthenticatedUser) {
+    return this.integrations.disconnect(user, 'KCELL');
+  }
+
+  @Delete('integrations/sipuni')
+  @HttpCode(204)
+  @RequirePermissions('integration.manage')
+  disconnectSipuni(@CurrentUser() user: AuthenticatedUser) {
+    return this.integrations.disconnect(user, 'SIPUNI');
+  }
+
+  /** Добор вручную — не дожидаясь часа, например сразу после подключения. */
+  @Post('integrations/kcell/sync')
+  @HttpCode(200)
+  @RequirePermissions('integration.manage')
+  syncKcell(@CurrentUser() user: AuthenticatedUser) {
+    return this.pbxSync.syncKcell(user.organizationId);
+  }
+
+  @Post('integrations/sipuni/sync')
+  @HttpCode(200)
+  @RequirePermissions('integration.manage')
+  syncSipuni(@CurrentUser() user: AuthenticatedUser) {
+    return this.pbxSync.syncSipuni(user.organizationId);
   }
 
   @Get('work-numbers')
