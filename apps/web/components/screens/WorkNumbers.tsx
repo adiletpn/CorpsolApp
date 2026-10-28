@@ -7,10 +7,44 @@ import { formatPhone } from '../../lib/period';
 import type { Employee, WorkNumberLink } from '../../lib/types';
 import { Button, Card, Empty, ErrorText, Field, Input, Select } from '../ui';
 
-const PROVIDER_LABELS: Record<WorkNumberLink['provider'], string> = {
-  KCELL: 'Kcell',
-  BITRIX: 'Bitrix24',
+/**
+ * Чем каждый источник опознаёт сотрудника. API Kcell — логином в АТС,
+ * Sipuni — внутренним номером, Bitrix24 — номером пользователя портала,
+ * файл Kcell — рабочим телефоном.
+ */
+const PROVIDERS: Record<
+  WorkNumberLink['provider'],
+  { label: string; field: string; placeholder: string; hint: string }
+> = {
+  KCELL_USER: {
+    label: 'Kcell — логин в АТС',
+    field: 'Логин Kcell',
+    placeholder: 'dina',
+    hint: 'Как сотрудник подписан в кабинете Kcell → Сотрудники',
+  },
+  SIPUNI: {
+    label: 'Sipuni — внутренний номер',
+    field: 'Внутренний номер',
+    placeholder: '236',
+    hint: 'Короткий номер сотрудника в Sipuni',
+  },
+  BITRIX: {
+    label: 'Bitrix24 — пользователь',
+    field: 'ID пользователя',
+    placeholder: '12',
+    hint: 'Номер из адреса профиля в Bitrix24: …/company/personal/user/12/',
+  },
+  KCELL: {
+    label: 'Kcell — номер (загрузка файла)',
+    field: 'Рабочий номер',
+    placeholder: '+7 707 111 22 33',
+    hint: 'Можно в любом виде: +7, 8, с пробелами',
+  },
 };
+
+/** Телефон — красиво, логин и внутренний номер — как есть. */
+const showKey = (link: Pick<WorkNumberLink, 'provider' | 'workNumber'>): string =>
+  link.provider === 'KCELL' ? formatPhone(link.workNumber) : link.workNumber;
 
 /**
  * Рабочие номера сотрудников.
@@ -28,7 +62,8 @@ export function WorkNumbers() {
   // Форма привязки нового номера.
   const [userId, setUserId] = useState('');
   const [workNumber, setWorkNumber] = useState('');
-  const [provider, setProvider] = useState<WorkNumberLink['provider']>('KCELL');
+  // Основной источник — API Kcell: по логину раскладываются звонки АТС.
+  const [provider, setProvider] = useState<WorkNumberLink['provider']>('KCELL_USER');
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -56,7 +91,7 @@ export function WorkNumbers() {
     // Снятая привязка означает, что новые звонки с этого номера перестанут
     // попадать к сотруднику — спрашиваем, чтобы это не вышло случайно.
     const confirmed = window.confirm(
-      `Снять номер ${formatPhone(item.workNumber)} с сотрудника ${item.fullName}?\n\n` +
+      `Снять ${showKey(item)} с сотрудника ${item.fullName}?\n\n` +
         'Новые звонки с этого номера перестанут распределяться автоматически.',
     );
     if (!confirmed) return;
@@ -98,7 +133,8 @@ export function WorkNumbers() {
     <div>
       <h1 style={styles.title}>Рабочие номера</h1>
       <p style={styles.hint}>
-        По этим номерам импорт раскладывает звонки из выгрузки оператора по сотрудникам.
+        По этим привязкам звонки из Kcell, Sipuni и Bitrix24 раскладываются по сотрудникам.
+        У одного человека их может быть несколько: звонит из обеих АТС — привяжите обе.
       </p>
 
       {error ? <ErrorText>{error}</ErrorText> : null}
@@ -116,14 +152,6 @@ export function WorkNumbers() {
             </Select>
           </Field>
 
-          <Field label="Рабочий номер" hint="Можно в любом виде: +7, 8, с пробелами">
-            <Input
-              value={workNumber}
-              onChange={(event) => setWorkNumber(event.target.value)}
-              placeholder="+7 707 111 22 33"
-            />
-          </Field>
-
           <Field label="Источник">
             <Select
               value={provider}
@@ -131,9 +159,20 @@ export function WorkNumbers() {
                 setProvider(event.target.value as WorkNumberLink['provider'])
               }
             >
-              <option value="KCELL">Kcell</option>
-              <option value="BITRIX">Bitrix24</option>
+              {(Object.keys(PROVIDERS) as Array<WorkNumberLink['provider']>).map((key) => (
+                <option key={key} value={key}>
+                  {PROVIDERS[key].label}
+                </option>
+              ))}
             </Select>
+          </Field>
+
+          <Field label={PROVIDERS[provider].field} hint={PROVIDERS[provider].hint}>
+            <Input
+              value={workNumber}
+              onChange={(event) => setWorkNumber(event.target.value)}
+              placeholder={PROVIDERS[provider].placeholder}
+            />
           </Field>
         </div>
 
@@ -159,7 +198,7 @@ export function WorkNumbers() {
             <thead>
               <tr>
                 <th style={styles.head}>Сотрудник</th>
-                <th style={styles.head}>Номер</th>
+                <th style={styles.head}>Ключ</th>
                 <th style={styles.head}>Источник</th>
                 <th style={styles.head} />
               </tr>
@@ -168,8 +207,8 @@ export function WorkNumbers() {
               {links.map((link) => (
                 <tr key={link.id}>
                   <td style={styles.cell}>{link.fullName}</td>
-                  <td style={styles.cell}>{formatPhone(link.workNumber)}</td>
-                  <td style={styles.cell}>{PROVIDER_LABELS[link.provider]}</td>
+                  <td style={styles.cell}>{showKey(link)}</td>
+                  <td style={styles.cell}>{PROVIDERS[link.provider].label}</td>
                   <td style={styles.cell}>
                     <Button variant="ghost" onClick={() => void unlink(link)}>
                       Снять

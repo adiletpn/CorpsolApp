@@ -258,7 +258,7 @@ export interface WorkNumberLink {
   id: string;
   userId: string;
   fullName: string;
-  provider: 'KCELL' | 'BITRIX';
+  provider: 'KCELL' | 'KCELL_USER' | 'SIPUNI' | 'BITRIX';
   workNumber: string;
 }
 
