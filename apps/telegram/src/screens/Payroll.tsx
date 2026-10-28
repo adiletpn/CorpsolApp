@@ -1,7 +1,7 @@
 import { WEEK_BAND_LABELS, formatMinor } from '@corpsol/shared';
 import React from 'react';
 
-import { api, type GradeProgress, type Payroll as PayrollSheet } from '../api';
+import { api, type GradeProgress, type Payroll as PayrollSheet, type PayrollForecast } from '../api';
 import { formatDate, monthRange } from '../format';
 import { RingMeter, StackedBar, chart } from '../charts';
 import { PeriodScreen } from '../PeriodScreen';
@@ -23,25 +23,29 @@ export function Payroll() {
       title="Зарплата"
       subtitle="Оклад, бонусы и удержания"
       load={async () => {
-        const [current, past, grade] = await Promise.all([
+        const [current, past, grade, forecast] = await Promise.all([
           api.payroll(month.from),
           api.payroll(previous.from),
-          // Ранг — дополнение: без него расчёт всё равно должен показаться.
+          // Ранг и прогноз — дополнения: без них расчёт всё равно должен показаться.
           api.grade().catch(() => null),
+          api.forecast().catch(() => null),
         ]);
         // На стыке периодов один лист может прийти в обоих ответах.
         const sheets = [...current, ...past].filter(
           (sheet, index, all) => all.findIndex((item) => item.id === sheet.id) === index,
         );
-        return { sheets, grade };
+        // Пока лист за месяц не утверждён, вместо него — прогноз.
+        const approvedThisMonth = sheets.some((sheet) => sheet.periodStart === month.from);
+        return { sheets, grade, forecast: approvedThisMonth ? null : forecast };
       }}
-      isEmpty={({ sheets, grade }) => sheets.length === 0 && !grade}
+      isEmpty={({ sheets, grade, forecast }) => sheets.length === 0 && !grade && !forecast}
       // Черновик сотруднику не показывают: суммы ещё изменятся пересчётом.
       emptyMessage="Расчёт появится, когда руководитель его утвердит"
       emptyIcon="payments"
     >
-      {({ sheets, grade }) => (
+      {({ sheets, grade, forecast }) => (
         <>
+          {forecast ? <ForecastCard forecast={forecast} /> : null}
           {grade ? <GradeCard grade={grade} /> : null}
           {sheets.map((sheet) => (
             <PayrollCard key={sheet.id} sheet={sheet} />
@@ -49,6 +53,29 @@ export function Payroll() {
         </>
       )}
     </PeriodScreen>
+  );
+}
+
+/**
+ * Прогноз: сколько выходит за месяц, если считать по сегодняшний день.
+ * Подпись прямо говорит, что это не утверждённая сумма — иначе
+ * прогноз прочтут как обещание.
+ */
+export function ForecastCard({ forecast }: { forecast: PayrollForecast }) {
+  const parts = [`оклад ${formatMinor(forecast.baseSalaryMinor)}`];
+  if (forecast.bonusMinor > 0) parts.push(`бонусы +${formatMinor(forecast.bonusMinor)}`);
+  if (forecast.penaltyMinor > 0) parts.push(`удержания −${formatMinor(forecast.penaltyMinor)}`);
+
+  return (
+    <>
+      <HeroFigure
+        label={`Прогноз на ${formatDate(forecast.asOf)}`}
+        value={formatMinor(forecast.totalMinor)}
+        caption={`${parts.join(' · ')}. Не утверждено — итог месяца может измениться.`}
+        icon="insights"
+      />
+      <Gap size={3} />
+    </>
   );
 }
 
