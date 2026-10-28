@@ -58,21 +58,30 @@ export function SectionNav({ sections }: { sections: NavSection[] }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ids]);
 
-  // Активный чип не должен уезжать за край строки.
+  // Активный чип не должен уезжать за край строки. Двигаем только саму
+  // строку и только по горизонтали: scrollIntoView на чипе в Safari
+  // обрывает плавную прокрутку экрана, начатую касанием, — экран стоял.
   useEffect(() => {
-    const chip = chipsRef.current?.querySelector<HTMLElement>('.is-active');
-    chip?.scrollIntoView?.({ block: 'nearest', inline: 'center' });
+    const row = chipsRef.current;
+    const chip = row?.querySelector<HTMLElement>('.is-active');
+    if (!row || !chip) return;
+    const left = chip.offsetLeft - (row.clientWidth - chip.offsetWidth) / 2;
+    row.scrollTo?.({ left: Math.max(0, left), behavior: 'smooth' });
   }, [active]);
 
   function jump(id: string) {
     const node = document.getElementById(id);
     if (!node) return;
 
-    tap();
     setActive(id);
 
+    // Прокручиваем окно до точки под строкой разделов сами, без
+    // scrollIntoView: так не зависим от того, как WebView понимает
+    // scroll-margin и чей скролл главный.
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    node.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+    const top = node.getBoundingClientRect().top + window.scrollY - NAV_OFFSET;
+    window.scrollTo({ top: Math.max(0, top), behavior: reduced ? 'auto' : 'smooth' });
+    tap();
 
     if (jumping.current !== null) window.clearTimeout(jumping.current);
     jumping.current = window.setTimeout(() => {
