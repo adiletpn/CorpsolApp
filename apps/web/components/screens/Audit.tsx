@@ -15,10 +15,21 @@ const ACTION_LABELS: Record<string, string> = {
   'offer.accepted': 'Сделка подтверждена',
   'offer.rejected': 'Сделка отклонена',
   'offer.expired': 'Сделка истекла',
+  'attendance.auto_absence': 'Прогулы проставлены',
+  'attendance.fence_reprimand': 'Выговор: отметки не из офиса',
+  'employee.grade': 'Перевод на ранг',
+  'grades.update': 'Изменена таблица рангов',
+  'grades.monthly': 'Ранги пересмотрены за месяц',
 };
 
 /** Действия, которыми обходят автоматический контроль. */
-const SENSITIVE = new Set(['attendance.adjust', 'device.unbind', 'employee.terminate']);
+const SENSITIVE = new Set([
+  'attendance.adjust',
+  'device.unbind',
+  'employee.terminate',
+  'employee.grade',
+  'grades.update',
+]);
 
 function describe(event: AuditEvent): string {
   const meta = event.metadata ?? {};
@@ -35,6 +46,18 @@ function describe(event: AuditEvent): string {
   }
   if (event.action === 'employee.create') {
     return `роль ${meta.role}`;
+  }
+  if (event.action === 'employee.grade') {
+    return meta.from ? `${meta.from} → ${meta.to}` : `ранг ${meta.to}`;
+  }
+  if (event.action === 'grades.monthly') {
+    const changes = Array.isArray(meta.changes) ? (meta.changes as Array<{ from: string; to: string }>) : [];
+    return changes.length === 0
+      ? `за ${meta.month}: без изменений`
+      : `за ${meta.month}: переводов — ${changes.length}`;
+  }
+  if (event.action === 'attendance.fence_reprimand') {
+    return `${meta.days} дня за ${meta.month}`;
   }
 
   const entries = Object.entries(meta).filter(([, value]) => value !== null);

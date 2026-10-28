@@ -159,3 +159,36 @@ describe('подробности события', () => {
     expect(within(row('Заведён сотрудник')).getByText('—')).toBeInTheDocument();
   });
 });
+
+describe('ранги и выговоры в журнале', () => {
+  it('ручной перевод на ранг — обход, видно откуда и куда', async () => {
+    events = [event({ action: 'employee.grade', metadata: { from: 'A', to: 'B' } })];
+    render(<Audit />);
+
+    const line = await waitFor(() => row('Перевод на ранг'));
+    expect(within(line).getByText('A → B')).toBeTruthy();
+  });
+
+  it('ночной пересмотр — без автора, со счётом переводов', async () => {
+    events = [
+      event({
+        action: 'grades.monthly',
+        actor: null,
+        metadata: { month: '2026-10', changes: [{ from: 'A', to: 'B' }, { from: 'C', to: 'A' }] },
+      }),
+    ];
+    render(<Audit />);
+
+    const line = await waitFor(() => row('Ранги пересмотрены за месяц'));
+    expect(within(line).getByText('за 2026-10: переводов — 2')).toBeTruthy();
+    expect(within(line).getByText('—')).toBeTruthy();
+  });
+
+  it('выговор за отметки не из офиса', async () => {
+    events = [event({ action: 'attendance.fence_reprimand', actor: null, metadata: { month: '2026-10', days: 3 } })];
+    render(<Audit />);
+
+    const line = await waitFor(() => row('Выговор: отметки не из офиса'));
+    expect(within(line).getByText('3 дня за 2026-10')).toBeTruthy();
+  });
+});
