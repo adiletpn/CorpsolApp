@@ -56,6 +56,19 @@ const CHECK_IN_HINTS: Record<string, string> = {
   wifi_mismatch: 'В офисе включена проверка Wi-Fi — из Telegram она недоступна. Попросите администратора отключить её.',
 };
 
+/**
+ * Отметка издалека не засчитана, но записана: на третий такой день
+ * за месяц — выговор. Сотрудник должен знать об этом до третьего раза.
+ */
+export function fenceStrikeHint(details: Record<string, unknown>): string | undefined {
+  const days = typeof details.fenceDays === 'number' ? details.fenceDays : null;
+  if (days === null) return undefined;
+  if (details.reprimanded === true || days >= 3) {
+    return `Попытка записана. Это ${days}-й день в этом месяце с отметкой не из офиса — выговор, руководитель уведомлён.`;
+  }
+  return `Попытка записана: ${days}-й день из 3 в этом месяце. На третий — выговор.`;
+}
+
 /** Цвет статуса — как attendanceStatusColor во Flutter. */
 const STATUS_COLOR: Record<AttendanceStatus, string> = {
   ON_TIME: tone.success,
@@ -123,7 +136,9 @@ export function Home({ onOpenProfile }: { onOpenProfile(): void }) {
       if (cause instanceof LocationError) {
         setNotice({ kind: 'error', text: cause.message, settings: cause.canOpenSettings });
       } else if (cause instanceof ApiError) {
-        setNotice({ kind: 'error', text: cause.message, hint: cause.code ? CHECK_IN_HINTS[cause.code] : undefined });
+        const hint = cause.code ? CHECK_IN_HINTS[cause.code] : undefined;
+        const strike = cause.code === 'outside_fence' ? fenceStrikeHint(cause.details) : undefined;
+        setNotice({ kind: 'error', text: cause.message, hint: strike ? `${hint ?? ''} ${strike}`.trim() : hint });
       } else {
         setNotice({ kind: 'error', text: 'Нет связи с сервером. Попробуйте ещё раз.' });
       }
