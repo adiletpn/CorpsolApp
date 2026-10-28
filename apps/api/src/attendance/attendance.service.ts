@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { Timestamp } from 'firebase-admin/firestore';
 import {
   CHECK_IN_REJECTION_MESSAGES,
@@ -53,6 +53,8 @@ class CheckInRejected extends BadRequestException {
 
 @Injectable()
 export class AttendanceService {
+  private readonly logger = new Logger(AttendanceService.name);
+
   constructor(
     private readonly firebase: FirebaseService,
     private readonly terminals: TerminalService,
@@ -117,17 +119,7 @@ export class AttendanceService {
       // «Не считаем, но отмечаем»: попытка издалека копится к выговору.
       // Плохая точность и подмена сюда не идут — там человек мог стоять
       // и в офисе, а подмена ловится своим кодом.
-      const strikes =
-        reason === 'outside_fence'
-          ? await this.fenceAttempts.record(actor.id, user, {
-              officeId: terminal.officeId,
-              workDate: localWorkDateKey(new Date(), await this.timezoneOf(user.organizationId)),
-              distanceMeters: Math.round(geo.distanceMeters),
-              radiusMeters: office.radiusMeters,
-              lat: dto.lat,
-              lng: dto.lng,
-            })
-          : null;
+      const strikes = reason === 'outside_fence' ? await this.recordFenceAttempt(actor, user, terminal, office, geo, dto) : null;
 
       throw new CheckInRejected(reason, {
         distanceMeters: Math.round(geo.distanceMeters),
@@ -205,6 +197,34 @@ export class AttendanceService {
       office: { id: terminal.officeId, name: office.name },
       distanceMeters: Math.round(geo.distanceMeters),
     };
+  }
+
+  /**
+   * Попытка издалека — в счёт к выговору. Сбой записи не должен
+   * превращать понятный отказ «вы вне офиса» в ошибку сервера:
+   * человек и так не отмечен, а счёт попыток — дело второе.
+   */
+  private async recordFenceAttempt(
+    actor: AuthenticatedUser,
+    user: UserDoc,
+    terminal: TerminalDoc,
+    office: OfficeDoc,
+    geo: { distanceMeters: number },
+    dto: CheckInDto,
+  ) {
+    try {
+      return await this.fenceAttempts.record(actor.id, user, {
+        officeId: terminal.officeId,
+        workDate: localWorkDateKey(new Date(), await this.timezoneOf(user.organizationId)),
+        distanceMeters: Math.round(geo.distanceMeters),
+        radiusMeters: office.radiusMeters,
+        lat: dto.lat,
+        lng: dto.lng,
+      });
+    } catch (cause) {
+      this.logger.error(`Попытка вне офиса не записана для ${actor.id}: ${String(cause)}`);
+      return null;
+    }
   }
 
   async checkOut(actor: AuthenticatedUser, capturedAt: string) {

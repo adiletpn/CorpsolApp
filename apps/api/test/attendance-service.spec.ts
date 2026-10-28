@@ -47,7 +47,7 @@ function setup(officeFields: Record<string, unknown> = {}) {
 
   const fenceAttempts = new FenceAttemptsService(firebase, new NotificationsService(firebase));
 
-  return { firestore, terminals, service: new AttendanceService(firebase, terminals, fenceAttempts) };
+  return { firestore, terminals, fenceAttempts, service: new AttendanceService(firebase, terminals, fenceAttempts) };
 }
 
 function seedEmployee(firestore: FakeFirestore, fields: Record<string, unknown> = {}): void {
@@ -173,6 +173,17 @@ describe('отметка прихода: геозона', () => {
     expect(attempt).toMatchObject({ userId: 'uid-1', officeId: OFFICE, radiusMeters: 150 });
     expect(attempt.distanceMeters).toBeGreaterThan(150);
     expect(firestore.all(COLLECTIONS.attendance)).toHaveLength(0);
+  });
+
+  it('сбой записи попытки не превращает отказ в ошибку сервера', async () => {
+    const { firestore, terminals, fenceAttempts, service } = setup();
+    seedEmployee(firestore);
+    jest.spyOn(fenceAttempts, 'record').mockRejectedValue(new Error('FAILED_PRECONDITION: нужен индекс'));
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    await expect(
+      service.checkIn(actor(), dtoAt(await freshQr(terminals), { lat: 43.26, lng: 76.95 }) as never),
+    ).rejects.toMatchObject({ response: { code: 'outside_fence', radiusMeters: 150 } });
   });
 
   it('плохая точность в попытки вне офиса не пишется: человек мог стоять в офисе', async () => {
