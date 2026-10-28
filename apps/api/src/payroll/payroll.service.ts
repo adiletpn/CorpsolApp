@@ -1,9 +1,15 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Timestamp } from 'firebase-admin/firestore';
 import {
+  WEEK_BAND_LABELS,
   calculatePayroll,
+  formatMinor,
+  monthWeeklyBonuses,
+  weeksTouchingMonth,
   type AttendanceSummary,
   type BonusRule,
+  type GradeTier,
+  type PayrollLine,
   type PayrollResult,
 } from '@corpsol/shared';
 
@@ -12,11 +18,13 @@ import { COLLECTIONS, payrollDocId } from '../firestore/collections';
 import type {
   AttendanceDoc,
   BonusRuleDoc,
+  OfferDoc,
   PayrollDoc,
   UserDoc,
 } from '../firestore/types';
 import { PlansService } from '../plans/plans.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { GradesService } from './grades.service';
 import type { AuthenticatedUser } from '../common/decorators/current-user.decorator';
 
 export interface PayrollView extends Omit<PayrollDoc, 'calculatedAt' | 'approvedAt'> {
@@ -31,6 +39,7 @@ export class PayrollService {
     private readonly firebase: FirebaseService,
     private readonly plans: PlansService,
     private readonly notifications: NotificationsService,
+    private readonly grades: GradesService,
   ) {}
 
   private get db() {
@@ -55,14 +64,55 @@ export class PayrollService {
       this.plans.progressForUser(actor.organizationId, userId, periodStart),
     ]);
 
+    // С рангом оклад и недельные бонусы — из таблицы рангов; без ранга
+    // сотрудник считается по-старому, по окладу из карточки.
+    const tier = user.gradeCode ? await this.grades.tierFor(actor.organizationId, user) : null;
+    const extraBonusLines = tier ? await this.weeklyOfferLines(userId, periodStart, tier) : [];
+
     const result = calculatePayroll({
-      baseSalaryMinor: user.baseSalaryMinor,
+      baseSalaryMinor: tier ? tier.baseSalaryMinor : user.baseSalaryMinor,
       attendance,
       planProgress,
       rules,
+      extraBonusLines,
     });
 
     return this.persist(user, userId, periodStart, periodEnd, result);
+  }
+
+  /**
+   * Бонусы по неделям месяца за принятые регистрации. Выборка берёт
+   * и края соседних месяцев: полоса недели на стыке решается по всей
+   * неделе, хотя платится только за дни этого месяца.
+   */
+  private async weeklyOfferLines(userId: string, periodStart: string, tier: GradeTier): Promise<PayrollLine[]> {
+    const [year, month] = periodStart.split('-').map(Number);
+    const weeks = weeksTouchingMonth(year, month);
+
+    const snapshot = await this.db
+      .collection(COLLECTIONS.offers)
+      .where('userId', '==', userId)
+      .where('sentDate', '>=', weeks[0].start)
+      .where('sentDate', '<=', weeks[weeks.length - 1].end)
+      .get();
+
+    const dates = snapshot.docs
+      .map((doc) => doc.data() as OfferDoc)
+      .filter((offer) => offer.status === 'ACCEPTED')
+      .map((offer) => offer.sentDate);
+
+    const short = (key: string) => `${key.slice(8, 10)}.${key.slice(5, 7)}`;
+
+    return monthWeeklyBonuses(tier, dates, year, month).map((week) => ({
+      ruleId: `week-${week.week.start}`,
+      kind: 'WEEKLY_OFFERS' as const,
+      // «Неделя 28.09–04.10 · 7 рег., сверх плана · 3 × 5 500 ₸» — видно,
+      // почему ставка такая и за сколько регистраций заплачено.
+      title:
+        `Неделя ${short(week.week.start)}–${short(week.week.end)} · ${week.weekCount} рег., ` +
+        `${WEEK_BAND_LABELS[week.band]} · ${week.paidCount} × ${formatMinor(week.rateMinor)}`,
+      amountMinor: week.amountMinor,
+    }));
   }
 
   /** Табель за период, свёрнутый до счётчиков для расчёта. */
