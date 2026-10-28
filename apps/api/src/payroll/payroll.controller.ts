@@ -31,6 +31,13 @@ export class PayrollController {
     return this.grades.tiers(user.organizationId);
   }
 
+  /** Свой ранг и неделя — для мини-приложения. */
+  @Get('grades/me')
+  @RequirePermissions('payroll.read.self')
+  myGrade(@CurrentUser() user: AuthenticatedUser) {
+    return this.grades.progress(user.organizationId, user.id);
+  }
+
   @Put('grades')
   @RequirePermissions('payroll.manage')
   updateGrades(@CurrentUser() user: AuthenticatedUser, @Body() dto: UpdateGradesDto) {

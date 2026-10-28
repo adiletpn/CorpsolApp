@@ -1,11 +1,12 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Timestamp } from 'firebase-admin/firestore';
-import { DEFAULT_GRADE_TIERS, gradeForMonth, type GradeTier } from '@corpsol/shared';
+import { DEFAULT_GRADE_TIERS, gradeForMonth, weekBonus, type GradeTier, type WeekBand } from '@corpsol/shared';
 
 import { FirebaseService } from '../firebase/firebase.service';
 import { COLLECTIONS } from '../firestore/collections';
 import type { OfferDoc, OrganizationDoc, UserDoc } from '../firestore/types';
 import type { AuthenticatedUser } from '../common/decorators/current-user.decorator';
+import { localWorkDateKey } from '../common/utils/time';
 
 export interface GradeChange {
   userId: string;
@@ -14,6 +15,29 @@ export interface GradeChange {
   /** Регистраций за месяц — почему ранг такой. */
   monthCount: number;
 }
+
+export interface GradeProgress {
+  tier: GradeTier;
+  week: {
+    start: string;
+    end: string;
+    count: number;
+    band: WeekBand;
+    rateMinor: number;
+    amountMinor: number;
+    /** Сколько ещё до плана недели; 0 — план уже есть. */
+    toPlan: number;
+  };
+  monthCount: number;
+  /** Ранг выше и сколько ему не хватает до месячного плана; null — уже старший. */
+  next: { code: string; name: string; monthPlan: number; left: number } | null;
+}
+
+const addDays = (key: string, days: number) => {
+  const date = new Date(`${key}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+};
 
 /**
  * Ранги менеджеров: таблица организации и ранг каждого сотрудника.
@@ -126,6 +150,62 @@ export class GradesService {
     });
 
     return changes;
+  }
+
+  /**
+   * Где менеджер сейчас: регистрации этой недели и ставка, которая на них
+   * выходит, и сколько осталось до следующего ранга. Без ранга — null:
+   * человек на окладе и правилах, недельных ставок у него нет.
+   */
+  async progress(organizationId: string, userId: string, now = new Date()): Promise<GradeProgress | null> {
+    const userSnapshot = await this.db.collection(COLLECTIONS.users).doc(userId).get();
+    const user = userSnapshot.data() as UserDoc | undefined;
+    if (!user?.gradeCode || user.organizationId !== organizationId) return null;
+
+    const organization = (await this.db.collection(COLLECTIONS.organizations).doc(organizationId).get()).data() as
+      | OrganizationDoc
+      | undefined;
+    const today = localWorkDateKey(now, organization?.timezone ?? 'Asia/Almaty');
+    const weekday = (new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7;
+    const weekStart = addDays(today, -weekday);
+    const weekEnd = addDays(weekStart, 6);
+    const monthStart = `${today.slice(0, 7)}-01`;
+    const from = weekStart < monthStart ? weekStart : monthStart;
+
+    const offers = await this.db
+      .collection(COLLECTIONS.offers)
+      .where('userId', '==', userId)
+      .where('sentDate', '>=', from)
+      .where('sentDate', '<=', weekEnd)
+      .get();
+    const dates = offers.docs
+      .map((doc) => doc.data() as OfferDoc)
+      .filter((offer) => offer.status === 'ACCEPTED')
+      .map((offer) => offer.sentDate);
+
+    const tiers = await this.tiers(organizationId);
+    const tier = tiers.find((item) => item.code === user.gradeCode) ?? this.youngest(tiers);
+    const weekCount = dates.filter((date) => date >= weekStart).length;
+    const monthCount = dates.filter((date) => date.startsWith(today.slice(0, 7))).length;
+    const bonus = weekBonus(tier, weekCount);
+    const higher = [...tiers].sort((a, b) => a.monthPlan - b.monthPlan).find((item) => item.monthPlan > tier.monthPlan);
+
+    return {
+      tier,
+      week: {
+        start: weekStart,
+        end: weekEnd,
+        count: weekCount,
+        band: bonus.band,
+        rateMinor: bonus.rateMinor,
+        amountMinor: bonus.amountMinor,
+        toPlan: Math.max(0, tier.weekPlan - weekCount),
+      },
+      monthCount,
+      next: higher
+        ? { code: higher.code, name: higher.name, monthPlan: higher.monthPlan, left: Math.max(0, higher.monthPlan - monthCount) }
+        : null,
+    };
   }
 
   youngest(tiers: GradeTier[]): GradeTier {
