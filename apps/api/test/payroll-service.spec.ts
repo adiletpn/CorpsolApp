@@ -1,5 +1,6 @@
 import { Timestamp } from 'firebase-admin/firestore';
 
+import { GradesService } from '../src/payroll/grades.service';
 import { PayrollService } from '../src/payroll/payroll.service';
 import { NotificationsService } from '../src/notifications/notifications.service';
 import { COLLECTIONS, payrollDocId } from '../src/firestore/collections';
@@ -46,7 +47,7 @@ function setup(options: { plans?: unknown[] } = {}) {
   return {
     firestore,
     notifications,
-    service: new PayrollService(firebase, fakePlans(options.plans), notifications),
+    service: new PayrollService(firebase, fakePlans(options.plans), notifications, new GradesService(firebase)),
   };
 }
 
@@ -339,5 +340,63 @@ describe('утверждение расчёта', () => {
     // Ответ тот же, что и для несуществующего: подтверждать чужому,
     // что расчёт существует, незачем.
     await expect(service.approve(foreign, USER, PERIOD.start)).rejects.toThrow();
+  });
+});
+
+describe('расчёт по рангу', () => {
+  const OCTOBER = { start: '2026-10-01', end: '2026-10-31' };
+
+  const seedOffer = (firestore: FakeFirestore, id: string, sentDate: string, status = 'ACCEPTED') =>
+    firestore.seed(COLLECTIONS.offers, id, {
+      userId: USER,
+      organizationId: ORG,
+      departmentId: 'dep-1',
+      clientName: 'Клиент',
+      amountMinor: 0,
+      status,
+      sentDate,
+    });
+
+  it('оклад — из ранга, а не из карточки', async () => {
+    const { firestore, service } = setup();
+    firestore.seed(COLLECTIONS.users, USER, { ...firestore.read(COLLECTIONS.users, USER), gradeCode: 'B' });
+
+    const result = await service.calculate(director, USER, OCTOBER.start, OCTOBER.end);
+
+    expect(result.baseSalaryMinor).toBe(120_000_00);
+  });
+
+  it('за каждую неделю — строка бонуса с объяснением ставки', async () => {
+    const { firestore, service } = setup();
+    firestore.seed(COLLECTIONS.users, USER, { ...firestore.read(COLLECTIONS.users, USER), gradeCode: 'A' });
+    ['2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09', '2026-10-10'].forEach((date, index) =>
+      seedOffer(firestore, `o${index}`, date),
+    );
+    // Отклонённая регистрация в план не идёт.
+    seedOffer(firestore, 'rejected', '2026-10-10', 'REJECTED');
+
+    const result = await service.calculate(director, USER, OCTOBER.start, OCTOBER.end);
+
+    // Между разрядами суммы — неразрывный пробел русской локали.
+    const lines = result.lines.map((line) => ({ ...line, title: line.title.replace(/\s/g, ' ') }));
+    expect(lines).toEqual([
+      {
+        ruleId: 'week-2026-10-05',
+        kind: 'WEEKLY_OFFERS',
+        title: 'Неделя 05.10–11.10 · 6 рег., план · 6 × 5 000 ₸',
+        amountMinor: 30_000_00,
+      },
+    ]);
+    expect(result.totalMinor).toBe(100_000_00 + 30_000_00);
+  });
+
+  it('без ранга — по-старому: оклад из карточки, без недельных бонусов', async () => {
+    const { firestore, service } = setup();
+    seedOffer(firestore, 'o1', '2026-10-05');
+
+    const result = await service.calculate(director, USER, OCTOBER.start, OCTOBER.end);
+
+    expect(result.baseSalaryMinor).toBe(SALARY);
+    expect(result.lines).toEqual([]);
   });
 });
