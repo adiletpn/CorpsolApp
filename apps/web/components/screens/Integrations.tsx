@@ -3,12 +3,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
 
 import { request } from '../../lib/api';
+import { PbxIntegration } from '../PbxIntegration';
 import { Badge, Button, Card, Empty, ErrorText, Field, Input } from '../ui';
 
 interface Integration {
-  provider: 'BITRIX' | 'KCELL';
+  provider: 'BITRIX' | 'KCELL' | 'SIPUNI';
   isActive: boolean;
   webhookMasked: string | null;
+  credentialsMasked: string | null;
   lastSyncAt: string | null;
   lastSyncStatus: string | null;
   lastSyncError: string | null;
@@ -172,7 +174,7 @@ export function Integrations() {
             </Field>
 
             <Button type="submit" disabled={busy}>
-              Подключить
+              Подключить Bitrix24
             </Button>
           </form>
         )}
@@ -187,7 +189,35 @@ export function Integrations() {
         ) : null}
       </Card>
 
-      <Card title="Kcell — загрузка детализации">
+      <PbxIntegration
+        title="Kcell — АТС"
+        name="Kcell"
+        path="kcell"
+        keyLabel="логин Kcell"
+        state={integrations.find((item) => item.provider === 'KCELL')}
+        onChanged={load}
+        hint="Кабинет АТС → Настройки → Интеграция с CRM → REST API. Звонки добираются сами каждый час; ключ хранится на сервере и наружу не отдаётся."
+        fields={[
+          { name: 'baseUrl', label: 'Адрес API', initial: 'https://corpsol.vpbx.kcell.kz/crmapi/v1' },
+          { name: 'apiKey', label: 'Ключ API', secret: true },
+        ]}
+      />
+
+      <PbxIntegration
+        title="Sipuni"
+        name="Sipuni"
+        path="sipuni"
+        keyLabel="внутренний номер Sipuni"
+        state={integrations.find((item) => item.provider === 'SIPUNI')}
+        onChanged={load}
+        hint="Кабинет Sipuni → Настройки → API: номер аккаунта и секрет. Звонки раскладываются по внутренним номерам из «Рабочих номеров»."
+        fields={[
+          { name: 'user', label: 'Номер аккаунта', placeholder: '012345' },
+          { name: 'secret', label: 'Секрет API', secret: true },
+        ]}
+      />
+
+      <Card title="Kcell — загрузка файла, если API недоступно">
         <form onSubmit={importCsv}>
           <Field
             label="Содержимое файла"

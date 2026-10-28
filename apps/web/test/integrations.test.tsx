@@ -68,7 +68,7 @@ describe('подключение Bitrix', () => {
       screen.getByLabelText(/Адрес вебхука/),
       '  https://portal.bitrix24.kz/rest/1/token  ',
     );
-    await user.click(screen.getByRole('button', { name: 'Подключить' }));
+    await user.click(screen.getByRole('button', { name: 'Подключить Bitrix24' }));
 
     await waitFor(() => {
       const call = requests.find((r) => r.path === '/calls/integrations/bitrix');
@@ -84,7 +84,7 @@ describe('подключение Bitrix', () => {
     const field = await screen.findByLabelText(/Адрес вебхука/);
 
     await user.type(field, 'https://portal.bitrix24.kz/rest/1/token');
-    await user.click(screen.getByRole('button', { name: 'Подключить' }));
+    await user.click(screen.getByRole('button', { name: 'Подключить Bitrix24' }));
 
     // Токен не должен оставаться на экране после отправки.
     await waitFor(() => expect((field as HTMLInputElement).value).toBe(''));
@@ -98,7 +98,7 @@ describe('подключение Bitrix', () => {
     await screen.findByLabelText(/Адрес вебхука/);
 
     await user.type(screen.getByLabelText(/Адрес вебхука/), 'не-адрес');
-    await user.click(screen.getByRole('button', { name: 'Подключить' }));
+    await user.click(screen.getByRole('button', { name: 'Подключить Bitrix24' }));
 
     expect(
       await screen.findByText('Адрес должен выглядеть как адрес портала'),
