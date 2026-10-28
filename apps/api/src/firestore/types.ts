@@ -339,6 +339,23 @@ export interface JobRunDoc {
   marked: number | null;
 }
 
+/**
+ * Попытка отметиться вне геозоны. Приход не засчитан, но попытка
+ * остаётся: три дня с такими попытками за месяц — выговор.
+ */
+export interface FenceAttemptDoc {
+  userId: string;
+  organizationId: string;
+  departmentId: string | null;
+  officeId: string;
+  workDate: string;
+  distanceMeters: number;
+  radiusMeters: number;
+  lat: number;
+  lng: number;
+  createdAt: Timestamp;
+}
+
 /** Уведомление одному человеку. Роль адресатом не ставим: иначе непонятно, кто прочитал. */
 export interface NotificationDoc {
   organizationId: string;

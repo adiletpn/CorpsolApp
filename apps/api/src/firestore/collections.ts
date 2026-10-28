@@ -34,6 +34,8 @@ export const COLLECTIONS = {
   monthlySummaries: 'monthlySummaries',
   jobRuns: 'jobRuns',
   notifications: 'notifications',
+  /** Попытки отметиться дальше геозоны: не засчитываются, но копятся к выговору. */
+  fenceAttempts: 'fenceAttempts',
 } as const;
 
 /** Firestore запрещает «/» в идентификаторе — он разделяет сегменты пути. */

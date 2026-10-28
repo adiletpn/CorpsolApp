@@ -8,6 +8,7 @@ import { TerminalsService } from './terminals.service';
 import { AttendanceAdjustmentService } from './adjustment.service';
 import { AbsenceService } from './absence.service';
 import { CallRateService } from './call-rate.service';
+import { FenceAttemptsService } from './fence-attempts.service';
 
 @Module({
   controllers: [AttendanceController, TerminalsController],
@@ -18,6 +19,7 @@ import { CallRateService } from './call-rate.service';
     AttendanceAdjustmentService,
     AbsenceService,
     CallRateService,
+    FenceAttemptsService,
   ],
   exports: [AttendanceService, TerminalService, TerminalsService, AbsenceService],
 })
