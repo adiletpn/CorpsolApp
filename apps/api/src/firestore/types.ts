@@ -1,5 +1,5 @@
 import type { Timestamp } from 'firebase-admin/firestore';
-import type { Role } from '@corpsol/shared';
+import type { GradeTier, Role } from '@corpsol/shared';
 
 /**
  * Формы документов Firestore. Коллекции нетипизированы по своей природе,
@@ -31,6 +31,8 @@ export interface UserDoc {
   /** Оклад в тиынах — целые числа, без потерь на округлении. */
   baseSalaryMinor: number;
   currency: string;
+  /** Ранг менеджера (A, B, C): задаёт оклад и ставки за регистрации. */
+  gradeCode?: string | null;
 
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -66,6 +68,8 @@ export interface OrganizationDoc {
   name: string;
   timezone: string;
   createdAt: Timestamp;
+  /** Таблица рангов. Нет — действует таблица по умолчанию. */
+  gradeTiers?: GradeTier[];
 }
 
 export interface DepartmentDoc {
