@@ -66,8 +66,8 @@ export class ConnectBitrixDto {
   webhookUrl!: string;
 }
 
-export class SyncBitrixDto {
-  /** Необязательная нижняя граница. Без неё продолжаем с прошлой точки. */
+export class SyncCallsDto {
+  /** Необязательная нижняя граница — для любого источника звонков. Без неё продолжаем с прошлой точки. */
   @IsOptional()
   @IsISO8601()
   since?: string;

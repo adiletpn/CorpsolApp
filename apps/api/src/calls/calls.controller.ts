@@ -16,7 +16,7 @@ import {
   ConnectSipuniDto,
   ImportCallsDto,
   LinkWorkNumberDto,
-  SyncBitrixDto,
+  SyncCallsDto,
 } from './dto';
 
 @Controller('calls')
@@ -111,7 +111,7 @@ export class CallsController {
   @Post('integrations/bitrix/sync')
   @HttpCode(200)
   @RequirePermissions('integration.manage')
-  syncBitrix(@CurrentUser() user: AuthenticatedUser, @Body() dto: SyncBitrixDto) {
+  syncBitrix(@CurrentUser() user: AuthenticatedUser, @Body() dto: SyncCallsDto) {
     return this.bitrixSync.sync(
       user.organizationId,
       dto.since ? new Date(dto.since) : undefined,
@@ -150,15 +150,15 @@ export class CallsController {
   @Post('integrations/kcell/sync')
   @HttpCode(200)
   @RequirePermissions('integration.manage')
-  syncKcell(@CurrentUser() user: AuthenticatedUser) {
-    return this.pbxSync.syncKcell(user.organizationId);
+  syncKcell(@CurrentUser() user: AuthenticatedUser, @Body() dto: SyncCallsDto) {
+    return this.pbxSync.syncKcell(user.organizationId, new Date(), dto.since ? new Date(dto.since) : undefined);
   }
 
   @Post('integrations/sipuni/sync')
   @HttpCode(200)
   @RequirePermissions('integration.manage')
-  syncSipuni(@CurrentUser() user: AuthenticatedUser) {
-    return this.pbxSync.syncSipuni(user.organizationId);
+  syncSipuni(@CurrentUser() user: AuthenticatedUser, @Body() dto: SyncCallsDto) {
+    return this.pbxSync.syncSipuni(user.organizationId, new Date(), dto.since ? new Date(dto.since) : undefined);
   }
 
   @Get('work-numbers')

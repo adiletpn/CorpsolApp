@@ -68,9 +68,11 @@ export class PbxSyncService {
    * История Kcell — по дням: метод без пагинации отдаёт отрезок одним
    * ответом, и месяц целиком — это тысячи записей за раз.
    */
-  async syncKcell(organizationId: string, now = new Date()): Promise<PbxSyncResult> {
+  async syncKcell(organizationId: string, now = new Date(), since?: Date): Promise<PbxSyncResult> {
     const credentials = await this.integrations.requireCredentials(organizationId, 'KCELL');
-    const from = await this.resumeFrom(organizationId, 'KCELL', now);
+    // since — передобор с заданной даты: например, после привязки
+    // сотрудников, когда ранние звонки месяца ещё не на кого было положить.
+    const from = since ?? (await this.resumeFrom(organizationId, 'KCELL', now));
 
     try {
       const total: PbxSyncResult = { imported: 0, duplicates: 0, unmatched: [], fetched: 0, withoutEmployee: 0 };
@@ -113,9 +115,9 @@ export class PbxSyncService {
    * те, что новее точки продолжения. Сотрудник — по внутреннему номеру
    * из привязок, поэтому без привязок разложить звонки не на кого.
    */
-  async syncSipuni(organizationId: string, now = new Date()): Promise<PbxSyncResult> {
+  async syncSipuni(organizationId: string, now = new Date(), since?: Date): Promise<PbxSyncResult> {
     const credentials = await this.integrations.requireCredentials(organizationId, 'SIPUNI');
-    const from = await this.resumeFrom(organizationId, 'SIPUNI', now);
+    const from = since ?? (await this.resumeFrom(organizationId, 'SIPUNI', now));
 
     try {
       const extensions = await this.sipuniExtensions(organizationId);

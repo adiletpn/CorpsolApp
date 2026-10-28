@@ -150,3 +150,30 @@ describe('звонки Sipuni', () => {
     expect(stored.toDate()).toEqual(NOW);
   });
 });
+
+describe('передобор с даты', () => {
+  it('звонки до привязки сотрудника добираются заново с начала месяца', async () => {
+    const rows = [kcellRow('U-EARLY', '2026-08-03T05:00:00Z', { user: 'luiza' })];
+    const { service, firestore } = setup({ kcellRows: rows });
+
+    // Первый добор: логин luiza ещё ни к кому не привязан — звонок ничей.
+    const first = await service.syncKcell(ORG, NOW);
+    expect(first.unmatched).toEqual([{ employeeKey: 'luiza', count: 1 }]);
+
+    firestore.seed(COLLECTIONS.externalIdentities, 'KCELL_USER_luiza', {
+      userId: 'dina', provider: 'KCELL_USER', externalKey: 'luiza', organizationId: ORG,
+    });
+
+    // Обычный добор продолжает с прошлой точки — ранний звонок позади.
+    const resumed = await service.syncKcell(ORG, new Date('2026-08-10T11:00:00Z'));
+    expect(resumed.imported).toBe(0);
+
+    // Передобор с первого числа кладёт его на сотрудника.
+    const again = await service.syncKcell(
+      ORG,
+      new Date('2026-08-10T11:00:00Z'),
+      new Date('2026-07-31T19:00:00Z'),
+    );
+    expect(again.imported).toBe(1);
+  });
+});
