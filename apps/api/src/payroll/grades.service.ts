@@ -1,11 +1,19 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Timestamp } from 'firebase-admin/firestore';
-import { DEFAULT_GRADE_TIERS, type GradeTier } from '@corpsol/shared';
+import { DEFAULT_GRADE_TIERS, gradeForMonth, type GradeTier } from '@corpsol/shared';
 
 import { FirebaseService } from '../firebase/firebase.service';
 import { COLLECTIONS } from '../firestore/collections';
-import type { OrganizationDoc, UserDoc } from '../firestore/types';
+import type { OfferDoc, OrganizationDoc, UserDoc } from '../firestore/types';
 import type { AuthenticatedUser } from '../common/decorators/current-user.decorator';
+
+export interface GradeChange {
+  userId: string;
+  from: string;
+  to: string;
+  /** Регистраций за месяц — почему ранг такой. */
+  monthCount: number;
+}
 
 /**
  * Ранги менеджеров: таблица организации и ранг каждого сотрудника.
@@ -59,6 +67,65 @@ export class GradesService {
   async tierFor(organizationId: string, user: Pick<UserDoc, 'gradeCode'>): Promise<GradeTier> {
     const tiers = await this.tiers(organizationId);
     return tiers.find((tier) => tier.code === user.gradeCode) ?? this.youngest(tiers);
+  }
+
+  /**
+   * Пересмотр рангов по итогу месяца: кто сколько регистраций закрыл,
+   * тот ранг и получает на следующий месяц — вверх и вниз.
+   *
+   * Трогаем только тех, у кого ранг уже стоит: остальные получают
+   * зарплату по старой схеме, и переводить их молча нельзя.
+   */
+  async regradeForMonth(organizationId: string, year: number, month: number): Promise<GradeChange[]> {
+    const tiers = await this.tiers(organizationId);
+    const prefix = `${year}-${String(month).padStart(2, '0')}`;
+
+    const [users, offers] = await Promise.all([
+      this.db
+        .collection(COLLECTIONS.users)
+        .where('organizationId', '==', organizationId)
+        .where('status', '==', 'ACTIVE')
+        .get(),
+      this.db
+        .collection(COLLECTIONS.offers)
+        .where('organizationId', '==', organizationId)
+        .where('sentDate', '>=', `${prefix}-01`)
+        .where('sentDate', '<=', `${prefix}-31`)
+        .get(),
+    ]);
+
+    const counts = new Map<string, number>();
+    for (const doc of offers.docs) {
+      const offer = doc.data() as OfferDoc;
+      if (offer.status === 'ACCEPTED') counts.set(offer.userId, (counts.get(offer.userId) ?? 0) + 1);
+    }
+
+    const changes: GradeChange[] = [];
+    for (const doc of users.docs) {
+      const user = doc.data() as UserDoc;
+      if (!user.gradeCode) continue;
+
+      const monthCount = counts.get(doc.id) ?? 0;
+      const tier = gradeForMonth(tiers, monthCount);
+      if (tier.code === user.gradeCode) continue;
+
+      await doc.ref.update({ gradeCode: tier.code, updatedAt: Timestamp.now() });
+      changes.push({ userId: doc.id, from: user.gradeCode, to: tier.code, monthCount });
+    }
+
+    // Одна запись на весь пересмотр: автора нет, это не действие человека.
+    await this.db.collection(COLLECTIONS.auditEvents).doc().set({
+      organizationId,
+      actorId: null,
+      action: 'grades.monthly',
+      targetType: 'Organization',
+      targetId: organizationId,
+      metadata: { month: prefix, changes },
+      ip: null,
+      createdAt: Timestamp.now(),
+    });
+
+    return changes;
   }
 
   youngest(tiers: GradeTier[]): GradeTier {
