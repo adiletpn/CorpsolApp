@@ -468,3 +468,42 @@ describe('ручные правки директора', () => {
     expect(monthEnd('2028-02-01')).toBe('2028-02-29');
   });
 });
+
+describe('прогноз зарплаты на сегодня', () => {
+  // 15 сентября 2026, день по Алматы.
+  const NOW = new Date('2026-09-15T07:00:00Z');
+  const me = { ...director, id: USER, role: 'MOP' } as AuthenticatedUser;
+
+  it('считает месяц по сегодняшний день и лист не записывает', async () => {
+    const { firestore, service } = setup();
+    firestore.seed(COLLECTIONS.organizations, ORG, { name: 'CorpSol', timezone: 'Asia/Almaty' });
+
+    const forecast = await service.forecast(me, NOW);
+
+    expect(forecast).toMatchObject({ periodStart: '2026-09-01', asOf: '2026-09-15', totalMinor: SALARY });
+    expect(firestore.all(COLLECTIONS.payrolls)).toHaveLength(0);
+  });
+
+  it('прогулы после сегодняшнего дня не учитываются, до — учитываются', async () => {
+    const { firestore, service } = setup();
+    firestore.seed(COLLECTIONS.organizations, ORG, { name: 'CorpSol', timezone: 'Asia/Almaty' });
+    seedRule(firestore, 'absence', { kind: 'ABSENCE_PENALTY', amountMinor: 1_000_000 });
+    seedDay(firestore, '10', 'ABSENT');
+    seedDay(firestore, '20', 'ABSENT');
+
+    const forecast = await service.forecast(me, NOW);
+
+    expect(forecast.penaltyMinor).toBe(1_000_000);
+  });
+
+  it('правки директора видны в прогнозе', async () => {
+    const { firestore, service } = setup();
+    firestore.seed(COLLECTIONS.organizations, ORG, { name: 'CorpSol', timezone: 'Asia/Almaty' });
+    await service.addAdjustment(director, USER, '2026-09-01', 3_000_000, 'Наставничество');
+
+    const forecast = await service.forecast(me, NOW);
+
+    expect(forecast.bonusMinor).toBe(3_000_000);
+    expect(forecast.lines.map((line) => line.title)).toContain('Наставничество');
+  });
+});
