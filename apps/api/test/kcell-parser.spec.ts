@@ -1,22 +1,14 @@
 import { parseCallDate, parseKcellExport } from '../src/calls/kcell-parser';
 
 describe('разбор даты из выгрузки', () => {
+  // Ожидания — точным моментом в UTC: «часы машины» в CI и на Mac разные.
   it('понимает формат «25.09.2026 14:30:05»', () => {
-    const date = parseCallDate('25.09.2026 14:30:05');
-
-    expect(date).not.toBeNull();
-    expect(date!.getFullYear()).toBe(2026);
-    expect(date!.getMonth()).toBe(8); // сентябрь
-    expect(date!.getDate()).toBe(25);
-    expect(date!.getHours()).toBe(14);
+    expect(parseCallDate('25.09.2026 14:30:05')?.toISOString()).toBe('2026-09-25T09:30:05.000Z');
   });
 
   it('не путает день с месяцем', () => {
     // 05.09 — это пятое сентября, а не девятое мая.
-    const date = parseCallDate('05.09.2026 10:00');
-
-    expect(date!.getDate()).toBe(5);
-    expect(date!.getMonth()).toBe(8);
+    expect(parseCallDate('05.09.2026 10:00')?.toISOString()).toBe('2026-09-05T05:00:00.000Z');
   });
 
   it('понимает ISO', () => {
@@ -119,5 +111,17 @@ describe('разбор выгрузки Kcell', () => {
   it('не падает на пустом файле', () => {
     expect(parseKcellExport('').calls).toHaveLength(0);
     expect(parseKcellExport('только заголовок').calls).toHaveLength(0);
+  });
+});
+
+describe('время звонка — по Алматы, где бы ни работал сервер', () => {
+  it('«25.09.2026 14:30» — это 09:30 UTC', () => {
+    // Выгрузка пишет местное время. На Railway сервер работает в UTC,
+    // и разбор «как местное время сервера» сдвигал звонки на 5 часов.
+    expect(parseCallDate('25.09.2026 14:30:05')?.toISOString()).toBe('2026-09-25T09:30:05.000Z');
+  });
+
+  it('ISO с поясом разбирается как есть', () => {
+    expect(parseCallDate('2026-09-25T09:30:05Z')?.toISOString()).toBe('2026-09-25T09:30:05.000Z');
   });
 });

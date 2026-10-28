@@ -83,10 +83,20 @@ function parseDirection(value: string | undefined): 'INBOUND' | 'OUTBOUND' {
 }
 
 /**
+ * Казахстан с 1 марта 2024 года живёт в одном поясе — UTC+5.
+ * Выгрузки АТС пишут время по нему, без указания пояса.
+ */
+export const ALMATY_UTC_OFFSET_MINUTES = 5 * 60;
+
+/**
  * Дата в выгрузках приходит либо в ISO, либо в виде «25.09.2026 14:30:05».
  * Второй формат браузерный Date разбирает неверно, поэтому обрабатываем сами.
+ *
+ * Местное время переводится в момент явным смещением, а не поясом
+ * сервера: на Railway сервер работает в UTC, и «как местное время
+ * машины» сдвигало звонки на 5 часов.
  */
-export function parseCallDate(value: string): Date | null {
+export function parseCallDate(value: string, utcOffsetMinutes = ALMATY_UTC_OFFSET_MINUTES): Date | null {
   const trimmed = value.trim();
   if (trimmed === '') return null;
 
@@ -96,7 +106,7 @@ export function parseCallDate(value: string): Date | null {
 
   if (local) {
     const [, day, month, year, hours, minutes, seconds] = local;
-    return new Date(
+    const asUtc = Date.UTC(
       Number(year),
       Number(month) - 1,
       Number(day),
@@ -104,6 +114,7 @@ export function parseCallDate(value: string): Date | null {
       Number(minutes),
       Number(seconds ?? '0'),
     );
+    return new Date(asUtc - utcOffsetMinutes * 60_000);
   }
 
   const parsed = new Date(trimmed);
