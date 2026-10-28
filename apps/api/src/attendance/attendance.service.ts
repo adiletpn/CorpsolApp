@@ -32,6 +32,7 @@ import {
   parseHhMm,
 } from '../common/utils/time';
 import type { AuthenticatedUser } from '../common/decorators/current-user.decorator';
+import { FenceAttemptsService } from './fence-attempts.service';
 import { TerminalService } from './terminal.service';
 import type { CheckInDto } from './dto';
 
@@ -55,6 +56,7 @@ export class AttendanceService {
   constructor(
     private readonly firebase: FirebaseService,
     private readonly terminals: TerminalService,
+    private readonly fenceAttempts: FenceAttemptsService,
   ) {}
 
   private get db() {
@@ -111,9 +113,26 @@ export class AttendanceService {
       { maxAccuracyMeters: office.maxAccuracyMeters },
     );
     if (!geo.inside) {
-      throw new CheckInRejected(geo.reason ?? 'outside_fence', {
+      const reason = geo.reason ?? 'outside_fence';
+      // «Не считаем, но отмечаем»: попытка издалека копится к выговору.
+      // Плохая точность и подмена сюда не идут — там человек мог стоять
+      // и в офисе, а подмена ловится своим кодом.
+      const strikes =
+        reason === 'outside_fence'
+          ? await this.fenceAttempts.record(actor.id, user, {
+              officeId: terminal.officeId,
+              workDate: localWorkDateKey(new Date(), await this.timezoneOf(user.organizationId)),
+              distanceMeters: Math.round(geo.distanceMeters),
+              radiusMeters: office.radiusMeters,
+              lat: dto.lat,
+              lng: dto.lng,
+            })
+          : null;
+
+      throw new CheckInRejected(reason, {
         distanceMeters: Math.round(geo.distanceMeters),
         radiusMeters: office.radiusMeters,
+        ...(strikes ? { fenceDays: strikes.days, reprimanded: strikes.reprimanded } : {}),
       });
     }
 

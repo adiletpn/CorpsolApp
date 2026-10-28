@@ -2,6 +2,8 @@ import { Timestamp } from 'firebase-admin/firestore';
 import { parseQrPayload } from '@corpsol/shared';
 
 import { AttendanceService } from '../src/attendance/attendance.service';
+import { FenceAttemptsService } from '../src/attendance/fence-attempts.service';
+import { NotificationsService } from '../src/notifications/notifications.service';
 import { TerminalService } from '../src/attendance/terminal.service';
 import { COLLECTIONS } from '../src/firestore/collections';
 import type { AuthenticatedUser } from '../src/common/decorators/current-user.decorator';
@@ -43,7 +45,9 @@ function setup(officeFields: Record<string, unknown> = {}) {
   const firebase = fakeFirebase(firestore);
   const terminals = new TerminalService(firebase);
 
-  return { firestore, terminals, service: new AttendanceService(firebase, terminals) };
+  const fenceAttempts = new FenceAttemptsService(firebase, new NotificationsService(firebase));
+
+  return { firestore, terminals, service: new AttendanceService(firebase, terminals, fenceAttempts) };
 }
 
 function seedEmployee(firestore: FakeFirestore, fields: Record<string, unknown> = {}): void {
@@ -155,6 +159,30 @@ describe('отметка прихода: геозона', () => {
     ).rejects.toMatchObject({
       response: { code: 'outside_fence', radiusMeters: 150 },
     });
+  });
+
+  it('попытка из дома не засчитана, но записана — с расстоянием и днём', async () => {
+    const { firestore, terminals, service } = setup();
+    seedEmployee(firestore);
+
+    await expect(
+      service.checkIn(actor(), dtoAt(await freshQr(terminals), { lat: 43.26, lng: 76.95 }) as never),
+    ).rejects.toMatchObject({ response: { code: 'outside_fence', fenceDays: 1, reprimanded: false } });
+
+    const [attempt] = firestore.all(COLLECTIONS.fenceAttempts);
+    expect(attempt).toMatchObject({ userId: 'uid-1', officeId: OFFICE, radiusMeters: 150 });
+    expect(attempt.distanceMeters).toBeGreaterThan(150);
+    expect(firestore.all(COLLECTIONS.attendance)).toHaveLength(0);
+  });
+
+  it('плохая точность в попытки вне офиса не пишется: человек мог стоять в офисе', async () => {
+    const { firestore, terminals, service } = setup();
+    seedEmployee(firestore);
+
+    await expect(
+      service.checkIn(actor(), dtoAt(await freshQr(terminals), { accuracyMeters: 500 }) as never),
+    ).rejects.toThrow();
+    expect(firestore.all(COLLECTIONS.fenceAttempts)).toHaveLength(0);
   });
 
   it('недостоверная точность трактуется не в пользу сотрудника', async () => {
