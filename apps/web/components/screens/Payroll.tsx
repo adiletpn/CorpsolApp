@@ -7,6 +7,7 @@ import { download, query, request } from '../../lib/api';
 import { currentMonth, formatMoney } from '../../lib/period';
 import { useSession } from '../../lib/session';
 import type { BonusRule, Employee, Payroll as PayrollDoc } from '../../lib/types';
+import { Grades } from '../Grades';
 import { Badge, Button, Card, Empty, ErrorText, Field, Input, Select } from '../ui';
 
 const RULE_KINDS = [
@@ -356,6 +357,8 @@ export function Payroll() {
 
       {canManage ? (
         <>
+          <Grades employees={employees} onChanged={load} />
+
           <Card title="Правила премирования">
             {rules.length === 0 ? (
               <Empty>
