@@ -240,3 +240,52 @@ describe('начисления вне правил — недельные бон
     expect(result.lines).toEqual([]);
   });
 });
+
+describe('ручные правки директора', () => {
+  const manual = (amountMinor: number, title = 'Ручная правка') => ({
+    ruleId: `manual-${amountMinor}`,
+    kind: 'MANUAL' as const,
+    title,
+    amountMinor,
+  });
+
+  it('доплата идёт в бонусы, удержание — в удержания, обе в расшифровке', () => {
+    const result = calculatePayroll({
+      baseSalaryMinor: 10_000_000,
+      attendance: perfectAttendance,
+      planProgress: [],
+      rules: [],
+      manualLines: [manual(2_000_000, 'Премия за наставничество'), manual(-500_000, 'Порча гарнитуры')],
+    });
+
+    expect(result.bonusMinor).toBe(2_000_000);
+    expect(result.penaltyMinor).toBe(500_000);
+    expect(result.totalMinor).toBe(11_500_000);
+    expect(result.lines.map((line) => line.title)).toEqual(['Премия за наставничество', 'Порча гарнитуры']);
+  });
+
+  it('предел удержаний на ручное удержание не действует: решение принял человек', () => {
+    const result = calculatePayroll({
+      baseSalaryMinor: 10_000_000,
+      attendance: perfectAttendance,
+      planProgress: [],
+      rules: [],
+      manualLines: [manual(-7_000_000)],
+    });
+
+    expect(result.penaltyMinor).toBe(7_000_000);
+    expect(result.totalMinor).toBe(3_000_000);
+  });
+
+  it('итог всё равно не уходит в минус', () => {
+    const result = calculatePayroll({
+      baseSalaryMinor: 10_000_000,
+      attendance: perfectAttendance,
+      planProgress: [],
+      rules: [],
+      manualLines: [manual(-15_000_000)],
+    });
+
+    expect(result.totalMinor).toBe(0);
+  });
+});
