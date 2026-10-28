@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 
 import { query, request } from '../../lib/api';
 import type { Department, Employee, Office, Terminal } from '../../lib/types';
+import { PrintedQr } from '../PrintedQr';
 import { Badge, Button, Card, Empty, ErrorText, Field, Input, Select } from '../ui';
 
 interface IssuedToken {
@@ -152,6 +153,7 @@ export function Settings() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [rops, setRops] = useState<Employee[]>([]);
   const [issued, setIssued] = useState<IssuedToken | null>(null);
+  const [printed, setPrinted] = useState<{ terminal: Terminal; payload: string; version: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [terminalForm, setTerminalForm] = useState({ name: '', officeId: '' });
@@ -222,6 +224,31 @@ export function Settings() {
     }
   };
 
+  const printCode = async (terminal: Terminal) => {
+    if (terminal.printedVersion && !confirm('Новый листок отменит прежний — его придётся снять с двери. Печатать?')) return;
+    try {
+      const result = await request<{ payload: string; version: number }>(
+        `/terminals/${terminal.id}/printed-code`,
+        { method: 'POST', body: {} },
+      );
+      setPrinted({ terminal, ...result });
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Не удалось подготовить QR');
+    }
+  };
+
+  const revokePrinted = async (terminal: Terminal) => {
+    if (!confirm('Листок перестанет работать. Отмечаться можно будет только по экрану терминала.')) return;
+    try {
+      await request(`/terminals/${terminal.id}/printed-code`, { method: 'DELETE' });
+      setPrinted(null);
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Не удалось снять листок');
+    }
+  };
+
   const terminalUrl = (terminalId: string, token: string): string =>
     `${window.location.origin}/terminal/${terminalId}${query({ token })}`;
 
@@ -242,6 +269,16 @@ export function Settings() {
             Скрыть
           </Button>
         </Card>
+      ) : null}
+
+      {printed ? (
+        <PrintedQr
+          payload={printed.payload}
+          version={printed.version}
+          terminalName={printed.terminal.name}
+          officeName={offices.find((office) => office.id === printed.terminal.officeId)?.name ?? ''}
+          onClose={() => setPrinted(null)}
+        />
       ) : null}
 
       <Card title="Офисы">
@@ -312,12 +349,23 @@ export function Settings() {
                     ) : (
                       <Badge tone="danger">Отключён</Badge>
                     )}{' '}
-                    {terminal.hasAccessToken ? <Badge>токен выпущен</Badge> : null}
+                    {terminal.hasAccessToken ? <Badge>токен выпущен</Badge> : null}{' '}
+                    {terminal.printedVersion ? <Badge>листок №{terminal.printedVersion}</Badge> : null}
                   </td>
                   <td style={styles.cell}>
-                    <Button variant="ghost" onClick={() => issueToken(terminal)}>
-                      {terminal.hasAccessToken ? 'Перевыпустить токен' : 'Выпустить токен'}
-                    </Button>
+                    <div style={styles.rowActions}>
+                      <Button variant="ghost" onClick={() => issueToken(terminal)}>
+                        {terminal.hasAccessToken ? 'Перевыпустить токен' : 'Выпустить токен'}
+                      </Button>
+                      <Button variant="ghost" onClick={() => void printCode(terminal)}>
+                        {terminal.printedVersion ? 'Перепечатать QR' : 'QR на листок'}
+                      </Button>
+                      {terminal.printedVersion ? (
+                        <Button variant="ghost" onClick={() => void revokePrinted(terminal)}>
+                          Снять листок
+                        </Button>
+                      ) : null}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -422,6 +470,7 @@ export function Settings() {
 }
 
 const styles: Record<string, React.CSSProperties> = {
+  rowActions: { display: 'flex', gap: 8, flexWrap: 'wrap' },
   warning: {
     background: 'color-mix(in srgb, var(--warning) 12%, transparent)',
     border: '1px solid color-mix(in srgb, var(--warning) 35%, transparent)',

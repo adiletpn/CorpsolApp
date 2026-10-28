@@ -51,6 +51,8 @@ export interface Terminal {
   isActive: boolean;
   hasAccessToken: boolean;
   tokenIssuedAt: string | null;
+  /** Номер действующего печатного QR, null — листка нет. */
+  printedVersion: number | null;
   createdAt: string;
 }
 
