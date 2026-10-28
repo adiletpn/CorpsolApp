@@ -42,6 +42,37 @@ export function parseQrPayload(raw: string): QrPayload | null {
   }
 }
 
+/**
+ * Печатный код в виде параметра запуска мини-аппа: «q<печать>-<терминал>-<подпись>».
+ * Telegram пускает в startapp только латиницу, цифры, «_» и «-», поэтому
+ * не JSON. Подпись — последняя: в base64url сама может содержать «-».
+ */
+const START_CODE = /^q(\d{1,9})-([A-Za-z0-9]{1,64})-([A-Za-z0-9_-]{8,64})$/;
+
+export function encodeStartCode(payload: QrPayload): string {
+  return `q${payload.c}-${payload.t}-${payload.s}`;
+}
+
+/** Параметр startapp из ссылки t.me — её камера телефона открывает в Telegram. */
+export function extractStartParam(raw: string): string | null {
+  const match = /[?&]startapp=([A-Za-z0-9_-]+)/.exec(raw);
+  return match ? match[1] : null;
+}
+
+/**
+ * Код отметки в любом виде: живой код экрана (JSON), печатный листок
+ * ссылкой t.me или сам параметр запуска, который мини-апп получил,
+ * когда его открыли камерой.
+ */
+export function parseCheckInCode(raw: string): QrPayload | null {
+  const trimmed = raw.trim();
+  if (trimmed.startsWith('{')) return parseQrPayload(trimmed);
+
+  const match = START_CODE.exec(extractStartParam(trimmed) ?? trimmed);
+  if (!match) return null;
+  return { v: QR_PAYLOAD_VERSION, c: Number(match[1]), t: match[2], s: match[3], p: 1 };
+}
+
 export function currentQrCounter(nowMs: number = Date.now()): number {
   return Math.floor(nowMs / 1000 / QR_PERIOD_SECONDS);
 }
