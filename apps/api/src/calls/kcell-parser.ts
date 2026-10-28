@@ -1,5 +1,6 @@
 import { normalizePhone, parseDurationSeconds } from '@corpsol/shared';
 
+import { detectDelimiter, splitLine } from './csv-lines';
 import type { ImportedCall, ImportReport } from './types';
 
 /**
@@ -25,46 +26,6 @@ type ColumnKey = keyof typeof COLUMN_ALIASES;
 
 const normalizeHeader = (value: string): string =>
   value.trim().toLowerCase().replace(/[«»"']/g, '').replace(/\s+/g, ' ');
-
-/** Разделитель определяем по строке заголовков, а не догадками. */
-function detectDelimiter(headerLine: string): string {
-  const candidates = [';', ',', '\t'];
-  return candidates.reduce((best, candidate) =>
-    headerLine.split(candidate).length > headerLine.split(best).length ? candidate : best,
-  );
-}
-
-function splitLine(line: string, delimiter: string): string[] {
-  const cells: string[] = [];
-  let current = '';
-  let inQuotes = false;
-
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index];
-
-    if (char === '"') {
-      // Удвоенная кавычка внутри поля означает саму кавычку.
-      if (inQuotes && line[index + 1] === '"') {
-        current += '"';
-        index += 1;
-      } else {
-        inQuotes = !inQuotes;
-      }
-      continue;
-    }
-
-    if (char === delimiter && !inQuotes) {
-      cells.push(current);
-      current = '';
-      continue;
-    }
-
-    current += char;
-  }
-
-  cells.push(current);
-  return cells.map((cell) => cell.trim());
-}
 
 /**
  * Сопоставление столбцов идёт в два прохода: сначала точные совпадения,
