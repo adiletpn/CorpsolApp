@@ -189,6 +189,16 @@ export interface GradeProgress {
   next: { code: string; name: string; monthPlan: number; left: number } | null;
 }
 
+/** Прогноз за месяц на сегодня — /payroll/forecast/me. Не утверждён. */
+export interface PayrollForecast {
+  periodStart: string;
+  asOf: string;
+  baseSalaryMinor: number;
+  bonusMinor: number;
+  penaltyMinor: number;
+  totalMinor: number;
+}
+
 export interface Payroll {
   id: string;
   periodStart: string;
@@ -262,6 +272,7 @@ export const api = {
     request<CallsSummary>(`/calls/summary?from=${from}&to=${to}`),
   plans: (periodStart: string) => request<Plan[]>(`/plans?periodStart=${periodStart}`),
   payroll: (periodStart: string) => request<Payroll[]>(`/payroll?periodStart=${periodStart}`),
+  forecast: () => request<PayrollForecast>('/payroll/forecast/me'),
   /** null — сотрудник без ранга, на окладе и правилах. */
   grade: () => request<GradeProgress | null>('/payroll/grades/me'),
   offers: (from: string, to: string) => request<Offer[]>(`/offers?from=${from}&to=${to}`),
