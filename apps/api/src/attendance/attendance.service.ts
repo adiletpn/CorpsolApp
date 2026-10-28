@@ -4,7 +4,7 @@ import {
   CHECK_IN_REJECTION_MESSAGES,
   checkGeofence,
   matchesKnownBssid,
-  parseQrPayload,
+  parseCheckInCode,
   type CheckInRejection,
 } from '@corpsol/shared';
 
@@ -82,7 +82,7 @@ export class AttendanceService {
     }
 
     // Фактор 2 — код терминала, живущий 30 секунд.
-    const payload = parseQrPayload(dto.qr);
+    const payload = parseCheckInCode(dto.qr);
     if (!payload) throw new CheckInRejected('qr_invalid');
 
     const verdict = await this.terminals.verify(payload);
