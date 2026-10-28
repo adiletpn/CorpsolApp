@@ -5,6 +5,9 @@ import { FirebaseService } from '../firebase/firebase.service';
 import { COLLECTIONS } from '../firestore/collections';
 import type { OfficeDoc, TerminalDoc } from '../firestore/types';
 import type { AuthenticatedUser } from '../common/decorators/current-user.decorator';
+import { encodeStartCode } from '@corpsol/shared';
+
+import { TelegramLinkService } from './telegram-link.service';
 import { TerminalService } from './terminal.service';
 
 /**
@@ -28,6 +31,7 @@ export class TerminalsService {
   constructor(
     private readonly firebase: FirebaseService,
     private readonly codes: TerminalService,
+    private readonly links: TelegramLinkService,
   ) {}
 
   private get collection() {
@@ -76,8 +80,12 @@ export class TerminalsService {
     const version = (doc.printedVersion ?? 0) + 1;
 
     await this.collection.doc(terminalId).update({ printedVersion: version });
+
+    // На листке — ссылка t.me: её открывает и камера телефона, и сканер
+    // в мини-аппе. Без имени бота — сам код, его понимает только сканер.
+    const code = encodeStartCode(this.codes.printedPayload(terminalId, doc.secret, version));
     return {
-      payload: this.codes.printedCode(terminalId, doc.secret, version),
+      payload: (await this.links.link(code)) ?? code,
       version,
       terminal: this.toView(terminalId, { ...doc, printedVersion: version }),
     };

@@ -9,6 +9,7 @@ import { AttendanceAdjustmentService } from './adjustment.service';
 import { AbsenceService } from './absence.service';
 import { CallRateService } from './call-rate.service';
 import { FenceAttemptsService } from './fence-attempts.service';
+import { TelegramLinkService } from './telegram-link.service';
 
 @Module({
   controllers: [AttendanceController, TerminalsController],
@@ -20,6 +21,7 @@ import { FenceAttemptsService } from './fence-attempts.service';
     AbsenceService,
     CallRateService,
     FenceAttemptsService,
+    TelegramLinkService,
   ],
   exports: [AttendanceService, TerminalService, TerminalsService, AbsenceService],
 })

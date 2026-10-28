@@ -1,9 +1,10 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Timestamp } from 'firebase-admin/firestore';
 
-import { parseQrPayload } from '@corpsol/shared';
+import { parseCheckInCode } from '@corpsol/shared';
 
 import { TerminalService } from '../src/attendance/terminal.service';
+import { TelegramLinkService } from '../src/attendance/telegram-link.service';
 import { TerminalsService } from '../src/attendance/terminals.service';
 import { COLLECTIONS } from '../src/firestore/collections';
 import type { AuthenticatedUser } from '../src/common/decorators/current-user.decorator';
@@ -16,7 +17,13 @@ function setup() {
   const firestore = new FakeFirestore();
   const firebase = fakeFirebase(firestore);
   const codes = new TerminalService(firebase);
-  return { firestore, codes, service: new TerminalsService(firebase, codes) };
+  const links = { link: jest.fn(async (code: string) => `https://t.me/corpsol_bot?startapp=${code}`) };
+  return {
+    firestore,
+    codes,
+    links,
+    service: new TerminalsService(firebase, codes, links as unknown as TelegramLinkService),
+  };
 }
 
 function seedOffice(
@@ -249,10 +256,12 @@ describe('печатный QR на дверь', () => {
     const { codes, service } = printable();
 
     const { payload, version } = await service.printCode(director(), 'term-1');
-    const parsed = parseQrPayload(payload)!;
+    const parsed = parseCheckInCode(payload)!;
 
     expect(version).toBe(1);
     expect(parsed.p).toBe(1);
+    // На листке — ссылка: её откроет и обычная камера телефона.
+    expect(payload).toMatch(/^https:\/\/t\.me\/corpsol_bot\?startapp=q1-term-1-/);
     const dayLater = Date.now() + 24 * 60 * 60 * 1000;
     expect(await codes.verify(parsed, dayLater)).toEqual({ valid: true, expired: false, terminalId: 'term-1' });
   });
@@ -260,8 +269,8 @@ describe('печатный QR на дверь', () => {
   it('перепечатка отменяет старый листок', async () => {
     const { codes, service } = printable();
 
-    const first = parseQrPayload((await service.printCode(director(), 'term-1')).payload)!;
-    const second = parseQrPayload((await service.printCode(director(), 'term-1')).payload)!;
+    const first = parseCheckInCode((await service.printCode(director(), 'term-1')).payload)!;
+    const second = parseCheckInCode((await service.printCode(director(), 'term-1')).payload)!;
 
     expect((await codes.verify(first)).valid).toBe(false);
     expect((await codes.verify(second)).valid).toBe(true);
@@ -269,25 +278,35 @@ describe('печатный QR на дверь', () => {
 
   it('снятый листок не принимается, а экран терминала работает', async () => {
     const { codes, service } = printable();
-    const printed = parseQrPayload((await service.printCode(director(), 'term-1')).payload)!;
+    const printed = parseCheckInCode((await service.printCode(director(), 'term-1')).payload)!;
 
     const view = await service.revokePrinted(director(), 'term-1');
 
     expect(view.printedVersion).toBeNull();
     expect((await codes.verify(printed)).valid).toBe(false);
-    const live = parseQrPayload((await codes.issueCode('term-1')).payload)!;
+    const live = parseCheckInCode((await codes.issueCode('term-1')).payload)!;
     expect((await codes.verify(live)).valid).toBe(true);
   });
 
   it('живой код за печатный не выдать: подписи разные', async () => {
     const { codes, service } = printable();
     await service.printCode(director(), 'term-1');
-    const live = parseQrPayload((await codes.issueCode('term-1')).payload)!;
+    const live = parseCheckInCode((await codes.issueCode('term-1')).payload)!;
 
     // Номер окна живого кода подставлен как номер печати.
     const forged = { ...live, c: 1, p: 1 as const };
 
     expect((await codes.verify(forged)).valid).toBe(false);
+  });
+
+  it('без имени бота на листке сам код — его понимает сканер в мини-аппе', async () => {
+    const { codes, links, service } = printable();
+    links.link.mockResolvedValueOnce(null as never);
+
+    const { payload } = await service.printCode(director(), 'term-1');
+
+    expect(payload).toMatch(/^q1-term-1-/);
+    expect((await codes.verify(parseCheckInCode(payload)!)).valid).toBe(true);
   });
 
   it('пока листок не печатали, печатный код не принимается', async () => {
