@@ -121,3 +121,21 @@ tbody tr:hover {
   border: 3px solid transparent;
   background-clip: content-box;
 }
+
+/* Печать QR-листка: на бумагу идёт только он, без панели вокруг. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-sheet,
+  .print-sheet * {
+    visibility: visible;
+  }
+  .print-sheet {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    max-width: none !important;
+    justify-content: center;
+  }
+}
