@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Timestamp } from 'firebase-admin/firestore';
 import {
   WEEK_BAND_LABELS,
@@ -19,6 +19,7 @@ import type {
   AttendanceDoc,
   BonusRuleDoc,
   OfferDoc,
+  PayrollAdjustmentDoc,
   PayrollDoc,
   UserDoc,
 } from '../firestore/types';
@@ -26,6 +27,22 @@ import { PlansService } from '../plans/plans.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { GradesService } from './grades.service';
 import type { AuthenticatedUser } from '../common/decorators/current-user.decorator';
+
+export interface PayrollAdjustmentView {
+  id: string;
+  userId: string;
+  periodStart: string;
+  amountMinor: number;
+  reason: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+/** Последний день месяца для «ГГГГ-ММ-01». */
+export function monthEnd(periodStart: string): string {
+  const [year, month] = periodStart.split('-').map(Number);
+  return new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
+}
 
 export interface PayrollView extends Omit<PayrollDoc, 'calculatedAt' | 'approvedAt'> {
   id: string;
@@ -58,10 +75,11 @@ export class PayrollService {
   ): Promise<PayrollView> {
     const user = await this.loadUser(actor, userId);
 
-    const [rules, attendance, planProgress] = await Promise.all([
+    const [rules, attendance, planProgress, adjustments] = await Promise.all([
       this.loadRules(actor.organizationId, user.departmentId),
       this.summarizeAttendance(userId, periodStart, periodEnd),
       this.plans.progressForUser(actor.organizationId, userId, periodStart),
+      this.loadAdjustments(actor.organizationId, userId, periodStart),
     ]);
 
     // С рангом оклад и недельные бонусы — из таблицы рангов; без ранга
@@ -75,6 +93,12 @@ export class PayrollService {
       planProgress,
       rules,
       extraBonusLines,
+      manualLines: adjustments.map((adjustment) => ({
+        ruleId: `manual-${adjustment.id}`,
+        kind: 'MANUAL' as const,
+        title: adjustment.reason,
+        amountMinor: adjustment.amountMinor,
+      })),
     });
 
     return this.persist(user, userId, periodStart, periodEnd, result);
@@ -255,6 +279,108 @@ export class PayrollService {
       status: 'APPROVED',
       approvedBy: actor.id,
       approvedAt,
+    });
+  }
+
+  /**
+   * Ручная правка директора: доплата или удержание с причиной. Лист
+   * сразу пересчитывается, чтобы сумма в панели совпадала с правками.
+   * Утверждённый лист не трогаем — сотруднику уже сообщили сумму.
+   */
+  async addAdjustment(
+    actor: AuthenticatedUser,
+    userId: string,
+    periodStart: string,
+    amountMinor: number,
+    reason: string,
+  ): Promise<PayrollView> {
+    await this.loadUser(actor, userId);
+    await this.assertDraft(userId, periodStart);
+    if (amountMinor === 0) throw new BadRequestException('Сумма правки не может быть нулевой');
+
+    const ref = this.db.collection(COLLECTIONS.payrollAdjustments).doc();
+    await ref.set({
+      organizationId: actor.organizationId,
+      userId,
+      periodStart,
+      amountMinor,
+      reason: reason.trim(),
+      createdBy: actor.id,
+      createdAt: Timestamp.now(),
+    } satisfies PayrollAdjustmentDoc);
+    await this.auditAdjustment(actor, 'payroll.adjust', ref.id, { userId, periodStart, amountMinor, reason: reason.trim() });
+
+    return this.calculate(actor, userId, periodStart, monthEnd(periodStart));
+  }
+
+  async removeAdjustment(actor: AuthenticatedUser, adjustmentId: string): Promise<PayrollView> {
+    const ref = this.db.collection(COLLECTIONS.payrollAdjustments).doc(adjustmentId);
+    const snapshot = await ref.get();
+    const adjustment = snapshot.data() as PayrollAdjustmentDoc | undefined;
+    if (!snapshot.exists || adjustment?.organizationId !== actor.organizationId) {
+      throw new NotFoundException('Правка не найдена');
+    }
+
+    await this.assertDraft(adjustment.userId, adjustment.periodStart);
+    await ref.delete();
+    await this.auditAdjustment(actor, 'payroll.adjust_removed', adjustmentId, {
+      userId: adjustment.userId,
+      periodStart: adjustment.periodStart,
+      amountMinor: adjustment.amountMinor,
+      reason: adjustment.reason,
+    });
+
+    return this.calculate(actor, adjustment.userId, adjustment.periodStart, monthEnd(adjustment.periodStart));
+  }
+
+  async listAdjustments(actor: AuthenticatedUser, periodStart: string): Promise<PayrollAdjustmentView[]> {
+    const snapshot = await this.db
+      .collection(COLLECTIONS.payrollAdjustments)
+      .where('organizationId', '==', actor.organizationId)
+      .where('periodStart', '==', periodStart)
+      .get();
+
+    return snapshot.docs.map((doc) => {
+      const data = doc.data() as PayrollAdjustmentDoc;
+      return { id: doc.id, ...data, createdAt: data.createdAt.toDate().toISOString() };
+    });
+  }
+
+  private async loadAdjustments(organizationId: string, userId: string, periodStart: string) {
+    const snapshot = await this.db
+      .collection(COLLECTIONS.payrollAdjustments)
+      .where('userId', '==', userId)
+      .where('periodStart', '==', periodStart)
+      .get();
+
+    return snapshot.docs
+      .map((doc) => ({ id: doc.id, ...(doc.data() as PayrollAdjustmentDoc) }))
+      .filter((adjustment) => adjustment.organizationId === organizationId);
+  }
+
+  private async assertDraft(userId: string, periodStart: string): Promise<void> {
+    const snapshot = await this.db.collection(COLLECTIONS.payrolls).doc(payrollDocId(userId, periodStart)).get();
+    const status = (snapshot.data() as PayrollDoc | undefined)?.status;
+    if (status && status !== 'DRAFT') {
+      throw new BadRequestException('Расчёт уже утверждён — правки в него не вносятся');
+    }
+  }
+
+  private async auditAdjustment(
+    actor: AuthenticatedUser,
+    action: string,
+    targetId: string,
+    metadata: Record<string, unknown>,
+  ): Promise<void> {
+    await this.db.collection(COLLECTIONS.auditEvents).doc().set({
+      organizationId: actor.organizationId,
+      actorId: actor.id,
+      action,
+      targetType: 'PayrollAdjustment',
+      targetId,
+      metadata,
+      ip: null,
+      createdAt: Timestamp.now(),
     });
   }
 

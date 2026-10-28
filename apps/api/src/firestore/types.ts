@@ -358,6 +358,18 @@ export interface FenceAttemptDoc {
   createdAt: Timestamp;
 }
 
+/** Ручная правка зарплаты: плюс — доплата, минус — удержание. */
+export interface PayrollAdjustmentDoc {
+  organizationId: string;
+  userId: string;
+  /** Первое число месяца, «ГГГГ-ММ-ДД» — как у расчётного листа. */
+  periodStart: string;
+  amountMinor: number;
+  reason: string;
+  createdBy: string;
+  createdAt: Timestamp;
+}
+
 /** Уведомление одному человеку. Роль адресатом не ставим: иначе непонятно, кто прочитал. */
 export interface NotificationDoc {
   organizationId: string;
