@@ -169,6 +169,22 @@ export interface Plan {
   };
 }
 
+/** Ранг менеджера и его неделя — ответ /payroll/grades/me. */
+export interface GradeProgress {
+  tier: { code: string; name: string; baseSalaryMinor: number; weekPlan: number; monthPlan: number };
+  week: {
+    start: string;
+    end: string;
+    count: number;
+    band: 'under' | 'plan' | 'over';
+    rateMinor: number;
+    amountMinor: number;
+    toPlan: number;
+  };
+  monthCount: number;
+  next: { code: string; name: string; monthPlan: number; left: number } | null;
+}
+
 export interface Payroll {
   id: string;
   periodStart: string;
@@ -242,6 +258,8 @@ export const api = {
     request<CallsSummary>(`/calls/summary?from=${from}&to=${to}`),
   plans: (periodStart: string) => request<Plan[]>(`/plans?periodStart=${periodStart}`),
   payroll: (periodStart: string) => request<Payroll[]>(`/payroll?periodStart=${periodStart}`),
+  /** null — сотрудник без ранга, на окладе и правилах. */
+  grade: () => request<GradeProgress | null>('/payroll/grades/me'),
   offers: (from: string, to: string) => request<Offer[]>(`/offers?from=${from}&to=${to}`),
   leaderboard: (from: string, to: string) =>
     request<{ entries: RankedEntry[]; self: RankedEntry | null }>(
