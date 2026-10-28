@@ -1,5 +1,5 @@
 import { MIN_DAILY_CALL_RATE_BPS, type AttendanceStatus } from '@corpsol/shared';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { ApiError, api, type AttendanceRecord } from '../api';
 import {
@@ -24,6 +24,8 @@ import {
   openLocationSettings,
   readPosition,
   scanQr,
+  takeLaunchCheckInCode,
+  tap,
 } from '../telegram';
 import {
   ErrorRetry,
@@ -105,18 +107,22 @@ export function Home({ onOpenProfile }: { onOpenProfile(): void }) {
   const records = data.data?.records ?? [];
   const todayRecord = records.find((record) => record.workDate === today) ?? null;
 
-  async function checkIn() {
-    if (!canScanQr()) {
-      setNotice({ kind: 'error', text: 'Отметка — по QR-коду терминала. Откройте приложение в Telegram на телефоне.' });
-      return;
+  /** Отметка: кодом со сканера или кодом из ссылки, которой открыли мини-апп. */
+  async function checkIn(codeFromLink?: string) {
+    let qr = codeFromLink ?? null;
+    if (!qr) {
+      if (!canScanQr()) {
+        setNotice({ kind: 'error', text: 'Отметка — по QR-коду терминала. Откройте приложение в Telegram на телефоне.' });
+        return;
+      }
+      qr = await scanQr('Отсканируйте QR-код у входа в офис');
+      if (!qr) return;
     }
 
-    const qr = await scanQr('Отсканируйте QR-код на терминале в офисе');
-    if (!qr) return;
-
-    confirmClosing(true);
     try {
-      setNotice({ kind: 'busy', text: 'Определяем местоположение…' });
+      confirmClosing(true);
+      tap();
+      setNotice({ kind: 'busy', text: 'Код считан. Определяем местоположение…' });
       const position = await readPosition();
 
       setNotice({ kind: 'busy', text: 'Подтверждаем приход…' });
@@ -140,12 +146,21 @@ export function Home({ onOpenProfile }: { onOpenProfile(): void }) {
         const strike = cause.code === 'outside_fence' ? fenceStrikeHint(cause.details) : undefined;
         setNotice({ kind: 'error', text: cause.message, hint: strike ? `${hint ?? ''} ${strike}`.trim() : hint });
       } else {
-        setNotice({ kind: 'error', text: 'Нет связи с сервером. Попробуйте ещё раз.' });
+        // Любая другая ошибка — тоже вслух: тишина после скана выглядит как поломка.
+        setNotice({ kind: 'error', text: 'Не получилось отметиться. Попробуйте ещё раз.' });
       }
     } finally {
       confirmClosing(false);
     }
   }
+
+  // Открыли камерой по ссылке с листка у двери — отмечаемся сразу,
+  // без второго сканирования.
+  useEffect(() => {
+    const code = takeLaunchCheckInCode();
+    if (code) void checkIn(code);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function checkOut() {
     if (leaving) return;
