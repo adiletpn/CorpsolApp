@@ -15,6 +15,8 @@ interface LocationData {
 
 interface TelegramWebApp {
   initData: string;
+  /** start_param — то, что стояло в ссылке после ?startapp=. */
+  initDataUnsafe?: { start_param?: string };
   platform: string;
   version: string;
   colorScheme: 'light' | 'dark';
@@ -212,8 +214,38 @@ export class LocationError extends Error {
  */
 export async function readPosition(): Promise<Position> {
   const manager = webApp()?.isVersionAtLeast('8.0') ? webApp()?.LocationManager : undefined;
-  if (manager) return readFromTelegram(manager);
-  return readFromBrowser();
+  const reading = manager ? readFromTelegram(manager) : readFromBrowser();
+
+  // LocationManager бывает молчит: окно разрешения закрыли, GPS выключен.
+  // Без срока экран так и висел бы на «Определяем местоположение…».
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new LocationError('Не удалось определить местоположение. Проверьте, что геолокация включена, и повторите.', true)),
+      LOCATION_TIMEOUT_MS,
+    );
+  });
+  try {
+    return await Promise.race([reading, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export const LOCATION_TIMEOUT_MS = 20_000;
+
+let launchCodeTaken = false;
+
+/**
+ * Код отметки, с которым мини-апп открыли камерой по ссылке с листка.
+ * Отдаётся один раз: после отметки и перехода по вкладкам повторно
+ * отмечаться никто не просил.
+ */
+export function takeLaunchCheckInCode(): string | null {
+  if (launchCodeTaken) return null;
+  launchCodeTaken = true;
+  const param = webApp()?.initDataUnsafe?.start_param;
+  return param && param.startsWith('q') ? param : null;
 }
 
 function readFromTelegram(manager: NonNullable<TelegramWebApp['LocationManager']>): Promise<Position> {
