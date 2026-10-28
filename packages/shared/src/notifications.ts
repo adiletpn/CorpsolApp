@@ -13,6 +13,7 @@ export const NOTIFICATION_KINDS = [
   'payroll_ready',
   'plan_at_risk',
   'day_not_counted',
+  'fence_reprimand',
 ] as const;
 
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
@@ -25,6 +26,7 @@ export const NOTIFICATION_TITLES: Record<NotificationKind, string> = {
   payroll_ready: 'Расчёт за месяц готов',
   plan_at_risk: 'План под угрозой',
   day_not_counted: 'День не засчитан',
+  fence_reprimand: 'Выговор: отметки вне офиса',
 };
 
 /**
@@ -40,4 +42,6 @@ export const NOTIFICATION_NEEDS_ACTION: Record<NotificationKind, boolean> = {
   payroll_ready: false,
   plan_at_risk: true,
   day_not_counted: false,
+  // Выговор — повод для разговора руководителя с сотрудником.
+  fence_reprimand: true,
 };
