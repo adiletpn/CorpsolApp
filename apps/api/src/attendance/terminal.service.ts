@@ -41,11 +41,26 @@ export class TerminalService {
    * Подпись кода: HMAC(secret, terminalId.counter). Секрет никогда не покидает
    * сервер, поэтому валидный код нельзя сгенерировать заранее или вне офиса.
    */
-  private sign(secret: string, terminalId: string, counter: number): string {
+  private sign(secret: string, terminalId: string, counter: number, printed = false): string {
     return createHmac('sha256', secret)
-      .update(`${terminalId}.${counter}`)
+      .update(printed ? `${terminalId}.printed.${counter}` : `${terminalId}.${counter}`)
       .digest('base64url')
       .slice(0, SIGNATURE_LENGTH);
+  }
+
+  /**
+   * Код для печати на листок. Не протухает: от отметки из дома по фото
+   * листка защищает геозона, а не время. Номер печати — в подписи,
+   * поэтому перепечатка делает старый листок недействительным.
+   */
+  printedCode(terminalId: string, secret: string, version: number): string {
+    return encodeQrPayload({
+      v: QR_PAYLOAD_VERSION,
+      t: terminalId,
+      c: version,
+      s: this.sign(secret, terminalId, version, true),
+      p: 1,
+    });
   }
 
   /** Текущий QR для экрана терминала. Экран перезапрашивает его каждые 30 секунд. */
@@ -87,6 +102,15 @@ export class TerminalService {
     const terminal = await this.load(payload.t);
     if (!terminal || !terminal.isActive) {
       return { valid: false, expired: false, terminalId: payload.t };
+    }
+
+    if (payload.p) {
+      // Листок прошлой печати — не «устарел», а недействителен: его сняли.
+      const valid =
+        terminal.printedVersion != null &&
+        payload.c === terminal.printedVersion &&
+        this.equals(this.sign(terminal.secret, payload.t, payload.c, true), payload.s);
+      return { valid, expired: false, terminalId: payload.t };
     }
 
     const current = currentQrCounter(nowMs);

@@ -61,6 +61,8 @@ export interface TerminalDoc {
   /** Только хеш токена экрана: дамп базы не даёт рабочего токена. */
   accessTokenHash: string | null;
   tokenIssuedAt: Timestamp | null;
+  /** Номер действующего печатного QR; null или нет — печатный код не принимается. */
+  printedVersion?: number | null;
   createdAt: Timestamp;
 }
 
