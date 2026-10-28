@@ -5,8 +5,10 @@ import { FirebaseService } from '../firebase/firebase.service';
 import { COLLECTIONS } from '../firestore/collections';
 import type { AuthenticatedUser } from '../common/decorators/current-user.decorator';
 import { isValidWebhook, maskWebhook } from './bitrix-client';
+import { isValidKcellBaseUrl, maskKey, type KcellCredentials } from './kcell-api-client';
+import type { SipuniCredentials } from './sipuni-api-client';
 
-export type IntegrationProvider = 'BITRIX' | 'KCELL';
+export type IntegrationProvider = 'BITRIX' | 'KCELL' | 'SIPUNI';
 
 interface IntegrationDoc {
   organizationId: string;
@@ -14,6 +16,11 @@ interface IntegrationDoc {
   isActive: boolean;
   /** Вебхук портала. Наружу не отдаётся никогда. */
   webhookUrl: string | null;
+  /**
+   * Доступ к АТС: адрес и ключ API Kcell или логин и секрет Sipuni.
+   * Как и вебхук, наружу не отдаётся — в панели только маска.
+   */
+  credentials?: Record<string, string> | null;
   lastSyncAt: Timestamp | null;
   lastSyncStatus: string | null;
   lastSyncError: string | null;
@@ -26,6 +33,8 @@ export interface IntegrationView {
   provider: IntegrationProvider;
   isActive: boolean;
   webhookMasked: string | null;
+  /** Доступ к АТС так, чтобы его можно было узнать, но не использовать. */
+  credentialsMasked: string | null;
   lastSyncAt: string | null;
   lastSyncStatus: string | null;
   lastSyncError: string | null;
@@ -64,6 +73,58 @@ export class IntegrationsService {
 
     await this.collection.doc(docId(actor.organizationId, 'BITRIX')).set(doc);
     return this.toView(doc);
+  }
+
+  /** API Kcell: адрес кабинета и ключ из «Интеграция с CRM → REST API». */
+  async connectKcell(actor: AuthenticatedUser, credentials: KcellCredentials): Promise<IntegrationView> {
+    const baseUrl = credentials.baseUrl.trim().replace(/\/$/, '');
+    if (!isValidKcellBaseUrl(baseUrl)) {
+      throw new BadRequestException('Адрес должен выглядеть как https://компания.vpbx.kcell.kz/crmapi/v1');
+    }
+    if (!credentials.apiKey.trim()) throw new BadRequestException('Нужен ключ API Kcell');
+
+    return this.connectPbx(actor, 'KCELL', { baseUrl, apiKey: credentials.apiKey.trim() });
+  }
+
+  /** Sipuni: номер аккаунта и секрет из «Настройки → API». */
+  async connectSipuni(actor: AuthenticatedUser, credentials: SipuniCredentials): Promise<IntegrationView> {
+    const user = credentials.user.trim();
+    if (!/^\d{3,12}$/.test(user)) {
+      throw new BadRequestException('Номер аккаунта Sipuni — только цифры, как в кабинете');
+    }
+    if (!credentials.secret.trim()) throw new BadRequestException('Нужен секрет API Sipuni');
+
+    return this.connectPbx(actor, 'SIPUNI', { user, secret: credentials.secret.trim() });
+  }
+
+  private async connectPbx(
+    actor: AuthenticatedUser,
+    provider: 'KCELL' | 'SIPUNI',
+    credentials: Record<string, string>,
+  ): Promise<IntegrationView> {
+    const doc: IntegrationDoc = {
+      organizationId: actor.organizationId,
+      provider,
+      isActive: true,
+      webhookUrl: null,
+      credentials,
+      lastSyncAt: null,
+      lastSyncStatus: null,
+      lastSyncError: null,
+      syncedUpTo: null,
+    };
+
+    await this.collection.doc(docId(actor.organizationId, provider)).set(doc);
+    return this.toView(doc);
+  }
+
+  /** Доступ к АТС для внутреннего использования. Наружу не уходит. */
+  async requireCredentials(organizationId: string, provider: 'KCELL' | 'SIPUNI'): Promise<Record<string, string>> {
+    const doc = await this.find(organizationId, provider);
+    if (!doc?.isActive || !doc.credentials) {
+      throw new NotFoundException(`Интеграция ${provider === 'KCELL' ? 'с Kcell' : 'с Sipuni'} не настроена`);
+    }
+    return doc.credentials;
   }
 
   /** Адрес вебхука для внутреннего использования. Наружу не уходит. */
@@ -114,6 +175,7 @@ export class IntegrationsService {
       // Токен стираем, а не просто отключаем: отключённая интеграция
       // не должна оставлять рабочий доступ к порталу в базе.
       webhookUrl: null,
+      credentials: null,
     });
   }
 
@@ -122,10 +184,22 @@ export class IntegrationsService {
       provider: doc.provider,
       isActive: doc.isActive,
       webhookMasked: doc.webhookUrl ? maskWebhook(doc.webhookUrl) : null,
+      credentialsMasked: this.maskCredentials(doc),
       lastSyncAt: doc.lastSyncAt?.toDate().toISOString() ?? null,
       lastSyncStatus: doc.lastSyncStatus,
       lastSyncError: doc.lastSyncError,
       syncedUpTo: doc.syncedUpTo?.toDate().toISOString() ?? null,
     };
+  }
+
+  private maskCredentials(doc: IntegrationDoc): string | null {
+    const credentials = doc.credentials;
+    if (!credentials) return null;
+
+    if (doc.provider === 'KCELL') {
+      const host = credentials.baseUrl?.replace(/^https:\/\//, '').split('/')[0] ?? '';
+      return `${host} · ключ ${maskKey(credentials.apiKey ?? '')}`;
+    }
+    return `аккаунт ${credentials.user} · секрет ${maskKey(credentials.secret ?? '')}`;
   }
 }

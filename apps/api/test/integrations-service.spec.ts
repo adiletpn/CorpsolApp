@@ -184,3 +184,62 @@ describe('интеграции: отметка синхронизации', () =
     expect(doc?.syncedUpTo).toBe(point);
   });
 });
+
+describe('интеграции: АТС Kcell и Sipuni', () => {
+  const KCELL = { baseUrl: 'https://corpsol.vpbx.kcell.kz/crmapi/v1/', apiKey: 'kcell-secret-key' };
+  const SIPUNI = { user: '012345', secret: 'sipuni-secret' };
+
+  it('ключ Kcell наружу не уходит — только маска', async () => {
+    const { service } = setup();
+
+    const view = await service.connectKcell(admin(), KCELL);
+
+    expect(view.credentialsMasked).toBe('corpsol.vpbx.kcell.kz · ключ kce…ey');
+    expect(JSON.stringify(view)).not.toContain('kcell-secret-key');
+  });
+
+  it('секрет Sipuni наружу не уходит — только маска', async () => {
+    const { service } = setup();
+
+    await service.connectSipuni(admin(), SIPUNI);
+    const [view] = await service.list(admin());
+
+    expect(view.credentialsMasked).toBe('аккаунт 012345 · секрет sip…et');
+    expect(JSON.stringify(view)).not.toContain('sipuni-secret');
+  });
+
+  it('чужой адрес вместо кабинета Kcell отклоняется', async () => {
+    const { service } = setup();
+
+    await expect(
+      service.connectKcell(admin(), { baseUrl: 'https://evil.example.com/crmapi/v1', apiKey: 'x' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('номер аккаунта Sipuni — только цифры', async () => {
+    const { service } = setup();
+
+    await expect(service.connectSipuni(admin(), { user: 'admin', secret: 'x' })).rejects.toThrow(/только цифры/);
+  });
+
+  it('изнутри доступ отдаётся целиком — им ходят в АТС', async () => {
+    const { service } = setup();
+    await service.connectKcell(admin(), KCELL);
+
+    // Косая черта в конце снята: иначе адрес запроса вышел бы с двумя.
+    expect(await service.requireCredentials(ORG, 'KCELL')).toEqual({
+      baseUrl: 'https://corpsol.vpbx.kcell.kz/crmapi/v1',
+      apiKey: 'kcell-secret-key',
+    });
+  });
+
+  it('после отключения доступ стёрт из базы', async () => {
+    const { firestore, service } = setup();
+    await service.connectSipuni(admin(), SIPUNI);
+
+    await service.disconnect(admin(), 'SIPUNI');
+
+    expect(firestore.read(COLLECTIONS.integrations, `${ORG}_SIPUNI`)?.credentials).toBeNull();
+    await expect(service.requireCredentials(ORG, 'SIPUNI')).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
