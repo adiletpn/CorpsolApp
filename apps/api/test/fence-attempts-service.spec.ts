@@ -80,6 +80,13 @@ describe('попытки отметиться вне офиса', () => {
     expect(await attempt('2026-10-01')).toEqual({ days: 1, reprimanded: false });
   });
 
+  it('попытки прошлых месяцев не мешают счёту, даже если их много', async () => {
+    const { attempt } = setup();
+    for (const day of ['2026-08-03', '2026-08-04', '2026-09-01', '2026-09-02']) await attempt(day);
+
+    expect(await attempt('2026-10-15')).toEqual({ days: 1, reprimanded: false });
+  });
+
   it('попытки разных сотрудников не складываются', async () => {
     const { attempt } = setup();
     await attempt('2026-10-05', 'mop-1');

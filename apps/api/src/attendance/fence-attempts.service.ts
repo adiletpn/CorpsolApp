@@ -53,13 +53,15 @@ export class FenceAttemptsService {
     } satisfies FenceAttemptDoc);
 
     const month = attempt.workDate.slice(0, 7);
-    const snapshot = await this.db
-      .collection(COLLECTIONS.fenceAttempts)
-      .where('userId', '==', userId)
-      .where('workDate', '>=', `${month}-01`)
-      .where('workDate', '<=', `${month}-31`)
-      .get();
-    const days = new Set(snapshot.docs.map((doc) => (doc.data() as FenceAttemptDoc).workDate)).size;
+    // Только по сотруднику: сотрудник плюс диапазон дат требует составного
+    // индекса Firestore, без него запрос падал и отметка отвечала ошибкой
+    // сервера. Попыток у человека единицы — месяц отбираем здесь.
+    const snapshot = await this.db.collection(COLLECTIONS.fenceAttempts).where('userId', '==', userId).get();
+    const days = new Set(
+      snapshot.docs
+        .map((doc) => (doc.data() as FenceAttemptDoc).workDate)
+        .filter((workDate) => workDate.startsWith(`${month}-`)),
+    ).size;
 
     // Ровно на третьем дне: четвёртый и дальше уже под этим выговором.
     const reprimanded = days === REPRIMAND_AFTER_DAYS && !(await this.alreadyReprimanded(userId, month));
