@@ -47,7 +47,7 @@ export function PrintedQr({
       <div className="print-sheet" style={styles.sheet}>
         <div style={styles.heading}>Отметка прихода</div>
         <div style={styles.sub}>
-          Откройте CorpSol в Telegram → «Отметиться» → наведите камеру
+          Наведите камеру телефона на код — откроется CorpSol в Telegram и отметит приход
         </div>
         {image ? <img src={image} alt={`QR терминала ${terminalName}`} style={styles.qr} /> : null}
         <div style={styles.footer}>
