@@ -1,11 +1,12 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post, Put, Query } from '@nestjs/common';
 import { IsBoolean } from 'class-validator';
 
 import { CurrentUser, type AuthenticatedUser } from '../common/decorators/current-user.decorator';
 import { RequirePermissions } from '../common/decorators/require-permissions.decorator';
 import { PayrollService } from './payroll.service';
 import { BonusRulesService } from './bonus-rules.service';
-import { CalculatePayrollDto, CreateBonusRuleDto } from './dto';
+import { GradesService } from './grades.service';
+import { AssignGradeDto, CalculatePayrollDto, CreateBonusRuleDto, UpdateGradesDto } from './dto';
 
 class SetActiveDto {
   @IsBoolean()
@@ -17,7 +18,31 @@ export class PayrollController {
   constructor(
     private readonly payroll: PayrollService,
     private readonly rules: BonusRulesService,
+    private readonly grades: GradesService,
   ) {}
+
+  /**
+   * Таблица рангов. Читают все, кто видит зарплату: менеджеру нужно
+   * знать, сколько он получит за неделю в план и что даст следующий ранг.
+   */
+  @Get('grades')
+  @RequirePermissions('payroll.read.self', 'payroll.read.department', 'payroll.read.all')
+  listGrades(@CurrentUser() user: AuthenticatedUser) {
+    return this.grades.tiers(user.organizationId);
+  }
+
+  @Put('grades')
+  @RequirePermissions('payroll.manage')
+  updateGrades(@CurrentUser() user: AuthenticatedUser, @Body() dto: UpdateGradesDto) {
+    return this.grades.updateTiers(user, dto.tiers);
+  }
+
+  @Post('grades/assign')
+  @HttpCode(200)
+  @RequirePermissions('payroll.manage')
+  assignGrade(@CurrentUser() user: AuthenticatedUser, @Body() dto: AssignGradeDto) {
+    return this.grades.assign(user, dto.userId, dto.code);
+  }
 
   /** МОП видит только свой лист, РОП — отдел, директор — всю компанию. */
   @Get()

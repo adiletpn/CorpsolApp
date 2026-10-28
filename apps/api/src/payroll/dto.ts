@@ -1,12 +1,19 @@
+import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
   IsBoolean,
   IsIn,
   IsInt,
+  IsNotEmpty,
   IsOptional,
   IsString,
   Matches,
   Max,
+  MaxLength,
   Min,
+  ValidateNested,
 } from 'class-validator';
 import { PLAN_METRICS, type PlanMetric } from '@corpsol/shared';
 
@@ -64,4 +71,59 @@ export class CalculatePayrollDto {
   @IsOptional()
   @IsString()
   userId?: string;
+}
+
+/** Ранг в таблице. Суммы — в тиынах, целые. */
+export class GradeTierDto {
+  @IsString()
+  @Matches(/^[A-Z]{1,3}\d?$/, { message: 'Код ранга — латинские буквы: A, B, C' })
+  code!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(20)
+  name!: string;
+
+  @IsInt()
+  @Min(0)
+  baseSalaryMinor!: number;
+
+  @IsInt()
+  @Min(1)
+  monthPlan!: number;
+
+  @IsInt()
+  @Min(1)
+  weekPlan!: number;
+
+  @IsInt()
+  @Min(0)
+  rateUnderMinor!: number;
+
+  @IsInt()
+  @Min(0)
+  ratePlanMinor!: number;
+
+  @IsInt()
+  @Min(0)
+  rateOverMinor!: number;
+}
+
+export class UpdateGradesDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(10)
+  @ValidateNested({ each: true })
+  @Type(() => GradeTierDto)
+  tiers!: GradeTierDto[];
+}
+
+export class AssignGradeDto {
+  @IsString()
+  @IsNotEmpty()
+  userId!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  code!: string;
 }
