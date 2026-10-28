@@ -205,3 +205,38 @@ describe('показ сумм', () => {
     expect(formatted).toBe('250 000 ₸');
   });
 });
+
+describe('начисления вне правил — недельные бонусы по рангу', () => {
+  const week = (amountMinor: number) => ({
+    ruleId: 'week-2026-10-05',
+    kind: 'WEEKLY_OFFERS' as const,
+    title: 'Неделя 05.10–11.10',
+    amountMinor,
+  });
+
+  it('входят в премию, итог и расшифровку', () => {
+    const result = calculatePayroll({
+      baseSalaryMinor: 10_000_000,
+      attendance: perfectAttendance,
+      planProgress: [],
+      rules: [],
+      extraBonusLines: [week(3_000_000)],
+    });
+
+    expect(result.bonusMinor).toBe(3_000_000);
+    expect(result.totalMinor).toBe(13_000_000);
+    expect(result.lines).toEqual([week(3_000_000)]);
+  });
+
+  it('пустая неделя не даёт строки с нулём', () => {
+    const result = calculatePayroll({
+      baseSalaryMinor: 10_000_000,
+      attendance: perfectAttendance,
+      planProgress: [],
+      rules: [],
+      extraBonusLines: [week(0)],
+    });
+
+    expect(result.lines).toEqual([]);
+  });
+});

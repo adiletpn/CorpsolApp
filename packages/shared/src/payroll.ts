@@ -46,6 +46,12 @@ export interface PayrollInput {
   planProgress: PlanProgress[];
   rules: BonusRule[];
   /**
+   * Начисления вне правил — недельные бонусы по рангу. Считаются
+   * отдельно (по регистрациям за каждую неделю) и приходят готовыми
+   * строками; в итог и расшифровку входят наравне с премиями.
+   */
+  extraBonusLines?: PayrollLine[];
+  /**
    * Предел удержаний как доля оклада в базисных пунктах.
    * По умолчанию половина: удержать у человека больше половины заработка
    * за месяц нельзя, каким бы ни было число опозданий.
@@ -55,7 +61,7 @@ export interface PayrollInput {
 
 export interface PayrollLine {
   ruleId: string;
-  kind: BonusRuleKind;
+  kind: BonusRuleKind | 'WEEKLY_OFFERS';
   title: string;
   amountMinor: number;
 }
@@ -164,6 +170,12 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
 
   let bonusMinor = 0;
   let rawPenaltyMinor = 0;
+
+  for (const line of input.extraBonusLines ?? []) {
+    if (line.amountMinor <= 0) continue;
+    bonusMinor += line.amountMinor;
+    lines.push(line);
+  }
 
   for (const rule of input.rules) {
     const bonus = bonusForRule(rule, input);
