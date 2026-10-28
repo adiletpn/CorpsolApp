@@ -1,6 +1,9 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Timestamp } from 'firebase-admin/firestore';
 
+import { parseQrPayload } from '@corpsol/shared';
+
+import { TerminalService } from '../src/attendance/terminal.service';
 import { TerminalsService } from '../src/attendance/terminals.service';
 import { COLLECTIONS } from '../src/firestore/collections';
 import type { AuthenticatedUser } from '../src/common/decorators/current-user.decorator';
@@ -11,7 +14,9 @@ const OTHER_ORG = 'org-2';
 
 function setup() {
   const firestore = new FakeFirestore();
-  return { firestore, service: new TerminalsService(fakeFirebase(firestore)) };
+  const firebase = fakeFirebase(firestore);
+  const codes = new TerminalService(firebase);
+  return { firestore, codes, service: new TerminalsService(firebase, codes) };
 }
 
 function seedOffice(
@@ -229,5 +234,74 @@ describe('терминалы: признак выпущенного токена
     const [view] = await service.list(director());
 
     expect(view).not.toHaveProperty('accessTokenHash');
+  });
+});
+
+describe('печатный QR на дверь', () => {
+  const printable = () => {
+    const context = setup();
+    seedOffice(context.firestore, 'office-1');
+    seedTerminal(context.firestore, 'term-1');
+    return context;
+  };
+
+  it('печатный код принимается и через сутки: время его не старит', async () => {
+    const { codes, service } = printable();
+
+    const { payload, version } = await service.printCode(director(), 'term-1');
+    const parsed = parseQrPayload(payload)!;
+
+    expect(version).toBe(1);
+    expect(parsed.p).toBe(1);
+    const dayLater = Date.now() + 24 * 60 * 60 * 1000;
+    expect(await codes.verify(parsed, dayLater)).toEqual({ valid: true, expired: false, terminalId: 'term-1' });
+  });
+
+  it('перепечатка отменяет старый листок', async () => {
+    const { codes, service } = printable();
+
+    const first = parseQrPayload((await service.printCode(director(), 'term-1')).payload)!;
+    const second = parseQrPayload((await service.printCode(director(), 'term-1')).payload)!;
+
+    expect((await codes.verify(first)).valid).toBe(false);
+    expect((await codes.verify(second)).valid).toBe(true);
+  });
+
+  it('снятый листок не принимается, а экран терминала работает', async () => {
+    const { codes, service } = printable();
+    const printed = parseQrPayload((await service.printCode(director(), 'term-1')).payload)!;
+
+    const view = await service.revokePrinted(director(), 'term-1');
+
+    expect(view.printedVersion).toBeNull();
+    expect((await codes.verify(printed)).valid).toBe(false);
+    const live = parseQrPayload((await codes.issueCode('term-1')).payload)!;
+    expect((await codes.verify(live)).valid).toBe(true);
+  });
+
+  it('живой код за печатный не выдать: подписи разные', async () => {
+    const { codes, service } = printable();
+    await service.printCode(director(), 'term-1');
+    const live = parseQrPayload((await codes.issueCode('term-1')).payload)!;
+
+    // Номер окна живого кода подставлен как номер печати.
+    const forged = { ...live, c: 1, p: 1 as const };
+
+    expect((await codes.verify(forged)).valid).toBe(false);
+  });
+
+  it('пока листок не печатали, печатный код не принимается', async () => {
+    const { codes } = printable();
+    const guessed = { v: 1 as const, t: 'term-1', c: 1, s: 'abcdefghijklmnop', p: 1 as const };
+
+    expect((await codes.verify(guessed)).valid).toBe(false);
+  });
+
+  it('чужой терминал напечатать нельзя', async () => {
+    const { firestore, service } = setup();
+    seedOffice(firestore, 'office-x', OTHER_ORG);
+    seedTerminal(firestore, 'term-x', { officeId: 'office-x' });
+
+    await expect(service.printCode(director(), 'term-x')).rejects.toBeInstanceOf(BadRequestException);
   });
 });

@@ -18,12 +18,17 @@ export interface TerminalView {
   isActive: boolean;
   hasAccessToken: boolean;
   tokenIssuedAt: string | null;
+  /** Номер действующего печатного QR, null — листка нет. */
+  printedVersion: number | null;
   createdAt: string;
 }
 
 @Injectable()
 export class TerminalsService {
-  constructor(private readonly firebase: FirebaseService) {}
+  constructor(
+    private readonly firebase: FirebaseService,
+    private readonly codes: TerminalService,
+  ) {}
 
   private get collection() {
     return this.firebase.firestore.collection(COLLECTIONS.terminals);
@@ -57,6 +62,33 @@ export class TerminalsService {
 
     await this.collection.doc(terminalId).update({ isActive });
     return this.toView(terminalId, { ...doc, isActive });
+  }
+
+  /**
+   * Печатный QR для двери. Каждая печать — новый номер: старый листок
+   * перестаёт работать, если его потеряли или сфотографировали.
+   */
+  async printCode(
+    actor: AuthenticatedUser,
+    terminalId: string,
+  ): Promise<{ payload: string; version: number; terminal: TerminalView }> {
+    const doc = await this.loadOwned(actor, terminalId);
+    const version = (doc.printedVersion ?? 0) + 1;
+
+    await this.collection.doc(terminalId).update({ printedVersion: version });
+    return {
+      payload: this.codes.printedCode(terminalId, doc.secret, version),
+      version,
+      terminal: this.toView(terminalId, { ...doc, printedVersion: version }),
+    };
+  }
+
+  /** Снять листок: печатный код больше не принимается, экран работает как прежде. */
+  async revokePrinted(actor: AuthenticatedUser, terminalId: string): Promise<TerminalView> {
+    const doc = await this.loadOwned(actor, terminalId);
+
+    await this.collection.doc(terminalId).update({ printedVersion: null });
+    return this.toView(terminalId, { ...doc, printedVersion: null });
   }
 
   async list(actor: AuthenticatedUser, officeId?: string): Promise<TerminalView[]> {
@@ -110,6 +142,7 @@ export class TerminalsService {
       isActive: doc.isActive,
       hasAccessToken: doc.accessTokenHash !== null,
       tokenIssuedAt: doc.tokenIssuedAt?.toDate().toISOString() ?? null,
+      printedVersion: doc.printedVersion ?? null,
       createdAt: doc.createdAt.toDate().toISOString(),
     };
   }

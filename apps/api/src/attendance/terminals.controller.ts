@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query } from '@nestjs/common';
 import { IsBoolean, IsNotEmpty, IsString, MaxLength } from 'class-validator';
 
 import { CurrentUser, type AuthenticatedUser } from '../common/decorators/current-user.decorator';
@@ -50,5 +50,19 @@ export class TerminalsController {
     @Body() dto: SetActiveDto,
   ) {
     return this.terminals.setActive(user, id, dto.isActive);
+  }
+
+  /** QR на листок для двери. Повторная печать отменяет прежний листок. */
+  @Post(':id/printed-code')
+  @HttpCode(200)
+  @RequirePermissions('settings.manage')
+  printCode(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.terminals.printCode(user, id);
+  }
+
+  @Delete(':id/printed-code')
+  @RequirePermissions('settings.manage')
+  revokePrinted(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.terminals.revokePrinted(user, id);
   }
 }
