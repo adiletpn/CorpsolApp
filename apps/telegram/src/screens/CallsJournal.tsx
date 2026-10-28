@@ -117,7 +117,7 @@ export function CallsJournal({ onClose }: { onClose(): void }) {
         <input
           type="search"
           inputMode="search"
-          placeholder="Номер или время, например 701 или 14:"
+          placeholder="Номер или время: 701, 14:"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
