@@ -1677,3 +1677,16 @@ p {
 .rings > .ring:last-child:nth-child(odd) {
   grid-column: 1 / -1;
 }
+
+/* ---------- ранг: неделя ---------- */
+
+/* Кольцо и числа — одна строка панели: свои рамки ряда здесь лишние. */
+.grade-week {
+  border-bottom: 1px solid var(--border);
+}
+
+.grade-week .figure-row {
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+}

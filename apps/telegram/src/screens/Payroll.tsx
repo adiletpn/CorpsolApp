@@ -1,11 +1,11 @@
-import { formatMinor } from '@corpsol/shared';
+import { WEEK_BAND_LABELS, formatMinor } from '@corpsol/shared';
 import React from 'react';
 
-import { api, type Payroll as PayrollSheet } from '../api';
+import { api, type GradeProgress, type Payroll as PayrollSheet } from '../api';
 import { formatDate, monthRange } from '../format';
-import { StackedBar, chart } from '../charts';
+import { RingMeter, StackedBar, chart } from '../charts';
 import { PeriodScreen } from '../PeriodScreen';
-import { Gap, HeroFigure, Panel, PanelRow, RowValue, SectionLabel, tone } from '../ui';
+import { Figure, FigureRow, Gap, HeroFigure, Panel, PanelRow, RowValue, SectionLabel, tone } from '../ui';
 
 const STATUS_LABELS: Record<PayrollSheet['status'], string> = {
   DRAFT: 'Черновик',
@@ -23,25 +23,75 @@ export function Payroll() {
       title="Зарплата"
       subtitle="Оклад, бонусы и удержания"
       load={async () => {
-        const [current, past] = await Promise.all([api.payroll(month.from), api.payroll(previous.from)]);
+        const [current, past, grade] = await Promise.all([
+          api.payroll(month.from),
+          api.payroll(previous.from),
+          // Ранг — дополнение: без него расчёт всё равно должен показаться.
+          api.grade().catch(() => null),
+        ]);
         // На стыке периодов один лист может прийти в обоих ответах.
-        return [...current, ...past].filter(
+        const sheets = [...current, ...past].filter(
           (sheet, index, all) => all.findIndex((item) => item.id === sheet.id) === index,
         );
+        return { sheets, grade };
       }}
-      isEmpty={(sheets) => sheets.length === 0}
+      isEmpty={({ sheets, grade }) => sheets.length === 0 && !grade}
       // Черновик сотруднику не показывают: суммы ещё изменятся пересчётом.
       emptyMessage="Расчёт появится, когда руководитель его утвердит"
       emptyIcon="payments"
     >
-      {(sheets) => (
+      {({ sheets, grade }) => (
         <>
+          {grade ? <GradeCard grade={grade} /> : null}
           {sheets.map((sheet) => (
             <PayrollCard key={sheet.id} sheet={sheet} />
           ))}
         </>
       )}
     </PeriodScreen>
+  );
+}
+
+/**
+ * Ранг и текущая неделя: сколько регистраций, по какой ставке они
+ * сейчас идут и сколько осталось до плана — чтобы менеджер видел,
+ * что даст ещё одна регистрация, до утверждения расчёта.
+ */
+export function GradeCard({ grade }: { grade: GradeProgress }) {
+  const { tier, week, next } = grade;
+  const period = `${formatDate(week.start)} — ${formatDate(week.end)}`;
+
+  return (
+    <>
+      <SectionLabel trailing={<RowValue muted>оклад {formatMinor(tier.baseSalaryMinor)}</RowValue>}>
+        Ранг {tier.name}
+      </SectionLabel>
+      <Panel>
+        <div className="grade-week">
+          <RingMeter
+            ratio={week.count / tier.weekPlan}
+            label="Неделя"
+            caption={`${week.count} из ${tier.weekPlan} рег.`}
+            complete={week.toPlan === 0}
+          />
+          <FigureRow>
+            <Figure value={formatMinor(week.rateMinor)} label={`ставка · ${WEEK_BAND_LABELS[week.band]}`} />
+            <Figure value={formatMinor(week.amountMinor)} label="бонус за неделю" />
+          </FigureRow>
+        </div>
+        <PanelRow
+          title={week.toPlan > 0 ? `До плана недели — ещё ${week.toPlan} рег.` : 'План недели выполнен'}
+          subtitle={period}
+        />
+        {next ? (
+          <PanelRow
+            title={next.left > 0 ? `До ранга ${next.name} — ещё ${next.left} рег. в этом месяце` : `Ранг ${next.name} в следующем месяце`}
+            subtitle={`В месяце ${grade.monthCount} из ${next.monthPlan}`}
+          />
+        ) : null}
+      </Panel>
+      <Gap size={3} />
+    </>
   );
 }
 
