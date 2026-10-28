@@ -87,6 +87,9 @@ const CODE_MESSAGES: Record<string, string> = {
   employee_inactive: 'Учётная запись неактивна. Обратитесь к руководителю.',
 };
 
+/** Поля самой ошибки — не подробности. */
+const ENVELOPE_KEYS = new Set(['code', 'message', 'statusCode', 'error', 'details']);
+
 /** Nest кладёт наш объект ошибки в поле message — разворачиваем его. */
 export function toError(status: number, json: unknown): ApiError {
   let body: Record<string, unknown> = {};
@@ -105,12 +108,13 @@ export function toError(status: number, json: unknown): ApiError {
   else if (code && CODE_MESSAGES[code]) message = CODE_MESSAGES[code];
   else if (status >= 500) message = 'Сервер временно недоступен. Попробуйте позже.';
 
-  return new ApiError(
-    status,
-    code,
-    message,
-    (body.details as Record<string, unknown>) ?? {},
-  );
+  // Подробности сервер кладёт рядом с кодом: { code, message, distanceMeters, … }.
+  const details =
+    body.details && typeof body.details === 'object'
+      ? (body.details as Record<string, unknown>)
+      : Object.fromEntries(Object.entries(body).filter(([key]) => !ENVELOPE_KEYS.has(key)));
+
+  return new ApiError(status, code, message, details);
 }
 
 export interface AuthUser {

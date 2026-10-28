@@ -13,6 +13,19 @@ describe('ошибки сервера по-человечески', () => {
     expect(error.code).toBe('outside_fence');
   });
 
+  it('подробности отказа рядом с кодом доходят до экрана', () => {
+    // Так Nest отдаёт BadRequestException({ code, message, ...details }).
+    const error = toError(400, {
+      code: 'outside_fence',
+      message: 'Вы вне офиса',
+      distanceMeters: 2400,
+      fenceDays: 2,
+      reprimanded: false,
+    });
+
+    expect(error.details).toEqual({ distanceMeters: 2400, fenceDays: 2, reprimanded: false });
+  });
+
   it('объект ошибки внутри message разворачивается', () => {
     // Так Nest отдаёт исключение, брошенное с объектом.
     const error = toError(403, { message: { code: 'qr_expired', message: 'Код устарел' } });
