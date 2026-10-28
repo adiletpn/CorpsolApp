@@ -1,25 +1,28 @@
-import { PLAN_METRIC_LABELS, formatMinor } from '@corpsol/shared';
-import React from 'react';
+import { PLAN_METRIC_LABELS } from '@corpsol/shared';
+import React, { useCallback, useState } from 'react';
 
-import { api, type Call, type Plan, type RankedEntry } from '../api';
-import { formatDate, formatMoneyShort, initialsOf, monthRange, percent, timeLabel } from '../format';
+import { api, type Plan, type RankedEntry } from '../api';
+import { formatMoneyShort, initialsOf, monthRange, percent } from '../format';
 import { RingMeter } from '../charts';
 import { PeriodScreen } from '../PeriodScreen';
 import { SectionNav } from '../SectionNav';
+import { CallsJournal } from './CallsJournal';
 import { useSession } from '../session';
 import { Figure, FigureRow, Gap, HeroFigure, Icon, Panel, PanelRow, RowValue, SectionLabel, tone } from '../ui';
-
-const CALL_STATUS_LABELS: Record<Call['status'], string> = {
-  ANSWERED: 'Отвечен',
-  NO_ANSWER: 'Нет ответа',
-  BUSY: 'Занято',
-  FAILED: 'Сбой',
-};
 
 /** Медальные цвета первой тройки — как во Flutter. */
 const MEDALS: Record<number, string> = { 1: '#FFC53D', 2: '#A8AEBF', 3: '#CD7F32' };
 
 export function Work() {
+  const [journal, setJournal] = useState(false);
+  const openJournal = useCallback(() => setJournal(true), []);
+  const closeJournal = useCallback(() => setJournal(false), []);
+
+  if (journal) return <CallsJournal onClose={closeJournal} />;
+  return <WorkOverview onOpenJournal={openJournal} />;
+}
+
+function WorkOverview({ onOpenJournal }: { onOpenJournal(): void }) {
   const { user } = useSession();
   const month = monthRange();
 
@@ -28,22 +31,20 @@ export function Work() {
       title="Работа"
       subtitle="Планы, рейтинг отдела и звонки за месяц"
       load={async () => {
-        const [plans, summary, page, board] = await Promise.all([
+        // Журнал звонков грузит своя «папка» — здесь хватает сводки.
+        const [plans, summary, board] = await Promise.all([
           api.plans(month.from),
           api.callsSummary(month.from, month.to),
-          api.calls(month.from, month.to),
           api.leaderboard(month.from, month.to),
         ]);
-        return { plans, summary, calls: page.items, hasMore: page.nextBefore !== null, board };
+        return { plans, summary, board };
       }}
       emptyMessage="Данных за месяц пока нет"
       emptyIcon="insights"
     >
-      {({ plans, summary, calls, hasMore, board }) => {
+      {({ plans, summary, board }) => {
         const department = plans.filter((plan) => plan.scope === 'DEPARTMENT');
         const personal = plans.filter((plan) => plan.scope === 'USER');
-        // Свежие сверху: вчерашний звонок нужен чаще, чем первый в месяце.
-        const sorted = [...calls].sort((a, b) => b.startedAt.localeCompare(a.startedAt));
 
         return (
           <>
@@ -108,16 +109,22 @@ export function Work() {
             ) : null}
 
             <Gap size={3} />
-            {/* Журнал — первые 40: без пометки казалось бы, что звонков всего столько. */}
-            <SectionLabel id="work-calls" trailing={hasMore ? <span>последние {calls.length}</span> : null}>
-              Звонки
-            </SectionLabel>
+            <SectionLabel id="work-calls">Звонки</SectionLabel>
+            {/* Журнал — «папкой»: длинный список в «Работе» прятал планы
+                и рейтинг, а фильтров и поиска здесь всё равно не было. */}
             <Panel>
-              {sorted.length === 0 ? (
-                <PanelRow title="За этот месяц звонков нет" trailing={<RowValue muted>—</RowValue>} />
-              ) : (
-                sorted.slice(0, 40).map((call) => <CallRow key={call.id} call={call} />)
-              )}
+              <button className="panel-button" onClick={onOpenJournal}>
+                <PanelRow
+                  leading={
+                    <span className="call-icon is-out" aria-hidden="true">
+                      <Icon name="call" />
+                    </span>
+                  }
+                  title="Журнал звонков"
+                  subtitle={`${summary.total} за месяц · с ответом ${percent(summary.answered, summary.total)}%`}
+                  trailing={<Icon name="chevron_right" style={{ color: tone.faint }} />}
+                />
+              </button>
             </Panel>
           </>
         );
@@ -155,31 +162,6 @@ function PlanRings({ plans }: { plans: Plan[] }) {
   );
 }
 
-/**
- * Значок говорит, что за звонок: исходящий, входящий или без ответа.
- * Подпись «входящий» в строке читали через раз — значок виден сразу.
- */
-function CallRow({ call }: { call: Call }) {
-  const answered = call.status === 'ANSWERED';
-  const minutes = Math.floor(call.talkSeconds / 60);
-  const seconds = String(call.talkSeconds % 60).padStart(2, '0');
-  const kind = !answered ? 'missed' : call.direction === 'INBOUND' ? 'in' : 'out';
-  const icon = { missed: 'call_missed_outgoing', in: 'call_received', out: 'call_made' }[kind];
-  const label = { missed: 'без ответа', in: 'входящий', out: 'исходящий' }[kind];
-
-  return (
-    <PanelRow
-      leading={
-        <span className={`call-icon is-${kind}`} role="img" aria-label={label}>
-          <Icon name={icon} />
-        </span>
-      }
-      title={call.clientPhone}
-      subtitle={`${formatDate(call.callDate)} · ${timeLabel(call.startedAt)}`}
-      trailing={answered ? <RowValue>{`${minutes}:${seconds}`}</RowValue> : <RowValue muted>{CALL_STATUS_LABELS[call.status]}</RowValue>}
-    />
-  );
-}
 
 /** Первая тройка — медальным цветом, своя строка — акцентом. */
 function EntryRow({ entry, isSelf }: { entry: RankedEntry; isSelf: boolean }) {
