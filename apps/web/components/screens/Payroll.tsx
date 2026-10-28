@@ -8,6 +8,7 @@ import { currentMonth, formatMoney } from '../../lib/period';
 import { useSession } from '../../lib/session';
 import type { BonusRule, Employee, Payroll as PayrollDoc } from '../../lib/types';
 import { Grades } from '../Grades';
+import { PayrollAdjustments, type PayrollAdjustment } from '../PayrollAdjustments';
 import { Badge, Button, Card, Empty, ErrorText, Field, Input, Select } from '../ui';
 
 const RULE_KINDS = [
@@ -156,6 +157,7 @@ export function Payroll() {
   const [payrolls, setPayrolls] = useState<PayrollDoc[]>([]);
   const [rules, setRules] = useState<BonusRule[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [adjustments, setAdjustments] = useState<PayrollAdjustment[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [approving, setApproving] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -175,7 +177,14 @@ export function Payroll() {
       setPayrolls(list);
       setEmployees(employeeList);
 
-      if (canManage) setRules(await request<BonusRule[]>('/payroll/rules'));
+      if (canManage) {
+        const [ruleList, adjustmentList] = await Promise.all([
+          request<BonusRule[]>('/payroll/rules'),
+          request<PayrollAdjustment[]>(`/payroll/adjustments${query({ periodStart: period.from })}`),
+        ]);
+        setRules(ruleList);
+        setAdjustments(adjustmentList);
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Не удалось загрузить расчёты');
     }
@@ -345,6 +354,14 @@ export function Payroll() {
                             ))}
                           </ul>
                         )}
+                        {canManage && payroll.status === 'DRAFT' ? (
+                          <PayrollAdjustments
+                            userId={payroll.userId}
+                            periodStart={payroll.periodStart}
+                            adjustments={adjustments.filter((item) => item.userId === payroll.userId)}
+                            onChanged={load}
+                          />
+                        ) : null}
                       </td>
                     </tr>
                   ) : null}
