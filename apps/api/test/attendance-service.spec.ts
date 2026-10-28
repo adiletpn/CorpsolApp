@@ -196,6 +196,38 @@ describe('отметка прихода: геозона', () => {
   });
 });
 
+describe('отметка прихода: печатный QR на двери', () => {
+  it('по листку отмечается, если человек у офиса', async () => {
+    const { firestore, terminals, service } = setup();
+    seedEmployee(firestore);
+    firestore.seed(COLLECTIONS.terminals, TERMINAL, { ...firestore.read(COLLECTIONS.terminals, TERMINAL), printedVersion: 2 });
+
+    const result = await service.checkIn(actor(), dtoAt(terminals.printedCode(TERMINAL, SECRET, 2)) as never);
+
+    expect(result.office.id).toBe(OFFICE);
+  });
+
+  it('по фото листка из дома — нет: держит геозона', async () => {
+    const { firestore, terminals, service } = setup();
+    seedEmployee(firestore);
+    firestore.seed(COLLECTIONS.terminals, TERMINAL, { ...firestore.read(COLLECTIONS.terminals, TERMINAL), printedVersion: 2 });
+
+    await expect(
+      service.checkIn(actor(), dtoAt(terminals.printedCode(TERMINAL, SECRET, 2), { lat: 43.26, lng: 76.95 }) as never),
+    ).rejects.toMatchObject({ response: { code: 'outside_fence' } });
+  });
+
+  it('старый листок — «код не распознан», а не «устарел»', async () => {
+    const { firestore, terminals, service } = setup();
+    seedEmployee(firestore);
+    firestore.seed(COLLECTIONS.terminals, TERMINAL, { ...firestore.read(COLLECTIONS.terminals, TERMINAL), printedVersion: 3 });
+
+    await expect(
+      service.checkIn(actor(), dtoAt(terminals.printedCode(TERMINAL, SECRET, 2)) as never),
+    ).rejects.toMatchObject({ response: { code: 'qr_invalid' } });
+  });
+});
+
 describe('отметка прихода: подменённая геолокация', () => {
   it('флаг подмены координат отменяет отметку, даже если точка верная', async () => {
     const { firestore, terminals, service } = setup();
