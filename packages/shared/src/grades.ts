@@ -135,3 +135,31 @@ export function weeksTouchingMonth(year: number, month: number): CalendarWeek[] 
   }
   return weeks;
 }
+
+export interface WeekResult extends WeekBonus {
+  week: CalendarWeek;
+  /** Регистраций за всю неделю — по ним решается полоса. */
+  weekCount: number;
+}
+
+/**
+ * Недельные бонусы за месяц. Даты регистраций — календарные ключи
+ * «ГГГГ-ММ-ДД». Полоса — по всей неделе, платится за регистрации
+ * этого месяца; недели без регистраций в месяце не возвращаются.
+ */
+export function monthWeeklyBonuses(
+  tier: GradeTier,
+  registrationDates: string[],
+  year: number,
+  month: number,
+): WeekResult[] {
+  const monthPrefix = `${year}-${pad(month)}-`;
+
+  return weeksTouchingMonth(year, month)
+    .map((week) => {
+      const inWeek = registrationDates.filter((date) => date >= week.start && date <= week.end);
+      const inMonth = inWeek.filter((date) => date.startsWith(monthPrefix));
+      return { week, weekCount: inWeek.length, ...weekBonus(tier, inWeek.length, inMonth.length) };
+    })
+    .filter((result) => result.paidCount > 0);
+}

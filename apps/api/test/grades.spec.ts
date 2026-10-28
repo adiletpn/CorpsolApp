@@ -1,4 +1,10 @@
-import { DEFAULT_GRADE_TIERS, gradeForMonth, weekBonus, weeksTouchingMonth } from '@corpsol/shared';
+import {
+  DEFAULT_GRADE_TIERS,
+  gradeForMonth,
+  monthWeeklyBonuses,
+  weekBonus,
+  weeksTouchingMonth,
+} from '@corpsol/shared';
 
 const [A, B, C] = DEFAULT_GRADE_TIERS;
 
@@ -61,5 +67,27 @@ describe('недели месяца', () => {
   it('месяц с понедельника не тянет лишнюю неделю', () => {
     // 1 июня 2026 — понедельник.
     expect(weeksTouchingMonth(2026, 6)[0]).toEqual({ start: '2026-06-01', end: '2026-06-07' });
+  });
+});
+
+describe('недельные бонусы за месяц', () => {
+  it('октябрь у ранга А: неделя на стыке с сентябрём платится за октябрьскую часть', () => {
+    const dates = [
+      // 28.09–04.10: 7 за неделю — сверх плана, но в октябре только 3.
+      '2026-09-28', '2026-09-29', '2026-09-30', '2026-09-30', '2026-10-01', '2026-10-02', '2026-10-03',
+      // 05.10–11.10: ровно план.
+      '2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09', '2026-10-10',
+    ];
+
+    const weeks = monthWeeklyBonuses(A, dates, 2026, 10);
+
+    expect(weeks.map((week) => [week.week.start, week.band, week.weekCount, week.paidCount, week.amountMinor])).toEqual([
+      ['2026-09-28', 'over', 7, 3, 3 * 5_500_00],
+      ['2026-10-05', 'plan', 6, 6, 6 * 5_000_00],
+    ]);
+  });
+
+  it('недели без регистраций в месяце не возвращаются', () => {
+    expect(monthWeeklyBonuses(A, ['2026-09-15'], 2026, 10)).toEqual([]);
   });
 });
