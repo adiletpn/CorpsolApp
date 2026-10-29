@@ -12,7 +12,7 @@ const ORG = 'org-1';
 /** 10 августа 2026, 15:00 по Алматы. */
 const NOW = new Date('2026-08-10T10:00:00Z');
 
-function setup(options: { kcellRows?: unknown[]; csv?: string; kcellError?: Error } = {}) {
+function setup(options: { kcellRows?: unknown[]; csv?: string; pages?: string[]; kcellError?: Error } = {}) {
   const firestore = new FakeFirestore();
   const firebase = fakeFirebase(firestore);
 
@@ -51,7 +51,13 @@ function setup(options: { kcellRows?: unknown[]; csv?: string; kcellError?: Erro
       });
     },
   } as unknown as KcellApiClient;
-  const sipuni = { exportAll: async () => options.csv ?? '' } as unknown as SipuniApiClient;
+  const requestedPages: number[] = [];
+  const sipuni = {
+    exportAll: async (_credentials: unknown, page = 1) => {
+      requestedPages.push(page);
+      return options.pages ? (options.pages[page - 1] ?? '') : (options.csv ?? '');
+    },
+  } as unknown as SipuniApiClient;
 
   const service = new PbxSyncService(
     firebase,
@@ -60,7 +66,7 @@ function setup(options: { kcellRows?: unknown[]; csv?: string; kcellError?: Erro
     kcell,
     sipuni,
   );
-  return { firestore, service, ranges };
+  return { firestore, service, ranges, requestedPages };
 }
 
 const kcellRow = (uid: string, start: string, fields: Record<string, unknown> = {}) => ({
