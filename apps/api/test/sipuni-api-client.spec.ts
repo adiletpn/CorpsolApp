@@ -36,4 +36,14 @@ describe('API Sipuni', () => {
 
     await expect(new SipuniApiClient().exportAll(credentials)).rejects.toThrow('Не удалось связаться с Sipuni');
   });
+
+  it('обрыв посреди выгрузки — сбой Sipuni, а не ошибка сервера', async () => {
+    const cut = { ok: true, status: 200, text: () => Promise.reject(new DOMException('aborted', 'TimeoutError')) };
+    jest.spyOn(global, 'fetch').mockResolvedValue(cut as unknown as Response);
+
+    await expect(new SipuniApiClient().exportAll(credentials)).rejects.toMatchObject({
+      status: 502,
+      message: 'Sipuni не успел отдать выгрузку — повторите позже',
+    });
+  });
 });
