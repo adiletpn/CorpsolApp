@@ -4,7 +4,7 @@ import { CallsImportService } from '../src/calls/calls-import.service';
 import { IntegrationsService } from '../src/calls/integrations.service';
 import type { KcellApiClient } from '../src/calls/kcell-api-client';
 import { PbxSyncService, almatyDayStart, almatyMonthStart } from '../src/calls/pbx-sync.service';
-import type { SipuniApiClient } from '../src/calls/sipuni-api-client';
+import { SIPUNI_EXPORT_LIMIT, type SipuniApiClient } from '../src/calls/sipuni-api-client';
 import { COLLECTIONS } from '../src/firestore/collections';
 import { FakeFirestore, fakeFirebase } from './fake-firestore';
 
@@ -145,6 +145,44 @@ describe('звонки Sipuni', () => {
 
     expect(result.imported).toBe(1);
     expect(firestore.all(COLLECTIONS.calls)[0]).toMatchObject({ userId: 'dina', source: 'SIPUNI' });
+  });
+
+  /** Полная страница выгрузки: 5000 строк, последняя — в заданное время. */
+  const fullPage = (lastTime: string, own: string[] = []) => {
+    const filler = Array.from({ length: SIPUNI_EXPORT_LIMIT - own.length - 1 }, (_, index) =>
+      `Исходящий;Отвечен;09.08.2026 12:00:00;исход nom 999;999;+7707${index};;40;30;;;F${index}`,
+    );
+    return [HEADER, ...own, ...filler, `Исходящий;Отвечен;${lastTime};исход nom 999;999;+77000000000;;40;30;;;LAST`].join('\n');
+  };
+
+  it('передобор листает страницы, пока не дойдёт до начала', async () => {
+    const pages = [
+      fullPage('05.08.2026 12:00:00', ['Исходящий;Отвечен;09.08.2026 14:00:00;исход nom 236;236;+77070000001;;40;30;;;P1']),
+      fullPage('01.08.2026 09:00:00', ['Исходящий;Отвечен;03.08.2026 14:00:00;исход nom 236;236;+77070000002;;40;30;;;P2']),
+      // Вторая страница ещё не дошла до 1 августа — нужна третья.
+      [HEADER, 'Исходящий;Отвечен;31.07.2026 10:00:00;исход nom 236;236;+77070000003;;40;30;;;P3'].join('\n'),
+    ];
+    const { service, requestedPages } = setup({ pages });
+
+    const result = await service.syncSipuni(ORG, NOW, new Date('2026-07-31T19:00:00Z'));
+
+    // Третья страница короче полной — дальше листать нечего; июльский звонок отсечён.
+    expect(requestedPages).toEqual([1, 2, 3]);
+    expect(result.imported).toBe(2);
+  });
+
+  it('часовой добор останавливается на первой странице, дошедшей до точки', async () => {
+    const pages = [fullPage('10.08.2026 09:00:00'), fullPage('09.08.2026 09:00:00')];
+    const { service, firestore, requestedPages } = setup({ pages });
+    const integration = firestore.read(COLLECTIONS.integrations, `${ORG}_SIPUNI`)!;
+    firestore.seed(COLLECTIONS.integrations, `${ORG}_SIPUNI`, {
+      ...integration,
+      syncedUpTo: Timestamp.fromDate(new Date('2026-08-10T08:00:00Z')),
+    });
+
+    await service.syncSipuni(ORG, NOW);
+
+    expect(requestedPages).toEqual([1]);
   });
 
   it('точка продолжения сдвигается после успешного запуска', async () => {
