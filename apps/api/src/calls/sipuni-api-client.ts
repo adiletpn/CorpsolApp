@@ -10,7 +10,11 @@ import { BadGatewayException, Injectable } from '@nestjs/common';
  */
 
 const BASE_URL = 'https://sipuni.com';
-const TIMEOUT_MS = 30_000;
+/**
+ * Выгрузка в 5000 строк у Sipuni собирается долго: полминуты бывало мало,
+ * и запрос обрывался посреди файла.
+ */
+const TIMEOUT_MS = 90_000;
 /** Сколько последних звонков брать за раз: выгрузка идёт от свежих к старым. */
 export const SIPUNI_EXPORT_LIMIT = 5000;
 
