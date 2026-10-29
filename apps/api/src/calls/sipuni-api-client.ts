@@ -58,7 +58,11 @@ export class SipuniApiClient {
       throw new BadGatewayException(`Sipuni ответил с ошибкой ${response.status}`);
     }
 
-    const text = await response.text();
+    // Срок действует и на чтение тела: обрыв посреди файла — тоже сбой
+    // Sipuni, а не ошибка нашего сервера.
+    const text = await response.text().catch(() => {
+      throw new BadGatewayException('Sipuni не успел отдать выгрузку — повторите позже');
+    });
     // Неверная подпись или аккаунт — Sipuni отдаёт HTML вместо CSV.
     if (/^\s*<(!doctype|html|!--)/i.test(text)) {
       throw new BadGatewayException('Sipuni вернул страницу вместо выгрузки — проверьте логин и секрет');
