@@ -7,8 +7,9 @@ import { CallsImportService, type ImportSummary } from './calls-import.service';
 import { IntegrationsService } from './integrations.service';
 import { KcellApiClient } from './kcell-api-client';
 import { mapKcellHistory } from './kcell-history';
-import { SipuniApiClient } from './sipuni-api-client';
+import { SIPUNI_EXPORT_LIMIT, SipuniApiClient } from './sipuni-api-client';
 import { mapSipuniExport } from './sipuni-stats';
+import type { ImportedCall } from './types';
 
 export interface PbxSyncResult extends ImportSummary {
   /** Звонков получено от АТС. */
@@ -24,6 +25,12 @@ export interface PbxSyncResult extends ImportSummary {
  */
 const OVERLAP_MS = 30 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
+/**
+ * Предел страниц выгрузки Sipuni за один добор: 20 × 5000 звонков.
+ * Обычный часовой добор укладывается в первую страницу, предел нужен
+ * передобору с начала месяца, чтобы он не тянул всю историю аккаунта.
+ */
+export const SIPUNI_MAX_PAGES = 20;
 const OFFSET_MS = ALMATY_UTC_OFFSET_MINUTES * 60 * 1000;
 
 /** Полночь по Алматы того дня, в который попадает момент. */
@@ -121,9 +128,21 @@ export class PbxSyncService {
 
     try {
       const extensions = await this.sipuniExtensions(organizationId);
-      const csv = await this.sipuni.exportAll({ user: credentials.user, secret: credentials.secret });
-      const mapped = mapSipuniExport(csv, extensions);
-      const fresh = mapped.calls.filter((call) => call.startedAt >= from && call.startedAt <= now);
+      const fresh: ImportedCall[] = [];
+      let withoutEmployee = 0;
+
+      // Выгрузка идёт от свежих к старым по 5000 звонков: листаем, пока
+      // не дойдём до точки продолжения. Одна страница — это иногда пара
+      // дней, и передобор с начала месяца без листания терял его начало.
+      for (let page = 1; page <= SIPUNI_MAX_PAGES; page += 1) {
+        const csv = await this.sipuni.exportAll({ user: credentials.user, secret: credentials.secret }, page);
+        const mapped = mapSipuniExport(csv, extensions);
+        fresh.push(...mapped.calls.filter((call) => call.startedAt >= from && call.startedAt <= now));
+        withoutEmployee += mapped.withoutEmployee;
+
+        const reachedStart = mapped.oldest !== null && mapped.oldest < from;
+        if (reachedStart || mapped.rows < SIPUNI_EXPORT_LIMIT) break;
+      }
 
       const summary = await this.importer.importCalls(
         organizationId,
@@ -135,7 +154,7 @@ export class PbxSyncService {
       );
 
       await this.integrations.recordSync(organizationId, 'SIPUNI', 'OK', { syncedUpTo: now });
-      return { ...summary, fetched: fresh.length, withoutEmployee: mapped.withoutEmployee };
+      return { ...summary, fetched: fresh.length, withoutEmployee };
     } catch (cause) {
       await this.recordFailure(organizationId, 'SIPUNI', cause);
       throw cause;
