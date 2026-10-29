@@ -30,6 +30,10 @@ export interface SipuniMapResult {
   /** Ни входящий, ни исходящий — внутренний или служебный. */
   internal: number;
   invalid: number;
+  /** Строк данных в выгрузке — по ним видно, была ли страница полной. */
+  rows: number;
+  /** Самый ранний звонок страницы, чей бы он ни был: докуда дошла выгрузка. */
+  oldest: Date | null;
 }
 
 const toSeconds = (value: string | undefined): number => {
@@ -58,7 +62,7 @@ function findExtension(text: string, extensions: string[]): string | null {
 }
 
 export function mapSipuniExport(csv: string, extensions: string[]): SipuniMapResult {
-  const result: SipuniMapResult = { calls: [], withoutEmployee: 0, internal: 0, invalid: 0 };
+  const result: SipuniMapResult = { calls: [], withoutEmployee: 0, internal: 0, invalid: 0, rows: 0, oldest: null };
 
   // В начале выгрузки BOM — без снятия первый заголовок «Тип» не узнаётся.
   const lines = csv.replace(/^﻿/, '').split(/\r?\n/).filter((line) => line.trim() !== '');
@@ -78,6 +82,8 @@ export function mapSipuniExport(csv: string, extensions: string[]): SipuniMapRes
     (a, b) => b.length - a.length,
   );
 
+  result.rows = lines.length - 1;
+
   for (const line of lines.slice(1)) {
     const cells = splitLine(line, delimiter);
     const cell = (key: keyof typeof COLUMNS) => (at[key] >= 0 ? (cells[at[key]] ?? '') : '');
@@ -87,6 +93,7 @@ export function mapSipuniExport(csv: string, extensions: string[]): SipuniMapRes
       result.invalid += 1;
       continue;
     }
+    if (!result.oldest || startedAt < result.oldest) result.oldest = startedAt;
 
     const direction = directionOf(cell('type'), cell('scheme'));
     if (!direction) {
