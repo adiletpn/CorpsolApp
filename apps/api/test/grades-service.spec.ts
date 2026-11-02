@@ -159,3 +159,50 @@ describe('прогресс ранга для менеджера', () => {
     expect(await service.progress(ORG, 'mop-2', NOW)).toBeNull();
   });
 });
+
+describe('ранг ставит РОП', () => {
+  const rop = (departmentId: string | null = 'kz'): AuthenticatedUser => ({ ...director(), id: 'rop-1', role: 'ROP', departmentId });
+  const seeded = () => {
+    const context = setup();
+    context.firestore.seed(COLLECTIONS.users, 'dina', { organizationId: ORG, fullName: 'Дина', role: 'MOP', departmentId: 'kz', gradeCode: 'A' });
+    context.firestore.seed(COLLECTIONS.users, 'dias', { organizationId: ORG, fullName: 'Диас', role: 'MOP', departmentId: 'kvanta', gradeCode: 'A' });
+    context.firestore.seed(COLLECTIONS.users, 'rop-1', { organizationId: ORG, fullName: 'Анара', role: 'ROP', departmentId: 'kz', gradeCode: null });
+    return context;
+  };
+
+  it('менеджеру своего отдела — можно, с записью в журнал от его имени', async () => {
+    const { firestore, service } = seeded();
+
+    await service.assign(rop(), 'dina', 'B');
+
+    expect(firestore.read(COLLECTIONS.users, 'dina')?.gradeCode).toBe('B');
+    expect(firestore.all(COLLECTIONS.auditEvents)[0]).toMatchObject({ action: 'employee.grade', actorId: 'rop-1' });
+  });
+
+  it('менеджеру чужого отдела — нельзя', async () => {
+    const { firestore, service } = seeded();
+
+    await expect(service.assign(rop(), 'dias', 'C')).rejects.toThrow('только менеджерам своего отдела');
+    expect(firestore.read(COLLECTIONS.users, 'dias')?.gradeCode).toBe('A');
+  });
+
+  it('себе — нельзя: РОП ставит ранг только менеджерам', async () => {
+    const { service } = seeded();
+
+    await expect(service.assign(rop(), 'rop-1', 'C')).rejects.toThrow('только менеджерам');
+  });
+
+  it('РОП без отдела не ставит никому', async () => {
+    const { service } = seeded();
+
+    await expect(service.assign(rop(null), 'dina', 'B')).rejects.toThrow('своего отдела');
+  });
+
+  it('таблицу рангов РОП не меняет — это право директора', () => {
+    // Маршрут таблицы требует payroll.manage, а у РОП его нет.
+    const { can } = jest.requireActual('@corpsol/shared') as typeof import('@corpsol/shared');
+    expect(can('ROP', 'grade.assign')).toBe(true);
+    expect(can('ROP', 'payroll.manage')).toBe(false);
+    expect(can('MOP', 'grade.assign')).toBe(false);
+  });
+});
