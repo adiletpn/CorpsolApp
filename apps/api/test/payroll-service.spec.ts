@@ -507,3 +507,67 @@ describe('прогноз зарплаты на сегодня', () => {
     expect(forecast.lines.map((line) => line.title)).toContain('Наставничество');
   });
 });
+
+describe('кто чьи расчёты видит', () => {
+  const sheet = (firestore: FakeFirestore, userId: string, departmentId: string | null) =>
+    firestore.seed(COLLECTIONS.payrolls, payrollDocId(userId, PERIOD.start), {
+      userId,
+      organizationId: ORG,
+      departmentId,
+      periodStart: PERIOD.start,
+      periodEnd: PERIOD.end,
+      baseSalaryMinor: SALARY,
+      bonusMinor: 0,
+      penaltyMinor: 0,
+      totalMinor: SALARY,
+      lines: [],
+      status: 'DRAFT',
+      calculatedAt: Timestamp.now(),
+      approvedBy: null,
+      approvedAt: null,
+    });
+
+  const seeded = () => {
+    const context = setup();
+    sheet(context.firestore, USER, 'dep-1');
+    sheet(context.firestore, 'u2', 'dep-1');
+    sheet(context.firestore, 'u3', 'dep-2');
+    return context;
+  };
+
+  it('РОП видит расчёты только своего отдела', async () => {
+    const { service } = seeded();
+    const rop = { ...director, id: 'rop-1', role: 'ROP', departmentId: 'dep-1' } as AuthenticatedUser;
+
+    const sheets = await service.list(rop, PERIOD.start);
+
+    expect(sheets.map((item) => item.userId).sort()).toEqual([USER, 'u2']);
+  });
+
+  it('РОП без отдела не видит ничего — отказ, а не вся организация', async () => {
+    const { service } = seeded();
+    const rop = { ...director, id: 'rop-1', role: 'ROP', departmentId: null } as AuthenticatedUser;
+
+    await expect(service.list(rop, PERIOD.start)).rejects.toThrow('РОП не привязан к отделу');
+  });
+
+  it('менеджер видит только свой расчёт', async () => {
+    const { service } = seeded();
+    const mop = { ...director, id: USER, role: 'MOP', departmentId: 'dep-1' } as AuthenticatedUser;
+
+    const sheets = await service.list(mop, PERIOD.start);
+
+    expect(sheets.map((item) => item.userId)).toEqual([USER]);
+  });
+
+  it('директор видит всю организацию, но не чужую', async () => {
+    const { firestore, service } = seeded();
+    firestore.seed(COLLECTIONS.payrolls, payrollDocId('alien', PERIOD.start), {
+      userId: 'alien', organizationId: 'org-2', departmentId: 'dep-1', periodStart: PERIOD.start,
+    });
+
+    const sheets = await service.list(director, PERIOD.start);
+
+    expect(sheets).toHaveLength(3);
+  });
+});
