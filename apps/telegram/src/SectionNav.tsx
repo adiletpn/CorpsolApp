@@ -38,7 +38,11 @@ export function SectionNav({ sections }: { sections: NavSection[] }) {
         if (node && node.getBoundingClientRect().top <= NAV_OFFSET + 8) current = section.id;
       }
       // Долистали до конца — подсвечиваем последний, даже если он короткий.
-      const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
+      // Только если экран и правда прокручен: пока данные грузятся,
+      // страница короткая и «в самом низу» с первого кадра — загорался
+      // последний раздел, хотя человек смотрит на первый.
+      const atBottom =
+        window.scrollY > 0 && window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
       if (atBottom && sections.length > 0) current = sections[sections.length - 1].id;
 
       setActive(current);
