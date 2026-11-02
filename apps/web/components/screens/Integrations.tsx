@@ -15,6 +15,20 @@ interface Integration {
   lastSyncStatus: string | null;
   lastSyncError: string | null;
   syncedUpTo: string | null;
+  /** Только у Bitrix24: берутся ли из портала звонки. */
+  importCalls?: boolean;
+  /** Добор сделок из Bitrix24 — своё состояние. */
+  deals?: { lastSyncAt: string | null; lastSyncStatus: string | null; lastSyncError: string | null } | null;
+}
+
+interface DealsResult {
+  fetched: number;
+  created: number;
+  updated: number;
+  unchanged: number;
+  rejected: number;
+  truncated: boolean;
+  unmatched: Array<{ employeeKey: string; count: number }>;
 }
 
 interface SyncResult {
@@ -33,7 +47,7 @@ interface ImportResult {
   rejectedRows: Array<{ line: number; reason: string }>;
 }
 
-function Unmatched({ items }: { items: Array<{ employeeKey: string; count: number }> }) {
+function Unmatched({ items, unit = 'звонк.' }: { items: Array<{ employeeKey: string; count: number }>; unit?: string }) {
   if (items.length === 0) return null;
 
   return (
@@ -42,12 +56,12 @@ function Unmatched({ items }: { items: Array<{ employeeKey: string; count: numbe
       <ul style={styles.list}>
         {items.slice(0, 10).map((item) => (
           <li key={item.employeeKey}>
-            {item.employeeKey} — {item.count} звонк.
+            {item.employeeKey} — {item.count} {unit}
           </li>
         ))}
       </ul>
       <p style={styles.warningHint}>
-        Заведите эти номера в разделе рабочих номеров, иначе звонки не попадут
+        Заведите их в разделе рабочих номеров, иначе они не попадут
         ни в планы, ни в аналитику.
       </p>
     </div>
@@ -59,6 +73,9 @@ export function Integrations() {
   const [webhook, setWebhook] = useState('');
   const [csv, setCsv] = useState('');
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
+  const [dealsResult, setDealsResult] = useState<DealsResult | null>(null);
+  // null — ещё не трогали: тогда по умолчанию решают подключённые АТС.
+  const [importCalls, setImportCalls] = useState<boolean | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -84,7 +101,7 @@ export function Integrations() {
     try {
       await request('/calls/integrations/bitrix', {
         method: 'POST',
-        body: { webhookUrl: webhook.trim() },
+        body: { webhookUrl: webhook.trim(), importCalls: takeCalls },
       });
       setWebhook('');
       await load();
@@ -111,6 +128,19 @@ export function Integrations() {
     }
   };
 
+  const syncDeals = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      setDealsResult(await request<DealsResult>('/calls/integrations/bitrix/deals/sync', { method: 'POST', body: {} }));
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Добор сделок не удался');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const importCsv = async (event: React.FormEvent) => {
     event.preventDefault();
     setBusy(true);
@@ -130,6 +160,11 @@ export function Integrations() {
   };
 
   const bitrix = integrations.find((item) => item.provider === 'BITRIX');
+  // Звонки уже идут из АТС напрямую — из портала их брать не надо,
+  // иначе каждый звонок посчитается дважды.
+  const pbxConnected = integrations.some((item) => item.provider !== 'BITRIX' && item.isActive);
+  const takeCalls = importCalls ?? !pbxConnected;
+  const deals = bitrix?.deals;
 
   return (
     <>
@@ -155,9 +190,33 @@ export function Integrations() {
 
             {bitrix.lastSyncError ? <ErrorText>{bitrix.lastSyncError}</ErrorText> : null}
 
-            <Button onClick={sync} disabled={busy}>
-              {busy ? 'Синхронизируем…' : 'Синхронизировать звонки'}
-            </Button>
+            <p style={styles.muted}>
+              {bitrix.importCalls === false
+                ? 'Из портала берутся только сделки: звонки идут из АТС.'
+                : 'Из портала берутся звонки и сделки.'}
+            </p>
+
+            <div style={styles.row}>
+              <span style={styles.muted}>Сделки:</span>
+              <Badge tone={deals?.lastSyncStatus === 'ERROR' ? 'danger' : deals?.lastSyncStatus ? 'success' : 'neutral'}>
+                {deals?.lastSyncStatus === 'ERROR' ? 'ошибка' : deals?.lastSyncStatus ? 'добираются' : 'ещё не добирались'}
+              </Badge>
+              {deals?.lastSyncAt ? (
+                <span style={styles.muted}>{new Date(deals.lastSyncAt).toLocaleString('ru-RU')}</span>
+              ) : null}
+            </div>
+            {deals?.lastSyncError ? <ErrorText>{deals.lastSyncError}</ErrorText> : null}
+
+            <div style={styles.row}>
+              <Button onClick={syncDeals} disabled={busy}>
+                {busy ? 'Добираем…' : 'Добрать сделки'}
+              </Button>
+              {bitrix.importCalls === false ? null : (
+                <Button variant="ghost" onClick={sync} disabled={busy}>
+                  Синхронизировать звонки
+                </Button>
+              )}
+            </div>
           </>
         ) : (
           <form onSubmit={connect}>
@@ -173,6 +232,16 @@ export function Integrations() {
               />
             </Field>
 
+            <label style={styles.check}>
+              <input type="checkbox" checked={takeCalls} onChange={(event) => setImportCalls(event.target.checked)} />
+              Брать из портала и звонки
+            </label>
+            <p style={styles.muted}>
+              {pbxConnected
+                ? 'Звонки уже идут из Kcell и Sipuni — из портала они задвоятся. Обычно галочка не нужна.'
+                : 'Сделки из портала берутся всегда: успешная сделка — это регистрация.'}
+            </p>
+
             <Button type="submit" disabled={busy}>
               Подключить Bitrix24
             </Button>
@@ -185,6 +254,15 @@ export function Integrations() {
             {syncResult.duplicates}, не разобрано {syncResult.rejected}.
             {syncResult.truncated ? ' Выгружено не всё — запустите ещё раз.' : ''}
             <Unmatched items={syncResult.unmatched} />
+          </div>
+        ) : null}
+
+        {dealsResult ? (
+          <div style={styles.result}>
+            Сделок получено {dealsResult.fetched}: новых {dealsResult.created}, изменилось {dealsResult.updated},
+            без изменений {dealsResult.unchanged}, не разобрано {dealsResult.rejected}.
+            {dealsResult.truncated ? ' Выгружено не всё — запустите ещё раз.' : ''}
+            <Unmatched items={dealsResult.unmatched} unit="сделок" />
           </div>
         ) : null}
       </Card>
@@ -267,6 +345,7 @@ export function Integrations() {
 const styles: Record<string, React.CSSProperties> = {
   title: { fontSize: 26, margin: '0 0 24px' },
   row: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' },
+  check: { display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0', fontSize: 14 },
   muted: { color: 'var(--text-muted)', fontSize: 13 },
   textarea: {
     background: 'var(--surface-muted)',
