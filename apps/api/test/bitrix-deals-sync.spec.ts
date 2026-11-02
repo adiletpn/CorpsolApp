@@ -1,0 +1,95 @@
+import { Timestamp } from 'firebase-admin/firestore';
+
+import type { BitrixClient } from '../src/calls/bitrix-client';
+import { IntegrationsService } from '../src/calls/integrations.service';
+import { COLLECTIONS } from '../src/firestore/collections';
+import { BitrixDealsSyncService } from '../src/offers/bitrix-deals-sync.service';
+import { DealsImportService } from '../src/offers/deals-import.service';
+import { FakeFirestore, fakeFirebase } from './fake-firestore';
+
+const ORG = 'org-1';
+const WEBHOOK = 'https://corpsol.bitrix24.kz/rest/1/s3cr3ttok3n';
+/** 2 ноября 2026, 15:00 по Алматы. */
+const NOW = new Date('2026-11-02T10:00:00Z');
+
+function setup(options: { records?: unknown[]; truncated?: boolean; error?: Error; deals?: unknown } = {}) {
+  const firestore = new FakeFirestore();
+  const firebase = fakeFirebase(firestore);
+  firestore.seed(COLLECTIONS.users, 'dina', { organizationId: ORG, fullName: 'Дина', status: 'ACTIVE', departmentId: 'kz' });
+  firestore.seed(COLLECTIONS.externalIdentities, 'BITRIX_12', { provider: 'BITRIX', externalKey: '12', userId: 'dina', organizationId: ORG });
+  firestore.seed(COLLECTIONS.integrations, `${ORG}_BITRIX`, {
+    organizationId: ORG, provider: 'BITRIX', isActive: true, webhookUrl: WEBHOOK,
+    lastSyncAt: null, lastSyncStatus: null, lastSyncError: null, syncedUpTo: null, deals: options.deals ?? null,
+  });
+
+  const requested: Array<Date | undefined> = [];
+  const client = {
+    fetchDeals: async (_url: string, since?: Date) => {
+      requested.push(since);
+      if (options.error) throw options.error;
+      return { records: options.records ?? [], truncated: options.truncated ?? false };
+    },
+  } as unknown as BitrixClient;
+
+  const service = new BitrixDealsSyncService(client, new IntegrationsService(firebase), new DealsImportService(firebase));
+  const state = () => firestore.read(COLLECTIONS.integrations, `${ORG}_BITRIX`)?.deals as Record<string, unknown>;
+  return { firestore, service, requested, state };
+}
+
+const won = (id: string, assigned = '12') => ({
+  ID: id, TITLE: `Сделка ${id}`, OPPORTUNITY: '100000', STAGE_SEMANTIC_ID: 'S', ASSIGNED_BY_ID: assigned,
+  DATE_CREATE: '2026-10-20T10:00:00+05:00', CLOSEDATE: '2026-11-01T12:00:00+05:00',
+});
+
+describe('добор сделок Bitrix24', () => {
+  it('первый раз — с начала месяца по Алматы', async () => {
+    const { service, requested } = setup();
+
+    await service.sync(ORG, NOW);
+
+    expect(requested[0]?.toISOString()).toBe('2026-10-31T19:00:00.000Z');
+  });
+
+  it('дальше — с прошлой точки с перекрытием в полчаса', async () => {
+    const { service, requested } = setup({
+      deals: { syncedUpTo: Timestamp.fromDate(new Date('2026-11-02T09:00:00Z')), lastSyncAt: null, lastSyncStatus: 'OK', lastSyncError: null },
+    });
+
+    await service.sync(ORG, NOW);
+
+    expect(requested[0]?.toISOString()).toBe('2026-11-02T08:30:00.000Z');
+  });
+
+  it('успешная сделка становится регистрацией, точка сдвигается на сейчас', async () => {
+    const { firestore, service, state } = setup({ records: [won('101'), won('102', '99'), { ID: '103' }] });
+
+    const result = await service.sync(ORG, NOW);
+
+    expect(result).toMatchObject({ fetched: 3, rejected: 1, created: 1, unmatched: [{ employeeKey: '99', count: 1 }] });
+    expect(firestore.read(COLLECTIONS.offers, 'BITRIX_101')).toMatchObject({ status: 'ACCEPTED', sentDate: '2026-11-01' });
+    expect((state().syncedUpTo as Timestamp).toDate().toISOString()).toBe(NOW.toISOString());
+  });
+
+  it('неполная выгрузка не двигает точку — остаток доберётся в следующий раз', async () => {
+    const { service, state } = setup({ records: [won('101')], truncated: true });
+
+    await service.sync(ORG, NOW);
+
+    expect(state()).toMatchObject({ lastSyncStatus: 'OK', syncedUpTo: null });
+  });
+
+  it('сбой портала записывается и пробрасывается', async () => {
+    const { service, state } = setup({ error: new Error('Bitrix24: insufficient_scope') });
+
+    await expect(service.sync(ORG, NOW)).rejects.toThrow('insufficient_scope');
+    expect(state()).toMatchObject({ lastSyncStatus: 'ERROR', lastSyncError: 'Bitrix24: insufficient_scope' });
+  });
+
+  it('передобор с заданной даты', async () => {
+    const { service, requested } = setup();
+
+    await service.sync(ORG, NOW, new Date('2026-09-30T19:00:00Z'));
+
+    expect(requested[0]?.toISOString()).toBe('2026-09-30T19:00:00.000Z');
+  });
+});
