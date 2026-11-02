@@ -129,3 +129,48 @@ describe('постраничная выгрузка', () => {
     ).rejects.toThrow(/Слишком часто/);
   });
 });
+
+describe('выгрузка сделок', () => {
+  beforeEach(() => {
+    jest.spyOn(global, 'setTimeout').mockImplementation(((handler: () => void) => {
+      handler();
+      return 0;
+    }) as never);
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  const deal = (id: string) => ({ ID: id, STAGE_SEMANTIC_ID: 'S', ASSIGNED_BY_ID: '17', DATE_CREATE: '2026-10-01T10:00:00+05:00' });
+
+  it('берёт сделки, изменённые с точки продолжения, со всех страниц', async () => {
+    const { calls } = mockFetch([{ result: [deal('1')] as never, next: 50 }, { result: [deal('2')] as never }]);
+
+    const { records, truncated } = await new BitrixClient().fetchDeals(WEBHOOK, new Date('2026-10-01T00:00:00Z'));
+
+    expect(records.map((item) => item.ID)).toEqual(['1', '2']);
+    expect(truncated).toBe(false);
+    const first = new URL(calls[0]);
+    expect(first.pathname).toBe('/rest/1/s3cr3ttoken42/crm.deal.list.json');
+    expect(first.searchParams.get('filter[>=DATE_MODIFY]')).toBe('2026-10-01T00:00:00.000Z');
+    expect(first.searchParams.get('order[DATE_MODIFY]')).toBe('ASC');
+    expect(new URL(calls[1]).searchParams.get('start')).toBe('50');
+  });
+
+  it('просит только нужные поля, а не всю карточку сделки', async () => {
+    const { calls } = mockFetch([{ result: [] }]);
+
+    await new BitrixClient().fetchDeals(WEBHOOK);
+
+    const fields = new URL(calls[0]).searchParams.getAll('select[]');
+    expect(fields).toEqual(expect.arrayContaining(['ID', 'STAGE_SEMANTIC_ID', 'ASSIGNED_BY_ID', 'OPPORTUNITY', 'CLOSEDATE']));
+    expect(new URL(calls[0]).searchParams.has('filter[>=DATE_MODIFY]')).toBe(false);
+  });
+
+  it('ошибка портала — без адреса вебхука в тексте', async () => {
+    mockFetch([{ error: 'insufficient_scope' }]);
+
+    const error = (await new BitrixClient().fetchDeals(WEBHOOK).catch((cause: Error) => cause)) as Error;
+
+    expect(error.message).toBe('Bitrix24: insufficient_scope');
+    expect(error.message).not.toContain('s3cr3t');
+  });
+});
