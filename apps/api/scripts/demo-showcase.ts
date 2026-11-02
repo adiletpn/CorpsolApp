@@ -8,13 +8,16 @@
  *   ALLOW_PRODUCTION_DEMO=yes DEMO_EMAIL=demo.mop@corpsol.kz \
  *   railway run -s @corpsol/api -- npx ts-node scripts/demo-showcase.ts fill
  *
+ *   … scripts/demo-showcase.ts preview   — только посчитать, что уберёт clean
  *   … scripts/demo-showcase.ts clean
  *
  * Ключ Firebase приходит из переменных сервиса через railway run и
  * не ложится на диск.
  */
 import { cert, initializeApp } from 'firebase-admin/app';
-import { FieldValue, Timestamp, getFirestore, type WriteBatch } from 'firebase-admin/firestore';
+import { Timestamp, getFirestore, type WriteBatch } from 'firebase-admin/firestore';
+
+import { cleanupDemo } from '../src/demo/demo-cleanup';
 
 import {
   COLLECTIONS,
@@ -26,8 +29,8 @@ import {
 } from '../src/firestore/collections';
 
 const mode = process.argv[2];
-if (mode !== 'fill' && mode !== 'clean') {
-  console.error('Режим: fill или clean.');
+if (mode !== 'fill' && mode !== 'clean' && mode !== 'preview') {
+  console.error('Режим: fill, preview или clean.');
   process.exit(1);
 }
 
@@ -396,45 +399,22 @@ function payroll(
   });
 }
 
-/** Удаляет всё помеченное demo и возвращает витрине её прежний отдел. */
-async function clean(): Promise<void> {
-  const org = await organizationId();
-  const collections = [
-    COLLECTIONS.attendance,
-    COLLECTIONS.points,
-    COLLECTIONS.offers,
-    COLLECTIONS.calls,
-    COLLECTIONS.payrolls,
-    COLLECTIONS.userAchievements,
-    COLLECTIONS.plans,
-    COLLECTIONS.users,
-    COLLECTIONS.departments,
-  ];
+/**
+ * Убирает всё демо и возвращает витрине её прежний отдел; preview — только
+ * считает. Логика — в src/demo/demo-cleanup.ts, там же тесты.
+ */
+async function clean(apply: boolean): Promise<void> {
+  const report = await cleanupDemo(db, await organizationId(), apply);
+  const lines = Object.entries({ ...report.marked, ...report.owned })
+    .filter(([, count]) => count > 0)
+    .map(([name, count]) => `  ${name}: ${count}`);
 
-  let removed = 0;
-  for (const name of collections) {
-    const snapshot = await db.collection(name).where('demo', '==', true).get();
-    for (let start = 0; start < snapshot.docs.length; start += 400) {
-      const batch = db.batch();
-      snapshot.docs.slice(start, start + 400).forEach((doc) => batch.delete(doc.ref));
-      await batch.commit();
-    }
-    removed += snapshot.size;
-  }
-
-  const moved = await db
-    .collection(COLLECTIONS.users)
-    .where('organizationId', '==', org)
-    .where('demoDepartment', '==', true)
-    .get();
-  for (const doc of moved.docs) {
-    await doc.ref.update({ departmentId: null, demoDepartment: FieldValue.delete() });
-  }
-
-  console.log(`Витрина убрана: удалено ${removed} записей.`);
+  console.log(apply ? 'Витрина убрана:' : 'Будет убрано (ничего не удалено):');
+  console.log(lines.length > 0 ? lines.join('\n') : '  демо-записей нет');
+  console.log(`  вернутся из демо-отдела: ${report.movedBack}`);
 }
 
-(mode === 'fill' ? fill() : clean())
+(mode === 'fill' ? fill() : clean(mode === 'clean'))
   .then(() => process.exit(0))
   .catch((error) => {
     console.error(error);
