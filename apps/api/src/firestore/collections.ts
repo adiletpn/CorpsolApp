@@ -64,6 +64,13 @@ export const attendanceDocId = (userId: string, workDate: string): string =>
 export const callDocId = (source: string, externalId: string): string =>
   `${source}_${sanitize(externalId)}`;
 
+/**
+ * Сделка из CRM. Ключ — источник и номер сделки там: повторная выгрузка
+ * обновляет ту же запись, когда сделка переходит из работы в успешные.
+ */
+export const offerDocId = (source: string, externalId: string): string =>
+  `${source}_${sanitize(externalId)}`;
+
 /** Расчётный лист за период: один сотрудник — один документ на месяц. */
 export const payrollDocId = (userId: string, periodStart: string): string =>
   `${sanitize(userId)}_${periodStart}`;

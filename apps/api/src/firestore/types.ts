@@ -280,6 +280,11 @@ export interface OfferDoc {
   /** Календарная дата отправки «ГГГГ-ММ-ДД». */
   sentDate: string;
   resolvedAt: Timestamp | null;
+
+  /** Откуда сделка: заведена менеджером или пришла из CRM. Нет поля — вручную. */
+  source?: 'MANUAL' | 'BITRIX';
+  /** Номер сделки в CRM — для сделок оттуда. */
+  externalId?: string | null;
 }
 
 export interface BonusRuleDoc {
