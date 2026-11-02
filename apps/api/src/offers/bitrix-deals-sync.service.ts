@@ -44,9 +44,13 @@ export class BitrixDealsSyncService {
       const { deals, rejected } = mapBitrixDeals(records);
       const summary = await this.importer.importDeals(organizationId, deals);
 
-      // При неполной выгрузке точку не двигаем: иначе остаток за пределом
-      // страниц не доберётся никогда.
-      await this.integrations.recordDealsSync(organizationId, 'OK', { syncedUpTo: truncated ? undefined : now });
+      // Неполная выгрузка — до последней полученной сделки: портал отдаёт
+      // их по дате изменения, и следующий прогон продолжит с этого места.
+      // Стоять на месте нельзя — за месяц в портале бывает больше сделок,
+      // чем входит в один прогон, и добор не закончился бы никогда.
+      await this.integrations.recordDealsSync(organizationId, 'OK', {
+        syncedUpTo: truncated ? this.lastModified(records) : now,
+      });
       return { ...summary, fetched: records.length, rejected: rejected.length, truncated };
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : 'Неизвестная ошибка';
@@ -54,5 +58,12 @@ export class BitrixDealsSyncService {
       this.logger.error(`Сделки Bitrix24 не добраны для ${organizationId}: ${message}`);
       throw cause;
     }
+  }
+
+  private lastModified(records: Array<{ DATE_MODIFY?: string | null }>): Date | undefined {
+    const times = records
+      .map((record) => (record.DATE_MODIFY ? new Date(record.DATE_MODIFY).getTime() : NaN))
+      .filter((time) => !Number.isNaN(time));
+    return times.length > 0 ? new Date(Math.max(...times)) : undefined;
   }
 }
