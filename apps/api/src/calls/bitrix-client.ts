@@ -22,8 +22,8 @@ const MAX_PAGES = 200;
 /** Портал ограничивает частоту запросов, поэтому между страницами пауза. */
 const PAGE_DELAY_MS = 350;
 
-interface BitrixResponse {
-  result?: BitrixCallRecord[];
+interface BitrixResponse<T = BitrixCallRecord> {
+  result?: T[];
   total?: number;
   next?: number;
   error?: string;
@@ -68,17 +68,34 @@ export class BitrixClient {
    * смещение следующей страницы в поле `next`.
    */
   async fetchCalls(options: FetchCallsOptions): Promise<FetchCallsResult> {
-    const webhookUrl = options.webhookUrl.trim().replace(/\/$/, '');
+    const params = new URLSearchParams();
+    params.set('order[CALL_START_DATE]', 'ASC');
+    if (options.fromDate) params.set('filter[>=CALL_START_DATE]', options.fromDate.toISOString());
+    if (options.toDate) params.set('filter[<=CALL_START_DATE]', options.toDate.toISOString());
+
+    return this.fetchAll<BitrixCallRecord>(options.webhookUrl, 'voximplant.statistic.get', params);
+  }
+
+  /**
+   * Постраничный обход метода портала: по 50 записей, смещение следующей
+   * страницы — в поле `next`.
+   */
+  private async fetchAll<T>(
+    rawWebhookUrl: string,
+    method: string,
+    params: URLSearchParams,
+  ): Promise<{ records: T[]; pagesFetched: number; truncated: boolean }> {
+    const webhookUrl = rawWebhookUrl.trim().replace(/\/$/, '');
     if (!isValidWebhook(webhookUrl)) {
       throw new BadRequestException('Некорректный адрес вебхука Bitrix24');
     }
 
-    const records: BitrixCallRecord[] = [];
+    const records: T[] = [];
     let start = 0;
     let pagesFetched = 0;
 
     while (pagesFetched < MAX_PAGES) {
-      const page = await this.fetchPage(webhookUrl, start, options);
+      const page = await this.fetchPage<T>(webhookUrl, method, params, start);
       pagesFetched += 1;
 
       records.push(...(page.result ?? []));
@@ -107,22 +124,16 @@ export class BitrixClient {
     return { records, pagesFetched, truncated: true };
   }
 
-  private async fetchPage(
+  private async fetchPage<T>(
     webhookUrl: string,
+    method: string,
+    base: URLSearchParams,
     start: number,
-    options: FetchCallsOptions,
-  ): Promise<BitrixResponse> {
-    const params = new URLSearchParams({ start: String(start) });
-    params.set('order[CALL_START_DATE]', 'ASC');
+  ): Promise<BitrixResponse<T>> {
+    const params = new URLSearchParams(base);
+    params.set('start', String(start));
 
-    if (options.fromDate) {
-      params.set('filter[>=CALL_START_DATE]', options.fromDate.toISOString());
-    }
-    if (options.toDate) {
-      params.set('filter[<=CALL_START_DATE]', options.toDate.toISOString());
-    }
-
-    const url = `${webhookUrl}/voximplant.statistic.get.json?${params.toString()}`;
+    const url = `${webhookUrl}/${method}.json?${params.toString()}`;
 
     const response = await fetch(url, { method: 'GET' }).catch(() => {
       // В текст ошибки адрес не попадает: он содержит токен портала.
@@ -135,7 +146,7 @@ export class BitrixClient {
       );
     }
 
-    const payload = (await response.json().catch(() => ({}))) as BitrixResponse;
+    const payload = (await response.json().catch(() => ({}))) as BitrixResponse<T>;
 
     if (payload.error) {
       throw new BadGatewayException(
