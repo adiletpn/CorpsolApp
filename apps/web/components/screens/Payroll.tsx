@@ -372,6 +372,9 @@ export function Payroll() {
         )}
       </Card>
 
+      {/* Ранги ставит РОП своему отделу; таблицу ставок — только директор. */}
+      {!canManage && can('grade.assign') ? <Grades employees={employees} onChanged={load} canEditTable={false} /> : null}
+
       {canManage ? (
         <>
           <Grades employees={employees} onChanged={load} />
