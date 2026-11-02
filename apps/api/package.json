@@ -9,7 +9,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "seed": "ts-node scripts/seed.ts",
     "bootstrap": "ts-node scripts/bootstrap.ts",
-    "test": "jest"
+    "test": "jest",
+    "onboard": "ts-node scripts/onboard.ts"
   },
   "dependencies": {
     "@corpsol/shared": "*",
