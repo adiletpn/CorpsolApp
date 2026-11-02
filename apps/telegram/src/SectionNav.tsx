@@ -54,8 +54,13 @@ export function SectionNav({ sections }: { sections: NavSection[] }) {
 
     update();
     window.addEventListener('scroll', onScroll, { passive: true });
+    // Данные экрана приходят после первой отрисовки: страница вырастает
+    // без единой прокрутки, и подсветку надо пересчитать по новой высоте.
+    const resize = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(onScroll);
+    resize?.observe(document.body);
     return () => {
       window.removeEventListener('scroll', onScroll);
+      resize?.disconnect();
       if (frame) cancelAnimationFrame(frame);
     };
     // Разделы сравниваем по составу, а не по ссылке на массив.
