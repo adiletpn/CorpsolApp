@@ -11,6 +11,8 @@ import { BitrixSyncService } from './bitrix-sync.service';
 import { KcellApiClient } from './kcell-api-client';
 import { PbxSyncService } from './pbx-sync.service';
 import { SipuniApiClient } from './sipuni-api-client';
+import { BitrixDealsSyncService } from '../offers/bitrix-deals-sync.service';
+import { DealsImportService } from '../offers/deals-import.service';
 
 @Module({
   controllers: [CallsController],
@@ -25,6 +27,9 @@ import { SipuniApiClient } from './sipuni-api-client';
     SipuniApiClient,
     PbxSyncService,
     CallsSyncScheduler,
+    // Сделки CRM добираются через ту же интеграцию Bitrix, что и звонки.
+    DealsImportService,
+    BitrixDealsSyncService,
   ],
   exports: [CallsService, CallsImportService, BitrixSyncService],
 })

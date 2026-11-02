@@ -5,6 +5,7 @@ import { CallsController } from '../src/calls/calls.controller';
 import { CallsModule } from '../src/calls/calls.module';
 import { CallsSyncScheduler } from '../src/calls/calls-sync.scheduler';
 import { PbxSyncService } from '../src/calls/pbx-sync.service';
+import { BitrixDealsSyncService } from '../src/offers/bitrix-deals-sync.service';
 import { JobsModule } from '../src/common/jobs/jobs.module';
 import { FirebaseService } from '../src/firebase/firebase.service';
 import { NotificationsModule } from '../src/notifications/notifications.module';
@@ -28,6 +29,7 @@ describe('модуль звонков собирается', () => {
     expect(moduleRef.get(CallsController)).toBeDefined();
     expect(moduleRef.get(CallsSyncScheduler)).toBeDefined();
     expect(moduleRef.get(PbxSyncService)).toBeDefined();
+    expect(moduleRef.get(BitrixDealsSyncService)).toBeDefined();
 
     await moduleRef.close();
   });
