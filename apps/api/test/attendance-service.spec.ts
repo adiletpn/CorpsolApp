@@ -376,3 +376,68 @@ describe('отметка прихода: баллы', () => {
     });
   });
 });
+
+describe('кто чей табель видит', () => {
+  const day = (firestore: FakeFirestore, userId: string, departmentId: string, organizationId = ORG) =>
+    firestore.seed(COLLECTIONS.attendance, `${userId}_2026-10-05`, {
+      userId,
+      organizationId,
+      departmentId,
+      workDate: '2026-10-05',
+      checkInAt: Timestamp.fromDate(new Date('2026-10-05T04:00:00Z')),
+      checkOutAt: null,
+      status: 'ON_TIME',
+      lateMinutes: 0,
+      method: 'QR',
+      distanceMeters: 10,
+      isMocked: false,
+    });
+
+  const seeded = () => {
+    const context = setup();
+    day(context.firestore, 'uid-1', 'dep-1');
+    day(context.firestore, 'uid-2', 'dep-1');
+    day(context.firestore, 'uid-3', 'dep-2');
+    day(context.firestore, 'alien', 'dep-1', 'org-2');
+    return context;
+  };
+  const users = (records: Array<{ userId: string }>) => records.map((record) => record.userId).sort();
+
+  it('РОП видит табель только своего отдела', async () => {
+    const { service } = seeded();
+
+    const records = await service.listScoped(actor({ id: 'rop-1', role: 'ROP' }), '2026-10-01', '2026-10-31');
+
+    expect(users(records)).toEqual(['uid-1', 'uid-2']);
+  });
+
+  it('РОП не подсмотрит чужой отдел через параметр запроса', async () => {
+    const { service } = seeded();
+
+    const records = await service.listScoped(actor({ id: 'rop-1', role: 'ROP' }), '2026-10-01', '2026-10-31', 'dep-2');
+
+    expect(users(records)).toEqual(['uid-1', 'uid-2']);
+  });
+
+  it('РОП без отдела получает отказ', async () => {
+    const { service } = seeded();
+
+    await expect(
+      service.listScoped(actor({ id: 'rop-1', role: 'ROP', departmentId: null }), '2026-10-01', '2026-10-31'),
+    ).rejects.toThrow('РОП не привязан к отделу');
+  });
+
+  it('менеджер видит только себя', async () => {
+    const { service } = seeded();
+
+    expect(users(await service.listScoped(actor(), '2026-10-01', '2026-10-31'))).toEqual(['uid-1']);
+  });
+
+  it('директор видит всю организацию и может сузить до отдела, но не видит чужую', async () => {
+    const { service } = seeded();
+    const director = actor({ id: 'dir-1', role: 'DIRECTOR', departmentId: null });
+
+    expect(users(await service.listScoped(director, '2026-10-01', '2026-10-31'))).toEqual(['uid-1', 'uid-2', 'uid-3']);
+    expect(users(await service.listScoped(director, '2026-10-01', '2026-10-31', 'dep-2'))).toEqual(['uid-3']);
+  });
+});
