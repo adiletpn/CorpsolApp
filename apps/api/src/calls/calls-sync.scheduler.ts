@@ -6,6 +6,7 @@ import { FirebaseService } from '../firebase/firebase.service';
 import { JobLockService } from '../common/jobs/job-lock.service';
 import { BitrixSyncService } from './bitrix-sync.service';
 import { PbxSyncService } from './pbx-sync.service';
+import { BitrixDealsSyncService } from '../offers/bitrix-deals-sync.service';
 
 /** Источники, которые добираются по сети, а не загружаются файлом. */
 const SOURCES = ['BITRIX', 'KCELL', 'SIPUNI'] as const;
@@ -27,6 +28,7 @@ export class CallsSyncScheduler {
     private readonly bitrix: BitrixSyncService,
     private readonly locks: JobLockService,
     private readonly pbx: PbxSyncService,
+    private readonly deals: BitrixDealsSyncService,
   ) {}
 
   /**
@@ -41,6 +43,43 @@ export class CallsSyncScheduler {
     if (results.length > 0) {
       this.logger.log(`Звонки добраны: ${imported} в ${results.length} организациях`);
     }
+
+    const deals = await this.syncDeals();
+    if (deals.length > 0) {
+      const changed = deals.reduce((total, item) => total + item.changed, 0);
+      this.logger.log(`Сделки добраны: ${changed} новых и изменённых в ${deals.length} организациях`);
+    }
+  }
+
+  /**
+   * Сделки CRM — тем же часовым прогоном, но своим замком: сбой сделок
+   * не должен оставить без звонков, и наоборот.
+   */
+  async syncDeals(now = new Date()): Promise<Array<{ organizationId: string; changed: number }>> {
+    const hour = now.toISOString().slice(0, 13);
+    const snapshot = await this.firebase.firestore
+      .collection(COLLECTIONS.integrations)
+      .where('provider', '==', 'BITRIX')
+      .get();
+
+    const results: Array<{ organizationId: string; changed: number }> = [];
+    for (const doc of snapshot.docs) {
+      const integration = doc.data() as { organizationId?: string; isActive?: boolean; webhookUrl?: string | null };
+      const organizationId = integration.organizationId;
+      if (!organizationId || integration.isActive === false || !integration.webhookUrl) continue;
+
+      try {
+        const result = await this.locks.run('deals-sync', `${organizationId}_${hour}`, async () => {
+          const summary = await this.deals.sync(organizationId, now);
+          const changed = summary.created + summary.updated;
+          return { count: changed, changed };
+        });
+        if (result) results.push({ organizationId, changed: result.changed });
+      } catch (cause) {
+        this.logger.error(`Добор сделок для ${organizationId} не удался: ${String(cause)}`);
+      }
+    }
+    return results;
   }
 
   /**
