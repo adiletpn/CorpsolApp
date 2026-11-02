@@ -232,3 +232,17 @@ describe('автоматический добор сделок CRM', () => {
     expect(dealsSynced).toEqual(['org-1']);
   });
 });
+
+describe('портал только для сделок', () => {
+  it('звонки из него не берутся — они уже идут из АТС, а сделки добираются', async () => {
+    const { firestore, scheduler, synced, dealsSynced } = setup();
+    firestore.seed(COLLECTIONS.integrations, 'org-1_BITRIX', {
+      organizationId: 'org-1', provider: 'BITRIX', isActive: true, webhookUrl: 'https://portal.example/rest/1/secret/', importCalls: false,
+    });
+
+    await scheduler.runHourly();
+
+    expect(synced).toEqual([]);
+    expect(dealsSynced).toEqual(['org-1']);
+  });
+});

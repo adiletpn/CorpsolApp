@@ -278,3 +278,26 @@ describe('добор сделок CRM — своё состояние', () => {
     expect((await service.list(admin()))[0].deals).toBeNull();
   });
 });
+
+describe('портал только для сделок', () => {
+  it('по умолчанию из портала берутся и звонки — как было до сделок', async () => {
+    const { service } = setup();
+
+    expect((await service.connectBitrix(admin(), WEBHOOK)).importCalls).toBe(true);
+  });
+
+  it('можно подключить только ради сделок', async () => {
+    const { service } = setup();
+
+    await service.connectBitrix(admin(), WEBHOOK, false);
+
+    expect((await service.list(admin()))[0].importCalls).toBe(false);
+  });
+
+  it('старая запись без поля считается «со звонками»', async () => {
+    const { firestore, service } = setup();
+    seedIntegration(firestore);
+
+    expect((await service.list(admin()))[0].importCalls).toBe(true);
+  });
+});
