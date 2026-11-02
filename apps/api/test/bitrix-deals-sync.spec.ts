@@ -81,9 +81,43 @@ describe('добор сделок Bitrix24', () => {
       truncated: true,
     });
 
-    await service.sync(ORG, NOW);
+    await service.sync(ORG, NOW, new Date('2026-09-30T19:00:00Z'));
 
     expect((state().syncedUpTo as Timestamp).toDate().toISOString()).toBe('2026-10-12T04:00:00.000Z');
+    expect(state().exact).toBe(true);
+  });
+
+  it('после оборванного добора продолжает ровно с точки, без отступа назад', async () => {
+    const { service, requested } = setup({
+      deals: { syncedUpTo: Timestamp.fromDate(new Date('2026-10-12T04:00:00Z')), exact: true, lastSyncAt: null, lastSyncStatus: 'OK', lastSyncError: null },
+    });
+
+    await service.sync(ORG, NOW);
+
+    expect(requested[0]?.toISOString()).toBe('2026-10-12T04:00:00.000Z');
+  });
+
+  it('вся порция изменена в одну секунду — шаг на секунду вперёд, а не по кругу', async () => {
+    const from = new Date('2026-10-15T05:00:00Z');
+    const { service, state } = setup({
+      records: [
+        { ...won('101'), DATE_MODIFY: '2026-10-15T10:00:00+05:00' },
+        { ...won('102'), DATE_MODIFY: '2026-10-15T10:00:00+05:00' },
+      ],
+      truncated: true,
+    });
+
+    await service.sync(ORG, NOW, from);
+
+    expect((state().syncedUpTo as Timestamp).toDate().toISOString()).toBe('2026-10-15T05:00:01.000Z');
+  });
+
+  it('полный добор снова с обычным отступом', async () => {
+    const { service, state } = setup();
+
+    await service.sync(ORG, NOW);
+
+    expect(state()).toMatchObject({ exact: false });
   });
 
   it('неполная выгрузка без дат изменения — точка остаётся прежней', async () => {
