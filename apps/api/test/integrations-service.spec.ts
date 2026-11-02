@@ -243,3 +243,38 @@ describe('интеграции: АТС Kcell и Sipuni', () => {
     await expect(service.requireCredentials(ORG, 'SIPUNI')).rejects.toBeInstanceOf(NotFoundException);
   });
 });
+
+describe('добор сделок CRM — своё состояние', () => {
+  it('успех сделок не трогает состояние звонков и виден в панели отдельно', async () => {
+    const { firestore, service } = setup();
+    seedIntegration(firestore, ORG, { lastSyncStatus: 'OK' });
+
+    await service.recordDealsSync(ORG, 'OK', { syncedUpTo: new Date('2026-11-01T10:00:00Z') });
+
+    const [view] = await service.list(admin());
+    expect(view.lastSyncStatus).toBe('OK');
+    expect(view.deals).toMatchObject({ lastSyncStatus: 'OK', lastSyncError: null, syncedUpTo: '2026-11-01T10:00:00.000Z' });
+  });
+
+  it('сбой сделок сохраняет прежнюю точку продолжения', async () => {
+    const { firestore, service } = setup();
+    seedIntegration(firestore);
+    await service.recordDealsSync(ORG, 'OK', { syncedUpTo: new Date('2026-11-01T10:00:00Z') });
+
+    await service.recordDealsSync(ORG, 'ERROR', { error: 'Bitrix24: insufficient_scope' });
+
+    const [view] = await service.list(admin());
+    expect(view.deals).toMatchObject({
+      lastSyncStatus: 'ERROR',
+      lastSyncError: 'Bitrix24: insufficient_scope',
+      syncedUpTo: '2026-11-01T10:00:00.000Z',
+    });
+  });
+
+  it('до первого добора сделок их состояния нет', async () => {
+    const { firestore, service } = setup();
+    seedIntegration(firestore);
+
+    expect((await service.list(admin()))[0].deals).toBeNull();
+  });
+});
