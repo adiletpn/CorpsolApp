@@ -40,7 +40,10 @@ export class BitrixDealsSyncService {
     const from = since ?? (previous ? new Date(previous.getTime() - OVERLAP_MS) : almatyMonthStart(now));
 
     try {
-      const { records, truncated } = await this.client.fetchDeals(webhookUrl, from);
+      const linked = await this.importer.linkedPortalUsers(organizationId);
+      // Никто не привязан — сделки положить не на кого, портал не трогаем.
+      const { records, truncated } =
+        linked.length > 0 ? await this.client.fetchDeals(webhookUrl, from, linked) : { records: [], truncated: false };
       const { deals, rejected } = mapBitrixDeals(records);
       const summary = await this.importer.importDeals(organizationId, deals);
 

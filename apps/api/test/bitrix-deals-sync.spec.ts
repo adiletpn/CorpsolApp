@@ -23,9 +23,11 @@ function setup(options: { records?: unknown[]; truncated?: boolean; error?: Erro
   });
 
   const requested: Array<Date | undefined> = [];
+  const assigned: Array<string[] | undefined> = [];
   const client = {
-    fetchDeals: async (_url: string, since?: Date) => {
+    fetchDeals: async (_url: string, since?: Date, assignedTo?: string[]) => {
       requested.push(since);
+      assigned.push(assignedTo);
       if (options.error) throw options.error;
       return { records: options.records ?? [], truncated: options.truncated ?? false };
     },
@@ -33,7 +35,7 @@ function setup(options: { records?: unknown[]; truncated?: boolean; error?: Erro
 
   const service = new BitrixDealsSyncService(client, new IntegrationsService(firebase), new DealsImportService(firebase));
   const state = () => firestore.read(COLLECTIONS.integrations, `${ORG}_BITRIX`)?.deals as Record<string, unknown>;
-  return { firestore, service, requested, state };
+  return { firestore, service, requested, assigned, state };
 }
 
 const won = (id: string, assigned = '12') => ({
@@ -105,5 +107,26 @@ describe('добор сделок Bitrix24', () => {
     await service.sync(ORG, NOW, new Date('2026-09-30T19:00:00Z'));
 
     expect(requested[0]?.toISOString()).toBe('2026-09-30T19:00:00.000Z');
+  });
+});
+
+describe('только сделки своих', () => {
+  it('у портала просятся сделки только привязанных сотрудников', async () => {
+    const { service, assigned } = setup();
+
+    await service.sync(ORG, NOW);
+
+    expect(assigned[0]).toEqual(['12']);
+  });
+
+  it('никто не привязан — портал не трогаем, но добор считается успешным', async () => {
+    const { firestore, service, requested, state } = setup();
+    firestore.seed(COLLECTIONS.externalIdentities, 'BITRIX_12', { provider: 'KCELL_USER', externalKey: 'x', userId: 'dina' });
+
+    const result = await service.sync(ORG, NOW);
+
+    expect(requested).toEqual([]);
+    expect(result.fetched).toBe(0);
+    expect(state()).toMatchObject({ lastSyncStatus: 'OK' });
   });
 });

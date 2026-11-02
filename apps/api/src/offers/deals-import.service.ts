@@ -78,6 +78,11 @@ export class DealsImportService {
     return summary;
   }
 
+  /** Пользователи портала, привязанные к активным сотрудникам. */
+  async linkedPortalUsers(organizationId: string): Promise<string[]> {
+    return [...(await this.employeesByPortalUser(organizationId)).keys()];
+  }
+
   /** Пользователь портала → сотрудник, по привязкам «Рабочих номеров». */
   private async employeesByPortalUser(
     organizationId: string,
