@@ -26,6 +26,16 @@ interface IntegrationDoc {
   lastSyncError: string | null;
   /** Время последнего успешно загруженного звонка — точка доборной синхронизации. */
   syncedUpTo: Timestamp | null;
+  /**
+   * Добор сделок из CRM — отдельно от звонков: у них своя точка
+   * продолжения, и сбой одного не должен прятать состояние другого.
+   */
+  deals?: {
+    lastSyncAt: Timestamp | null;
+    lastSyncStatus: string | null;
+    lastSyncError: string | null;
+    syncedUpTo: Timestamp | null;
+  } | null;
 }
 
 /** Вид интеграции для интерфейса: с замаскированным адресом. */
@@ -39,6 +49,8 @@ export interface IntegrationView {
   lastSyncStatus: string | null;
   lastSyncError: string | null;
   syncedUpTo: string | null;
+  /** Добор сделок — только у CRM. */
+  deals: { lastSyncAt: string | null; lastSyncStatus: string | null; lastSyncError: string | null; syncedUpTo: string | null } | null;
 }
 
 const docId = (organizationId: string, provider: IntegrationProvider): string =>
@@ -169,6 +181,24 @@ export class IntegrationsService {
     });
   }
 
+  async recordDealsSync(
+    organizationId: string,
+    status: string,
+    options: { error?: string; syncedUpTo?: Date } = {},
+  ): Promise<void> {
+    const ref = this.collection.doc(docId(organizationId, 'BITRIX'));
+    const previous = ((await ref.get()).data() as IntegrationDoc | undefined)?.deals ?? null;
+    await ref.update({
+      deals: {
+        lastSyncAt: Timestamp.now(),
+        lastSyncStatus: status,
+        lastSyncError: options.error ?? null,
+        // Точка продолжения двигается только успехом: сбой её не сбрасывает.
+        syncedUpTo: options.syncedUpTo ? Timestamp.fromDate(options.syncedUpTo) : (previous?.syncedUpTo ?? null),
+      },
+    });
+  }
+
   async disconnect(actor: AuthenticatedUser, provider: IntegrationProvider): Promise<void> {
     await this.collection.doc(docId(actor.organizationId, provider)).update({
       isActive: false,
@@ -189,6 +219,14 @@ export class IntegrationsService {
       lastSyncStatus: doc.lastSyncStatus,
       lastSyncError: doc.lastSyncError,
       syncedUpTo: doc.syncedUpTo?.toDate().toISOString() ?? null,
+      deals: doc.deals
+        ? {
+            lastSyncAt: doc.deals.lastSyncAt?.toDate().toISOString() ?? null,
+            lastSyncStatus: doc.deals.lastSyncStatus,
+            lastSyncError: doc.deals.lastSyncError,
+            syncedUpTo: doc.deals.syncedUpTo?.toDate().toISOString() ?? null,
+          }
+        : null,
     };
   }
 
