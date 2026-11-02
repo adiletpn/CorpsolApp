@@ -1,4 +1,4 @@
-import { BitrixClient, isValidWebhook, maskWebhook } from '../src/calls/bitrix-client';
+import { BitrixClient, DEALS_MAX_PAGES, isValidWebhook, maskWebhook } from '../src/calls/bitrix-client';
 import type { BitrixCallRecord } from '../src/calls/bitrix-mapper';
 
 const WEBHOOK = 'https://corp.bitrix24.kz/rest/1/s3cr3ttoken42';
@@ -172,5 +172,29 @@ describe('выгрузка сделок', () => {
 
     expect(error.message).toBe('Bitrix24: insufficient_scope');
     expect(error.message).not.toContain('s3cr3t');
+  });
+});
+
+describe('предел добора сделок за один вызов', () => {
+  beforeEach(() => {
+    jest.spyOn(global, 'setTimeout').mockImplementation(((handler: () => void) => {
+      handler();
+      return 0;
+    }) as never);
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  it('после предела страниц останавливается и сообщает, что выгружено не всё', async () => {
+    let start = 0;
+    const fake = jest.fn(async () => {
+      start += 50;
+      return { ok: true, status: 200, json: async () => ({ result: [{ ID: String(start) }], next: start }) } as Response;
+    });
+    global.fetch = fake as unknown as typeof fetch;
+
+    const { truncated } = await new BitrixClient().fetchDeals(WEBHOOK);
+
+    expect(truncated).toBe(true);
+    expect(fake).toHaveBeenCalledTimes(DEALS_MAX_PAGES);
   });
 });
