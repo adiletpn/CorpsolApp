@@ -45,3 +45,24 @@ describe('строка разделов', () => {
     expect(intoView).not.toHaveBeenCalled();
   });
 });
+
+describe('подсветка при открытии экрана', () => {
+  it('короткая страница без прокрутки — первый раздел, а не последний', () => {
+    // Пока данные грузятся, страница короткая и «в самом низу» с первого
+    // кадра: раньше из-за этого загорался последний раздел.
+    Object.defineProperty(window, 'scrollY', { value: 0, configurable: true });
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      return { top: this.id === 'month' ? 900 : 0 } as DOMRect;
+    });
+
+    render(
+      <>
+        <SectionNav sections={[{ id: 'today', label: 'Сегодня' }, { id: 'month', label: 'Табель' }]} />
+        <Anchor id="today" />
+        <Anchor id="month" />
+      </>,
+    );
+
+    expect(screen.getByRole('button', { name: 'Сегодня' }).getAttribute('aria-current')).toBe('location');
+  });
+});
