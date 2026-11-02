@@ -165,6 +165,14 @@ describe('выгрузка сделок', () => {
     expect(new URL(calls[0]).searchParams.has('filter[>=DATE_MODIFY]')).toBe(false);
   });
 
+  it('фильтр по ответственным — сделки только наших менеджеров', async () => {
+    const { calls } = mockFetch([{ result: [] }]);
+
+    await new BitrixClient().fetchDeals(WEBHOOK, undefined, ['12', '32']);
+
+    expect(new URL(calls[0]).searchParams.getAll('filter[@ASSIGNED_BY_ID][]')).toEqual(['12', '32']);
+  });
+
   it('ошибка портала — без адреса вебхука в тексте', async () => {
     mockFetch([{ error: 'insufficient_scope' }]);
 

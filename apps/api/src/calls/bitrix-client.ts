@@ -104,10 +104,17 @@ export class BitrixClient {
    * создания: сделку, заведённую в сентябре и закрытую в октябре, нужно
    * увидеть в октябре — именно тогда она стала регистрацией.
    */
-  async fetchDeals(webhookUrl: string, modifiedSince?: Date): Promise<{ records: BitrixDeal[]; truncated: boolean }> {
+  async fetchDeals(
+    webhookUrl: string,
+    modifiedSince?: Date,
+    assignedTo?: string[],
+  ): Promise<{ records: BitrixDeal[]; truncated: boolean }> {
     const params = new URLSearchParams();
     params.set('order[DATE_MODIFY]', 'ASC');
     if (modifiedSince) params.set('filter[>=DATE_MODIFY]', modifiedSince.toISOString());
+    // Только сделки привязанных сотрудников: в портале их сотни тысяч,
+    // а нужны — наших менеджеров. Остальные выкачивать незачем.
+    for (const id of assignedTo ?? []) params.append('filter[@ASSIGNED_BY_ID][]', id);
     for (const field of DEAL_FIELDS) params.append('select[]', field);
 
     const { records, truncated } = await this.fetchAll<BitrixDeal>(webhookUrl, 'crm.deal.list', params, DEALS_MAX_PAGES);
