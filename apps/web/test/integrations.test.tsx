@@ -134,3 +134,54 @@ describe('подключённая интеграция', () => {
     );
   });
 });
+
+describe('сделки Bitrix24', () => {
+  const pbx = { provider: 'KCELL', isActive: true, webhookMasked: null, credentialsMasked: 'kcell', lastSyncAt: null, lastSyncStatus: 'OK', lastSyncError: null, syncedUpTo: null };
+
+  it('при подключённой АТС звонки из портала по умолчанию не берутся', async () => {
+    integrations = [pbx];
+    const user = userEvent.setup();
+    render(<Integrations />);
+
+    await user.type(await screen.findByLabelText(/Адрес вебхука/), 'https://portal.bitrix24.kz/rest/1/token');
+    expect((screen.getByLabelText('Брать из портала и звонки') as HTMLInputElement).checked).toBe(false);
+    await user.click(screen.getByRole('button', { name: 'Подключить Bitrix24' }));
+
+    await waitFor(() => expect(requests.some((r) => r.path === '/calls/integrations/bitrix')).toBe(true));
+    const sent = requests.find((r) => r.path === '/calls/integrations/bitrix')!.options!.body as Record<string, unknown>;
+    expect(sent.importCalls).toBe(false);
+  });
+
+  it('без АТС звонки из портала берутся, галочку можно снять', async () => {
+    const user = userEvent.setup();
+    render(<Integrations />);
+
+    const box = (await screen.findByLabelText('Брать из портала и звонки')) as HTMLInputElement;
+    expect(box.checked).toBe(true);
+    await user.click(box);
+    expect(box.checked).toBe(false);
+  });
+
+  it('портал только для сделок — кнопки звонков нет, сделки добираются', async () => {
+    integrations = [{ ...connected, importCalls: false, deals: { lastSyncAt: '2026-11-02T10:00:00.000Z', lastSyncStatus: 'OK', lastSyncError: null } }];
+    syncResult = { fetched: 12, created: 3, updated: 1, unchanged: 8, rejected: 0, truncated: false, unmatched: [{ employeeKey: '44', count: 2 }] };
+    const user = userEvent.setup();
+    render(<Integrations />);
+
+    expect(await screen.findByText('Из портала берутся только сделки: звонки идут из АТС.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Синхронизировать звонки' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Добрать сделки' }));
+
+    expect(await screen.findByText(/Сделок получено 12: новых 3, изменилось 1/)).toBeTruthy();
+    expect(screen.getByText('44 — 2 сделок')).toBeTruthy();
+    expect(requests.some((r) => r.path === '/calls/integrations/bitrix/deals/sync')).toBe(true);
+  });
+
+  it('сбой добора сделок виден в карточке', async () => {
+    integrations = [{ ...connected, deals: { lastSyncAt: null, lastSyncStatus: 'ERROR', lastSyncError: 'Bitrix24: insufficient_scope' } }];
+    render(<Integrations />);
+
+    expect(await screen.findByText('Bitrix24: insufficient_scope')).toBeTruthy();
+    expect(screen.getByText('ошибка')).toBeTruthy();
+  });
+});
