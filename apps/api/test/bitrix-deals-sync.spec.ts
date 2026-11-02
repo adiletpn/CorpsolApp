@@ -70,7 +70,21 @@ describe('добор сделок Bitrix24', () => {
     expect((state().syncedUpTo as Timestamp).toDate().toISOString()).toBe(NOW.toISOString());
   });
 
-  it('неполная выгрузка не двигает точку — остаток доберётся в следующий раз', async () => {
+  it('неполная выгрузка — точка до последней полученной сделки, дальше продолжит с неё', async () => {
+    const { service, state } = setup({
+      records: [
+        { ...won('101'), DATE_MODIFY: '2026-10-10T12:00:00+05:00' },
+        { ...won('102'), DATE_MODIFY: '2026-10-12T09:00:00+05:00' },
+      ],
+      truncated: true,
+    });
+
+    await service.sync(ORG, NOW);
+
+    expect((state().syncedUpTo as Timestamp).toDate().toISOString()).toBe('2026-10-12T04:00:00.000Z');
+  });
+
+  it('неполная выгрузка без дат изменения — точка остаётся прежней', async () => {
     const { service, state } = setup({ records: [won('101')], truncated: true });
 
     await service.sync(ORG, NOW);
