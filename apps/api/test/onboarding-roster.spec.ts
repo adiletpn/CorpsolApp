@@ -73,3 +73,15 @@ describe('список отдела', () => {
     expect(problems(null)).toEqual(['Не указан отдел: "department".', 'Список "employees" пуст.']);
   });
 });
+
+describe('пример из документации', () => {
+  it('проходит проверку — документация не разошлась с кодом', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const example = require('../../../docs/examples/roster.example.json');
+
+    const roster = parseRoster(example);
+
+    expect(roster.employees.find((person) => person.head)?.role).toBe('ROP');
+    expect(roster.employees.map((person) => person.email)).toContain('daniyar.o@corpsol.kz');
+  });
+});
