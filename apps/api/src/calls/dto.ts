@@ -3,6 +3,7 @@ import {
   IsIn,
   IsISO8601,
   IsNotEmpty,
+  IsBoolean,
   IsOptional,
   IsString,
   Matches,
@@ -64,6 +65,11 @@ export class ConnectBitrixDto {
   @IsNotEmpty()
   @MaxLength(300)
   webhookUrl!: string;
+
+  /** false — только сделки: звонки уже идут из Kcell и Sipuni напрямую. */
+  @IsOptional()
+  @IsBoolean()
+  importCalls?: boolean;
 }
 
 export class SyncCallsDto {

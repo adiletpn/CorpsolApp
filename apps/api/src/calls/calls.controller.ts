@@ -100,7 +100,7 @@ export class CallsController {
   @HttpCode(200)
   @RequirePermissions('integration.manage')
   connectBitrix(@CurrentUser() user: AuthenticatedUser, @Body() dto: ConnectBitrixDto) {
-    return this.integrations.connectBitrix(user, dto.webhookUrl);
+    return this.integrations.connectBitrix(user, dto.webhookUrl, dto.importCalls ?? true);
   }
 
   @Delete('integrations/bitrix')

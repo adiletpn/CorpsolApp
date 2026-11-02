@@ -27,6 +27,12 @@ interface IntegrationDoc {
   /** Время последнего успешно загруженного звонка — точка доборной синхронизации. */
   syncedUpTo: Timestamp | null;
   /**
+   * Брать ли из CRM звонки. Нет поля — да, как было до сделок. Нет —
+   * если звонки уже идут из АТС напрямую: телефония портала повторила бы
+   * те же звонки, и в отчётах их стало бы вдвое больше.
+   */
+  importCalls?: boolean;
+  /**
    * Добор сделок из CRM — отдельно от звонков: у них своя точка
    * продолжения, и сбой одного не должен прятать состояние другого.
    */
@@ -45,6 +51,8 @@ export interface IntegrationView {
   webhookMasked: string | null;
   /** Доступ к АТС так, чтобы его можно было узнать, но не использовать. */
   credentialsMasked: string | null;
+  /** Только у CRM: берутся ли из неё звонки, или только сделки. */
+  importCalls: boolean;
   lastSyncAt: string | null;
   lastSyncStatus: string | null;
   lastSyncError: string | null;
@@ -64,7 +72,7 @@ export class IntegrationsService {
     return this.firebase.firestore.collection(COLLECTIONS.integrations);
   }
 
-  async connectBitrix(actor: AuthenticatedUser, webhookUrl: string): Promise<IntegrationView> {
+  async connectBitrix(actor: AuthenticatedUser, webhookUrl: string, importCalls = true): Promise<IntegrationView> {
     const trimmed = webhookUrl.trim().replace(/\/$/, '');
     if (!isValidWebhook(trimmed)) {
       throw new BadRequestException(
@@ -77,6 +85,7 @@ export class IntegrationsService {
       provider: 'BITRIX',
       isActive: true,
       webhookUrl: trimmed,
+      importCalls,
       lastSyncAt: null,
       lastSyncStatus: null,
       lastSyncError: null,
@@ -215,6 +224,7 @@ export class IntegrationsService {
       isActive: doc.isActive,
       webhookMasked: doc.webhookUrl ? maskWebhook(doc.webhookUrl) : null,
       credentialsMasked: this.maskCredentials(doc),
+      importCalls: doc.importCalls !== false,
       lastSyncAt: doc.lastSyncAt?.toDate().toISOString() ?? null,
       lastSyncStatus: doc.lastSyncStatus,
       lastSyncError: doc.lastSyncError,
