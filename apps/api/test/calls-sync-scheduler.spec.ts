@@ -32,14 +32,24 @@ function setup(options: { failFor?: string[] } = {}) {
     },
   };
 
+  const dealsSynced: string[] = [];
+  const deals = {
+    sync: async (organizationId: string) => {
+      if (options.failFor?.includes(`${organizationId}:DEALS`)) throw new Error('CRM недоступна');
+      dealsSynced.push(organizationId);
+      return { created: 2, updated: 1, unchanged: 5, unmatched: [], fetched: 8, rejected: 0, truncated: false };
+    },
+  };
+
   const scheduler = new CallsSyncScheduler(
     firebase,
     bitrix as never,
     new JobLockService(firebase),
     pbx as never,
+    deals as never,
   );
 
-  return { firestore, scheduler, synced };
+  return { firestore, scheduler, synced, dealsSynced };
 }
 
 function seedIntegration(firestore: FakeFirestore, organizationId: string, provider = 'BITRIX') {
@@ -167,5 +177,58 @@ describe('звонки из АТС по расписанию', () => {
     await scheduler.syncAll(AT);
 
     expect(synced).toEqual([]);
+  });
+});
+
+describe('автоматический добор сделок CRM', () => {
+  it('обходит организации с вебхуком Bitrix24 и считает новые и изменённые', async () => {
+    const { firestore, scheduler, dealsSynced } = setup();
+    seedIntegration(firestore, 'org-1');
+    seedIntegration(firestore, 'org-2', 'KCELL');
+
+    const results = await scheduler.syncDeals(AT);
+
+    expect(dealsSynced).toEqual(['org-1']);
+    expect(results).toEqual([{ organizationId: 'org-1', changed: 3 }]);
+  });
+
+  it('отключённый портал и портал без вебхука пропускаются', async () => {
+    const { firestore, scheduler, dealsSynced } = setup();
+    firestore.seed(COLLECTIONS.integrations, 'org-1_BITRIX', { organizationId: 'org-1', provider: 'BITRIX', isActive: false, webhookUrl: 'x' });
+    firestore.seed(COLLECTIONS.integrations, 'org-2_BITRIX', { organizationId: 'org-2', provider: 'BITRIX', isActive: true, webhookUrl: null });
+
+    await scheduler.syncDeals(AT);
+
+    expect(dealsSynced).toEqual([]);
+  });
+
+  it('второй экземпляр сервера в тот же час сделки не добирает', async () => {
+    const { firestore, scheduler, dealsSynced } = setup();
+    seedIntegration(firestore, 'org-1');
+
+    await scheduler.syncDeals(AT);
+    await scheduler.syncDeals(AT);
+
+    expect(dealsSynced).toEqual(['org-1']);
+  });
+
+  it('сбой сделок одной организации не мешает другим', async () => {
+    const { firestore, scheduler, dealsSynced } = setup({ failFor: ['org-1:DEALS'] });
+    seedIntegration(firestore, 'org-1');
+    seedIntegration(firestore, 'org-2');
+
+    await scheduler.syncDeals(AT);
+
+    expect(dealsSynced).toEqual(['org-2']);
+  });
+
+  it('часовой прогон добирает и звонки, и сделки', async () => {
+    const { firestore, scheduler, synced, dealsSynced } = setup();
+    seedIntegration(firestore, 'org-1');
+
+    await scheduler.runHourly();
+
+    expect(synced).toEqual(['org-1']);
+    expect(dealsSynced).toEqual(['org-1']);
   });
 });
