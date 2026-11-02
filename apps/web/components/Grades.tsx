@@ -28,7 +28,16 @@ const GRADED_ROLES = ['MOP'];
  * Ранг на следующий месяц выставляется сам по итогу текущего, здесь —
  * чтобы поправить таблицу или перевести человека руками.
  */
-export function Grades({ employees, onChanged }: { employees: Employee[]; onChanged(): Promise<void> }) {
+export function Grades({
+  employees,
+  onChanged,
+  canEditTable = true,
+}: {
+  employees: Employee[];
+  onChanged(): Promise<void>;
+  /** Таблицу (оклады и ставки) меняет директор; РОП только ставит ранги. */
+  canEditTable?: boolean;
+}) {
   const [tiers, setTiers] = useState<GradeTier[]>([]);
   const [draft, setDraft] = useState<GradeTier[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -129,22 +138,24 @@ export function Grades({ employees, onChanged }: { employees: Employee[]; onChan
         месяца: кто закрыл месячный план ранга — получает его.
       </p>
 
-      <div style={styles.actions}>
-        {draft ? (
-          <>
-            <Button onClick={() => void save()} disabled={busy}>
-              {busy ? 'Сохраняем…' : 'Сохранить таблицу'}
+      {canEditTable ? (
+        <div style={styles.actions}>
+          {draft ? (
+            <>
+              <Button onClick={() => void save()} disabled={busy}>
+                {busy ? 'Сохраняем…' : 'Сохранить таблицу'}
+              </Button>
+              <Button variant="ghost" onClick={() => setDraft(null)} disabled={busy}>
+                Отмена
+              </Button>
+            </>
+          ) : (
+            <Button variant="ghost" onClick={() => setDraft(tiers)} disabled={tiers.length === 0}>
+              Изменить таблицу
             </Button>
-            <Button variant="ghost" onClick={() => setDraft(null)} disabled={busy}>
-              Отмена
-            </Button>
-          </>
-        ) : (
-          <Button variant="ghost" onClick={() => setDraft(tiers)} disabled={tiers.length === 0}>
-            Изменить таблицу
-          </Button>
-        )}
-      </div>
+          )}
+        </div>
+      ) : null}
 
       {managers.length > 0 ? (
         <table style={{ ...styles.table, marginTop: 20 }}>
