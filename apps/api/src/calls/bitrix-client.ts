@@ -20,6 +20,14 @@ import type { BitrixCallRecord } from './bitrix-mapper';
  */
 const MAX_PAGES = 200;
 
+/**
+ * Предел страниц добора сделок за один вызов — 3000 сделок, меньше минуты.
+ * Месяц сделок портала (13 тысяч) за один запрос не успевал: прокси
+ * обрывал его на полпути. Остаток доберёт следующий вызов с точки, где
+ * остановился этот.
+ */
+export const DEALS_MAX_PAGES = 60;
+
 /** Только нужные поля: без select портал отдаёт десятки полей сделки. */
 const DEAL_FIELDS = [
   'ID',
@@ -102,7 +110,7 @@ export class BitrixClient {
     if (modifiedSince) params.set('filter[>=DATE_MODIFY]', modifiedSince.toISOString());
     for (const field of DEAL_FIELDS) params.append('select[]', field);
 
-    const { records, truncated } = await this.fetchAll<BitrixDeal>(webhookUrl, 'crm.deal.list', params);
+    const { records, truncated } = await this.fetchAll<BitrixDeal>(webhookUrl, 'crm.deal.list', params, DEALS_MAX_PAGES);
     return { records, truncated };
   }
 
@@ -114,6 +122,7 @@ export class BitrixClient {
     rawWebhookUrl: string,
     method: string,
     params: URLSearchParams,
+    maxPages = MAX_PAGES,
   ): Promise<{ records: T[]; pagesFetched: number; truncated: boolean }> {
     const webhookUrl = rawWebhookUrl.trim().replace(/\/$/, '');
     if (!isValidWebhook(webhookUrl)) {
@@ -124,7 +133,7 @@ export class BitrixClient {
     let start = 0;
     let pagesFetched = 0;
 
-    while (pagesFetched < MAX_PAGES) {
+    while (pagesFetched < maxPages) {
       const page = await this.fetchPage<T>(webhookUrl, method, params, start);
       pagesFetched += 1;
 
@@ -149,7 +158,7 @@ export class BitrixClient {
     }
 
     this.logger.warn(
-      `Достигнут предел в ${MAX_PAGES} страниц. Выгружено ${records.length} записей, возможно не всё.`,
+      `Достигнут предел в ${maxPages} страниц. Выгружено ${records.length} записей, возможно не всё.`,
     );
     return { records, pagesFetched, truncated: true };
   }
