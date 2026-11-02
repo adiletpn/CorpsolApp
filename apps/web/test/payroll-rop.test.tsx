@@ -39,11 +39,13 @@ vi.mock('../lib/session', () => ({
 const { Payroll } = await import('../components/screens/Payroll');
 
 describe('зарплата глазами РОП', () => {
-  it('видит расчёты отдела, но не меняет ранги, правила и суммы', async () => {
+  it('видит расчёты отдела и ставит ранги, но не меняет ставки, правила и суммы', async () => {
     render(<Payroll />);
 
-    expect(await screen.findByText('Дина')).toBeTruthy();
-    expect(screen.queryByText('Ранги')).toBeNull();
+    expect(await screen.findAllByText('Дина')).not.toHaveLength(0);
+    expect(screen.getByText('Ранги')).toBeTruthy();
+    expect(screen.getByLabelText('Ранг: Дина')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Изменить таблицу' })).toBeNull();
     expect(screen.queryByText('Правила премирования')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Утвердить' })).toBeNull();
     // Служебные списки, доступные только директору, даже не запрашиваются.
