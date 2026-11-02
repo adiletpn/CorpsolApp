@@ -82,6 +82,15 @@ describe('кто какие звонки видит', () => {
     expect(calls[0].userId).toBe('mop-2');
   });
 
+  it('руководитель не достанет звонки сотрудника из чужого отдела', async () => {
+    const { firestore, service } = setup();
+    seedCall(firestore, 'a', { userId: 'mop-9', departmentId: 'dep-2' });
+
+    const calls = await service.list(actor('ROP'), undefined, undefined, 'mop-9');
+
+    expect(calls).toEqual([]);
+  });
+
   it('директор видит всю компанию', async () => {
     const { firestore, service } = setup();
     seedCall(firestore, 'a', { departmentId: 'dep-1' });
