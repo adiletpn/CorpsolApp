@@ -107,11 +107,14 @@ export class CallsSyncScheduler {
           organizationId?: string;
           isActive?: boolean;
           credentials?: Record<string, string> | null;
+          importCalls?: boolean;
         };
         const organizationId = integration.organizationId;
         if (!organizationId) continue;
         // АТС без ключа — старая выгрузка файлом: тянуть по сети нечего.
         if (source !== 'BITRIX' && (!integration.isActive || !integration.credentials)) continue;
+        // Портал подключён только ради сделок — звонки идут из АТС.
+        if (source === 'BITRIX' && integration.importCalls === false) continue;
 
         try {
           const result = await this.locks.run(
