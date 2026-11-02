@@ -301,7 +301,13 @@ export class AttendanceService {
     }
 
     const snapshot = await query.orderBy('workDate', 'desc').get();
-    return snapshot.docs.map((doc) => this.toResponse(doc.id, doc.data() as AttendanceDoc));
+    return snapshot.docs
+      .map((doc) => ({ id: doc.id, data: doc.data() as AttendanceDoc }))
+      // Отдел — не граница организации: ID отделов случайные, но проверка
+      // доступа не должна держаться на том, что они не совпадут. Условие
+      // в сам запрос не добавляем — под него нет составного индекса.
+      .filter(({ data }) => data.organizationId === actor.organizationId)
+      .map(({ id, data }) => this.toResponse(id, data));
   }
 
   private async timezoneOf(organizationId: string): Promise<string> {
