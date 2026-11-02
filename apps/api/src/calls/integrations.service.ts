@@ -41,6 +41,8 @@ interface IntegrationDoc {
     lastSyncStatus: string | null;
     lastSyncError: string | null;
     syncedUpTo: Timestamp | null;
+    /** Прошлый добор оборвался на пределе: продолжать ровно с точки, без отступа. */
+    exact?: boolean;
   } | null;
 }
 
@@ -193,7 +195,7 @@ export class IntegrationsService {
   async recordDealsSync(
     organizationId: string,
     status: string,
-    options: { error?: string; syncedUpTo?: Date } = {},
+    options: { error?: string; syncedUpTo?: Date; exact?: boolean } = {},
   ): Promise<void> {
     const ref = this.collection.doc(docId(organizationId, 'BITRIX'));
     const previous = ((await ref.get()).data() as IntegrationDoc | undefined)?.deals ?? null;
@@ -204,6 +206,7 @@ export class IntegrationsService {
         lastSyncError: options.error ?? null,
         // Точка продолжения двигается только успехом: сбой её не сбрасывает.
         syncedUpTo: options.syncedUpTo ? Timestamp.fromDate(options.syncedUpTo) : (previous?.syncedUpTo ?? null),
+        exact: options.syncedUpTo ? options.exact === true : (previous?.exact ?? false),
       },
     });
   }

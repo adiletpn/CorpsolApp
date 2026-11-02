@@ -37,7 +37,11 @@ export class BitrixDealsSyncService {
     const webhookUrl = await this.integrations.requireWebhook(organizationId);
     const integration = await this.integrations.find(organizationId, 'BITRIX');
     const previous = integration?.deals?.syncedUpTo?.toDate();
-    const from = since ?? (previous ? new Date(previous.getTime() - OVERLAP_MS) : almatyMonthStart(now));
+    // После оборванного на пределе добора — ровно с последней сделки:
+    // отступ назад вернул бы к тем же, если их больше предела изменено
+    // почти разом (роботы, массовая правка), и добор ходил бы по кругу.
+    const back = integration?.deals?.exact ? 0 : OVERLAP_MS;
+    const from = since ?? (previous ? new Date(previous.getTime() - back) : almatyMonthStart(now));
 
     try {
       const linked = await this.importer.linkedPortalUsers(organizationId);
@@ -51,9 +55,9 @@ export class BitrixDealsSyncService {
       // их по дате изменения, и следующий прогон продолжит с этого места.
       // Стоять на месте нельзя — за месяц в портале бывает больше сделок,
       // чем входит в один прогон, и добор не закончился бы никогда.
-      await this.integrations.recordDealsSync(organizationId, 'OK', {
-        syncedUpTo: truncated ? this.lastModified(records) : now,
-      });
+      await this.integrations.recordDealsSync(organizationId, 'OK', truncated
+        ? { syncedUpTo: this.nextPoint(records, from), exact: true }
+        : { syncedUpTo: now });
       return { ...summary, fetched: records.length, rejected: rejected.length, truncated };
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : 'Неизвестная ошибка';
@@ -63,10 +67,17 @@ export class BitrixDealsSyncService {
     }
   }
 
-  private lastModified(records: Array<{ DATE_MODIFY?: string | null }>): Date | undefined {
+  /**
+   * Куда двигаться после оборванного добора: к последней полученной сделке.
+   * Если вся порция изменена в ту же секунду, что и начало, — на секунду
+   * вперёд: иначе следующий прогон получил бы ровно эту же порцию.
+   */
+  private nextPoint(records: Array<{ DATE_MODIFY?: string | null }>, from: Date): Date | undefined {
     const times = records
       .map((record) => (record.DATE_MODIFY ? new Date(record.DATE_MODIFY).getTime() : NaN))
       .filter((time) => !Number.isNaN(time));
-    return times.length > 0 ? new Date(Math.max(...times)) : undefined;
+    if (times.length === 0) return undefined;
+    const last = Math.max(...times);
+    return new Date(last > from.getTime() ? last : from.getTime() + 1000);
   }
 }
