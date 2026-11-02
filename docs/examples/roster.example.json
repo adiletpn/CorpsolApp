@@ -1,0 +1,10 @@
+{
+  "department": "Отдел продаж",
+  "resyncSince": "2026-10-01",
+  "employees": [
+    { "name": "Айгерим", "role": "ROP", "head": true },
+    { "name": "Ержан", "kcell": "erzhan" },
+    { "name": "Мадина", "sipuni": "215" },
+    { "name": "Данияр", "login": "daniyar.o", "kcell": "daniyar", "sipuni": "216" }
+  ]
+}
