@@ -10,6 +10,7 @@ import { parseKcellExport } from './kcell-parser';
 import { IntegrationsService } from './integrations.service';
 import { BitrixSyncService } from './bitrix-sync.service';
 import { PbxSyncService } from './pbx-sync.service';
+import { BitrixDealsSyncService } from '../offers/bitrix-deals-sync.service';
 import {
   ConnectBitrixDto,
   ConnectKcellDto,
@@ -28,6 +29,7 @@ export class CallsController {
     private readonly integrations: IntegrationsService,
     private readonly bitrixSync: BitrixSyncService,
     private readonly pbxSync: PbxSyncService,
+    private readonly dealsSync: BitrixDealsSyncService,
   ) {}
 
   /**
@@ -106,6 +108,14 @@ export class CallsController {
   @RequirePermissions('integration.manage')
   disconnectBitrix(@CurrentUser() user: AuthenticatedUser) {
     return this.integrations.disconnect(user, 'BITRIX');
+  }
+
+  /** Добрать сделки из CRM сейчас, не дожидаясь часового прогона. */
+  @Post('integrations/bitrix/deals/sync')
+  @HttpCode(200)
+  @RequirePermissions('integration.manage')
+  syncBitrixDeals(@CurrentUser() user: AuthenticatedUser, @Body() dto: SyncCallsDto) {
+    return this.dealsSync.sync(user.organizationId, new Date(), dto.since ? new Date(dto.since) : undefined);
   }
 
   @Post('integrations/bitrix/sync')
