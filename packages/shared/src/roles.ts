@@ -57,6 +57,9 @@ export const PERMISSIONS = [
   'payroll.read.department',
   'payroll.read.self',
   'payroll.manage',
+  // Ранг менеджера ставит его РОП — он видит работу каждого. Таблица
+  // рангов (оклады и ставки) — отдельно, под payroll.manage.
+  'grade.assign',
 
   // офферы
   'offer.read.all',
@@ -105,6 +108,7 @@ const ROP_PERMISSIONS: Permission[] = [
   'offer.read.department',
   'offer.confirm',
   'analytics.department',
+  'grade.assign',
 ];
 
 const HR_PERMISSIONS: Permission[] = [
@@ -126,6 +130,7 @@ const DIRECTOR_PERMISSIONS: Permission[] = [
   'plan.read.all',
   'payroll.read.all',
   'payroll.manage',
+  'grade.assign',
   'offer.read.all',
   'offer.confirm',
   'analytics.company',
