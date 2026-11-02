@@ -1,5 +1,6 @@
 import { BadGatewayException, BadRequestException, Injectable, Logger } from '@nestjs/common';
 
+import type { BitrixDeal } from '../offers/bitrix-deals';
 import type { BitrixCallRecord } from './bitrix-mapper';
 
 /**
@@ -18,6 +19,20 @@ import type { BitrixCallRecord } from './bitrix-mapper';
  * бесконечно, выедая лимиты. Предел делает такой сбой заметным и конечным.
  */
 const MAX_PAGES = 200;
+
+/** Только нужные поля: без select портал отдаёт десятки полей сделки. */
+const DEAL_FIELDS = [
+  'ID',
+  'TITLE',
+  'OPPORTUNITY',
+  'CURRENCY_ID',
+  'STAGE_ID',
+  'STAGE_SEMANTIC_ID',
+  'ASSIGNED_BY_ID',
+  'DATE_CREATE',
+  'CLOSEDATE',
+  'DATE_MODIFY',
+];
 
 /** Портал ограничивает частоту запросов, поэтому между страницами пауза. */
 const PAGE_DELAY_MS = 350;
@@ -74,6 +89,21 @@ export class BitrixClient {
     if (options.toDate) params.set('filter[<=CALL_START_DATE]', options.toDate.toISOString());
 
     return this.fetchAll<BitrixCallRecord>(options.webhookUrl, 'voximplant.statistic.get', params);
+  }
+
+  /**
+   * Сделки, изменённые с заданного момента. Фильтр по дате изменения, а не
+   * создания: сделку, заведённую в сентябре и закрытую в октябре, нужно
+   * увидеть в октябре — именно тогда она стала регистрацией.
+   */
+  async fetchDeals(webhookUrl: string, modifiedSince?: Date): Promise<{ records: BitrixDeal[]; truncated: boolean }> {
+    const params = new URLSearchParams();
+    params.set('order[DATE_MODIFY]', 'ASC');
+    if (modifiedSince) params.set('filter[>=DATE_MODIFY]', modifiedSince.toISOString());
+    for (const field of DEAL_FIELDS) params.append('select[]', field);
+
+    const { records, truncated } = await this.fetchAll<BitrixDeal>(webhookUrl, 'crm.deal.list', params);
+    return { records, truncated };
   }
 
   /**
