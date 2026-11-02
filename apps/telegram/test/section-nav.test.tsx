@@ -66,3 +66,26 @@ describe('подсветка при открытии экрана', () => {
     expect(screen.getByRole('button', { name: 'Сегодня' }).getAttribute('aria-current')).toBe('location');
   });
 });
+
+describe('пересчёт при росте страницы', () => {
+  it('следит за высотой страницы и отписывается при уходе с экрана', () => {
+    const observe = vi.fn();
+    const disconnect = vi.fn();
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe = observe;
+        disconnect = disconnect;
+      },
+    );
+
+    const { unmount } = render(
+      <SectionNav sections={[{ id: 'today', label: 'Сегодня' }, { id: 'month', label: 'Табель' }]} />,
+    );
+    expect(observe).toHaveBeenCalledWith(document.body);
+
+    unmount();
+    expect(disconnect).toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+});
