@@ -72,7 +72,7 @@ export class PayrollController {
 
   @Post('grades/assign')
   @HttpCode(200)
-  @RequirePermissions('payroll.manage')
+  @RequirePermissions('payroll.manage', 'grade.assign')
   assignGrade(@CurrentUser() user: AuthenticatedUser, @Body() dto: AssignGradeDto) {
     return this.grades.assign(user, dto.userId, dto.code);
   }

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Timestamp } from 'firebase-admin/firestore';
 import { DEFAULT_GRADE_TIERS, gradeForMonth, weekBonus, type GradeTier, type WeekBand } from '@corpsol/shared';
 
@@ -80,6 +80,16 @@ export class GradesService {
     const user = snapshot.data() as UserDoc | undefined;
     if (!snapshot.exists || user?.organizationId !== actor.organizationId) {
       throw new NotFoundException('Сотрудник не найден');
+    }
+    // РОП ставит ранг только менеджерам своего отдела: чужих он не видит
+    // в работе, а себе поднять ранг не должен никто.
+    if (actor.role === 'ROP') {
+      if (!actor.departmentId || user.departmentId !== actor.departmentId) {
+        throw new ForbiddenException('Ранг ставится только менеджерам своего отдела');
+      }
+      if (user.role !== 'MOP') {
+        throw new ForbiddenException('РОП ставит ранг только менеджерам');
+      }
     }
 
     await ref.update({ gradeCode: code, updatedAt: Timestamp.now() });
